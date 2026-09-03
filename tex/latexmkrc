@@ -1,0 +1,9 @@
+# LuaLaTeX is the default engine for first-party project documents.
+$pdf_mode = 4;
+$lualatex = 'lualatex -interaction=nonstopmode -halt-on-error -file-line-error %O %S';
+$out_dir = 'build';
+$aux_dir = 'build';
+$silent = 0;
+$warnings_as_errors = 0;
+$max_repeat = 5;
+$clean_ext .= ' %R.bbl %R.bcf %R.run.xml %R.synctex.gz';

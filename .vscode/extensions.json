@@ -1,0 +1,19 @@
+{
+  "recommendations": [
+    "charliermarsh.ruff",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "rust-lang.rust-analyzer",
+    "biomejs.biome",
+    "James-Yu.latex-workshop",
+    "EditorConfig.EditorConfig",
+    "tamasfe.even-better-toml",
+    "redhat.vscode-yaml"
+  ],
+  "unwantedRecommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "ms-python.black-formatter",
+    "ms-python.isort"
+  ]
+}

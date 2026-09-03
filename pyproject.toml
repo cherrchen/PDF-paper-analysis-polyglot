@@ -1,0 +1,153 @@
+[project]
+name = "pdf-paper-analysis"
+version = "0.0.0"
+description = "Workspace root for PDF paper analysis. Applications and libraries live in apps/ and packages/."
+readme = "README.md"
+license = { text = "MIT with Non-Commercial additional terms (see LICENSE)" }
+requires-python = ">=3.13,<3.14"
+authors = [{ name = "PDF Paper Analysis contributors" }]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+  "apps/api",
+  "apps/worker",
+  "packages/python/document-model",
+  "packages/python/pdf-pipeline",
+  "packages/python/llm",
+]
+
+[dependency-groups]
+dev = [
+  "ruff==0.16.5",
+  "pyright==1.1.411",
+  "pytest==9.1.1",
+  "pytest-cov==7.1.0",
+  "jsonschema==4.26.0",
+  "check-jsonschema==0.38.0",
+  "pyyaml==6.0.2",
+  "referencing==0.37.0",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["apps", "packages/python", "scripts"]
+extend-exclude = [".venv", "node_modules", "target", "build"]
+
+[tool.ruff.lint]
+select = [
+  "A",
+  "ANN",
+  "ASYNC",
+  "B",
+  "C4",
+  "DTZ",
+  "E",
+  "F",
+  "FLY",
+  "FURB",
+  "G",
+  "I",
+  "ICN",
+  "INP",
+  "ISC",
+  "LOG",
+  "N",
+  "PERF",
+  "PIE",
+  "PL",
+  "PT",
+  "PTH",
+  "RET",
+  "RSE",
+  "RUF",
+  "S",
+  "SIM",
+  "SLOT",
+  "T20",
+  "TC",
+  "TRY",
+  "UP",
+  "W",
+]
+ignore = [
+  "ISC001",
+  "PLR0913",
+  "PLR2004",
+  "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/**/*.py" = ["INP001", "T201", "E402", "S603", "S607", "TC003", "PLR0912", "PERF401", "ANN401"]
+"apps/*/src/**/__main__.py" = ["T201", "N802", "A002"]
+"**/tests/**/*.py" = ["S101", "INP001", "PLC0415"]
+"apps/*/tests/**/*.py" = ["S101", "INP001"]
+"packages/python/*/tests/**/*.py" = ["S101", "INP001"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.13"
+venvPath = "."
+venv = ".venv"
+include = ["apps", "packages/python", "scripts"]
+exclude = ["**/node_modules", "**/__pycache__", ".venv", "target"]
+reportMissingTypeStubs = false
+reportUnknownMemberType = true
+reportUnknownVariableType = true
+reportUnknownArgumentType = true
+
+[[tool.pyright.executionEnvironments]]
+root = "scripts"
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["apps", "packages/python", "tests"]
+pythonpath = [
+  "apps/api/src",
+  "apps/worker/src",
+  "packages/python/document-model/src",
+  "packages/python/pdf-pipeline/src",
+  "packages/python/llm/src",
+]
+markers = [
+  "unit: small deterministic tests",
+  "integration: multiple internal components",
+  "golden: canonical structured expected output",
+  "regression: previously observed bug reproduction",
+  "slow: long-running tests",
+  "e2e: product-level workflow",
+  "rendering: SemanticDocument to LaTeX to PDF validation",
+]
+addopts = "-q --strict-markers --strict-config"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+branch = true
+source = [
+  "apps/api/src",
+  "apps/worker/src",
+  "packages/python/document-model/src",
+  "packages/python/pdf-pipeline/src",
+  "packages/python/llm/src",
+]
+omit = ["**/tests/**", "**/__main__.py"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+]

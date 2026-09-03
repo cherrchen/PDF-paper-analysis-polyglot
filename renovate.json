@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices", ":semanticCommits", ":semanticCommitTypeAll(chore)"],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "labels": ["dependencies"],
+  "schedule": ["before 6am on monday"],
+  "packageRules": [
+    {
+      "description": "Group GitHub Actions SHA pins",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    },
+    {
+      "description": "TeX Live packages are not updated by Renovate",
+      "matchFileNames": ["tex/packages.txt"],
+      "enabled": false
+    }
+  ]
+}

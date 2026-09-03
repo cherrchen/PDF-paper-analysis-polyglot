@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    uses: ./.github/workflows/ci-python.yml
+
+  typescript:
+    uses: ./.github/workflows/ci-typescript.yml
+
+  rust:
+    uses: ./.github/workflows/ci-rust.yml
+
+  latex:
+    uses: ./.github/workflows/ci-latex.yml
+
+  docs:
+    uses: ./.github/workflows/ci-docs.yml
+
+  security:
+    uses: ./.github/workflows/ci-security.yml
+
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    needs: [python, typescript, rust, latex, docs, security]
+    if: always() && !cancelled()
+    steps:
+      - name: Require all jobs
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const results = {
+              python: '${{ needs.python.result }}',
+              typescript: '${{ needs.typescript.result }}',
+              rust: '${{ needs.rust.result }}',
+              latex: '${{ needs.latex.result }}',
+              docs: '${{ needs.docs.result }}',
+              security: '${{ needs.security.result }}',
+            };
+            core.info(JSON.stringify(results, null, 2));
+            const failed = Object.entries(results).filter(([, result]) => result !== 'success');
+            if (failed.length) {
+              core.setFailed('CI gate failed: ' + failed.map(([name, result]) => `${name}=${result}`).join(', '));
+            }

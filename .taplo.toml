@@ -1,0 +1,7 @@
+include = ["**/*.toml"]
+exclude = ["**/node_modules/**", "**/target/**", "**/.venv/**"]
+
+[formatting]
+align_entries = false
+array_trailing_comma = true
+reorder_keys = false

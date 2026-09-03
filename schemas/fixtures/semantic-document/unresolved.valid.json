@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "0.0.0-unresolved",
+  "status": "unresolved",
+  "intendedConcepts": [
+    "SemanticDocument",
+    "Page",
+    "Block",
+    "TextSpan",
+    "BoundingBox",
+    "Figure",
+    "Table",
+    "Equation",
+    "Citation",
+    "SourceMapping"
+  ]
+}

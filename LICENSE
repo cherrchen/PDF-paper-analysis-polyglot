@@ -1,0 +1,77 @@
+MIT License
+
+Copyright (c) 2026 cherrchen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+------------------------------------------------------------------------------
+
+ADDITIONAL TERMS — NON-COMMERCIAL USE ONLY
+
+These additional terms modify the MIT License grant above. If they conflict
+with the MIT License, these additional terms control.
+
+1. Commercial use is prohibited.
+
+   You may not use, copy, modify, merge, publish, distribute, sublicense,
+   host, sell, or otherwise deal in the Software for Commercial purposes
+   without a separate written license from the copyright holders.
+
+2. "Commercial purposes" means any use that is primarily intended for or
+   directed toward commercial advantage or monetary compensation. This
+   includes, without limitation:
+
+   - selling the Software or a derivative work
+   - offering the Software as a paid or revenue-generating service
+   - using the Software to provide paid consulting, analysis, or hosting
+   - incorporating the Software into a product, SaaS, or service that is
+     sold, licensed, or otherwise provided for a fee
+   - using the Software in a business workflow whose primary purpose is
+     commercial advantage
+
+3. Non-commercial use is permitted.
+
+   Personal, academic, educational, research, classroom, and internal
+   evaluation use are permitted, provided the use is not primarily intended
+   for commercial advantage or monetary compensation.
+
+4. No implied commercial license.
+
+   The MIT License words "sell copies of the Software" and "deal in the
+   Software without restriction" do not grant commercial rights. Those
+   rights are withheld by these additional terms.
+
+5. Separate commercial licensing.
+
+   The copyright holders may grant a commercial license in writing. No
+   employee, contributor, or third party can waive these additional terms
+   except the copyright holders in a signed writing.
+
+6. Source-available, not OSI "MIT".
+
+   This repository is source-available. It is not licensed under unmodified
+   OSI-approved MIT. Do not identify this project as "MIT" in package
+   registries, SPDX, or documentation without also stating the
+   Non-Commercial additional terms.
+
+中文摘要（非正式译本，如与英文冲突，以英文为准）：
+
+本软件以 MIT 许可正文为基础，并附加“禁止商用”条款。个人、学术、教育、
+研究与内部评估可以使用；任何以商业利益或金钱报酬为主要目的的使用、销售、
+托管或提供有偿服务均被禁止，除非另行取得版权人的书面商业许可。

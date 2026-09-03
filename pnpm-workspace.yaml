@@ -1,0 +1,12 @@
+packages:
+  - "apps/web"
+  - "packages/typescript/*"
+
+catalog:
+  "@biomejs/biome": 2.5.12
+  markdownlint-cli2: 0.18.1
+  "@playwright/test": 1.62.1
+  "@types/node": 24.3.0
+  typescript: 5.9.2
+  vite: 7.1.5
+  vitest: 3.2.4

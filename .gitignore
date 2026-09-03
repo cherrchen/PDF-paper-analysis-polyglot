@@ -1,0 +1,105 @@
+# Tooling / OS
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.iml
+
+# Environments
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+mise.local.toml
+.mise.local.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+dist/
+build/
+*.whl
+
+# Node
+node_modules/
+.pnpm-store/
+.turbo/
+.vite/
+*.tsbuildinfo
+playwright-report/
+playwright/.cache/
+test-results/
+blob-report/
+
+# Rust
+target/
+**/*.rs.bk
+
+# LaTeX auxiliary / latexmk
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+*.idx
+*.ilg
+*.ind
+*.acn
+*.acr
+*.alg
+*.glg
+*.glo
+*.gls
+*.ist
+*.xdv
+_minted*/
+tex/build/
+templates/latex/build/
+tests/fixtures/source/latex/build/
+
+# Generated / ephemeral PDFs (tracked fixture PDFs are allowlisted below)
+*.pdf
+!tests/fixtures/pdf/**/*.pdf
+
+# Coverage / reports
+reports/
+.nyc_output/
+
+# Security / secrets
+*.pem
+*.p12
+*.key
+id_rsa
+id_rsa.pub
+
+# Caches
+.cache/
+.direnv/
+.vale-cache/
+.lycheecache/

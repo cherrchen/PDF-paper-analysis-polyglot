@@ -1,0 +1,22 @@
+[tools]
+python = "3.13.12"
+node = "24.18.0"
+pnpm = "10.33.0"
+uv = "0.11.3"
+rust = "1.98.0"
+just = "1"
+lefthook = "1"
+actionlint = "latest"
+gitleaks = "latest"
+typos = "latest"
+lychee = "latest"
+taplo = "latest"
+shellcheck = "latest"
+shfmt = "latest"
+yamllint = "latest"
+vale = "latest"
+"cargo:cargo-deny" = "latest"
+
+[settings]
+experimental = true
+idiomatic_version_file_enable_tools = []

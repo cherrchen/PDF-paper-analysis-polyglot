@@ -1,0 +1,24 @@
+name: Bug
+description: Report a defect in tooling, rendering, or product behavior
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Commands, fixture names, and logs.
+    validations:
+      required: true

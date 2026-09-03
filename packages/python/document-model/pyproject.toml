@@ -1,0 +1,16 @@
+[project]
+name = "document-model"
+version = "0.0.0"
+description = "Canonical SemanticDocument types for Python. Shared contracts live in schemas/."
+readme = "README.md"
+license = { text = "MIT with Non-Commercial additional terms (see LICENSE)" }
+requires-python = ">=3.13,<3.14"
+authors = [{ name = "PDF Paper Analysis contributors" }]
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/document_model"]

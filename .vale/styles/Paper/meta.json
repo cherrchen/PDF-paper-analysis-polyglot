@@ -1,0 +1,6 @@
+{
+  "name": "Paper",
+  "description": "Project-specific Vale style.",
+  "homepage": "https://github.com",
+  "vale_version": ">=2.0.0"
+}

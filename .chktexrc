@@ -1,0 +1,9 @@
+# ChkTeX configuration for first-party sources.
+# Do not globally disable useful warnings. Use local suppressions in the
+# document that needs them, with a comment explaining why.
+CmdLine {
+  -wall
+  -n22
+  -n30
+  -n38
+}

@@ -1,0 +1,34 @@
+{
+  "name": "pdf-paper-analysis",
+  "private": true,
+  "version": "0.0.0",
+  "description": "TypeScript workspace root for PDF paper analysis.",
+  "license": "SEE LICENSE IN LICENSE",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24.18.0 <25",
+    "pnpm": ">=10.33.0"
+  },
+  "scripts": {
+    "fmt": "biome check --write .",
+    "fmt-check": "biome ci .",
+    "lint": "biome lint .",
+    "typecheck": "tsc --build",
+    "test": "vitest run",
+    "test-e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "markdownlint-cli2": "catalog:",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

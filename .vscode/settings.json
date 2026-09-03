@@ -1,0 +1,58 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "EditorConfig.EditorConfig",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit",
+      "source.fixAll.ruff": "explicit"
+    }
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  },
+  "[latex]": {
+    "editor.defaultFormatter": "James-Yu.latex-workshop"
+  },
+  "latex-workshop.latex.tools": [
+    {
+      "name": "latexmk-lualatex",
+      "command": "latexmk",
+      "args": ["-r", "%WORKSPACE_FOLDER%/tex/latexmkrc", "-cd", "%DOC%"]
+    }
+  ],
+  "latex-workshop.latex.recipes": [
+    {
+      "name": "latexmk (LuaLaTeX)",
+      "tools": ["latexmk-lualatex"]
+    }
+  ],
+  "python.analysis.typeCheckingMode": "strict",
+  "python.languageServer": "Pylance",
+  "ruff.nativeServer": "on",
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.extraArgs": ["--all-targets", "--all-features"]
+}

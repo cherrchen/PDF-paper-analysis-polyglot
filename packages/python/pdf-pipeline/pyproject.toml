@@ -1,0 +1,21 @@
+[project]
+name = "pdf-pipeline"
+version = "0.0.0"
+description = "PDF ingestion and reconstruction pipeline. Reusable Python logic lives here, not in apps/."
+readme = "README.md"
+license = { text = "MIT with Non-Commercial additional terms (see LICENSE)" }
+requires-python = ">=3.13,<3.14"
+authors = [{ name = "PDF Paper Analysis contributors" }]
+dependencies = [
+  "document-model",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pdf_pipeline"]
+
+[tool.uv.sources]
+document-model = { workspace = true }

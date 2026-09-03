@@ -1,0 +1,6 @@
+# latexindent settings for first-party sources only.
+defaultIndent: "  "
+maxLineLength: 100
+modifyLineBreaks:
+  preserveBlankLines: 1
+  condenseMultipleBlankLinesInto: 1

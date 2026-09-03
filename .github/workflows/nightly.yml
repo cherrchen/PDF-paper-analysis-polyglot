@@ -1,0 +1,23 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    uses: ./.github/workflows/ci-python.yml
+  typescript:
+    uses: ./.github/workflows/ci-typescript.yml
+  rust:
+    uses: ./.github/workflows/ci-rust.yml
+  latex:
+    uses: ./.github/workflows/ci-latex.yml
+  docs:
+    uses: ./.github/workflows/ci-docs.yml
+  security:
+    uses: ./.github/workflows/ci-security.yml

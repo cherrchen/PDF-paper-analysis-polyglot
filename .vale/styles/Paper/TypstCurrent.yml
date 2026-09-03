@@ -1,0 +1,9 @@
+---
+extends: existence
+message: "Do not describe Typst as a current renderer."
+level: error
+ignorecase: true
+tokens:
+  - "current renderer is Typst"
+  - "Typst is the canonical renderer"
+  - "Typst backend is available"

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-paper-analysis.local/schemas/semantic-document/v0.json",
+  "title": "SemanticDocument",
+  "description": "Placeholder canonical schema. The document model is intentionally unresolved. See .agents/notes/proposed/architecture/2026-09-03-semantic-document-canonical-model.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status"],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.0.0-unresolved"
+    },
+    "status": {
+      "const": "unresolved"
+    },
+    "intendedConcepts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "SemanticDocument",
+          "Page",
+          "Block",
+          "TextSpan",
+          "BoundingBox",
+          "Figure",
+          "Table",
+          "Equation",
+          "Citation",
+          "SourceMapping"
+        ]
+      },
+      "uniqueItems": true
+    }
+  }
+}

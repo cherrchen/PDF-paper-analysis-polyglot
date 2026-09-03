@@ -1,0 +1,26 @@
+extends: default
+
+ignore: |
+  .git
+  .venv
+  node_modules
+  target
+  dist
+  build
+  pnpm-lock.yaml
+  uv.lock
+  Cargo.lock
+  .ruff_cache
+  .pytest_cache
+
+rules:
+  braces:
+    max-spaces-inside: 0
+    level: error
+  colons:
+    max-spaces-before: 0
+    level: error
+  document-start: disable
+  line-length: disable
+  truthy:
+    check-keys: false

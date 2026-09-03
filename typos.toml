@@ -1,0 +1,26 @@
+[files]
+extend-exclude = [
+  "pnpm-lock.yaml",
+  "uv.lock",
+  "Cargo.lock",
+  "CHANGELOG.md",
+  "LICENSE",
+]
+
+[default.extend-words]
+lualatex = "lualatex"
+latexmk = "latexmk"
+ChkTeX = "ChkTeX"
+latexindent = "latexindent"
+lefthook = "lefthook"
+mise = "mise"
+pyright = "pyright"
+biome = "biome"
+typst = "typst"
+zizmor = "zizmor"
+gitleaks = "gitleaks"
+actionlint = "actionlint"
+yamllint = "yamllint"
+jsonschema = "jsonschema"
+OpenAPI = "OpenAPI"
+SemanticDocument = "SemanticDocument"
