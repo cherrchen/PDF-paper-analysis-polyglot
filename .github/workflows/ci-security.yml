@@ -31,6 +31,7 @@ jobs:
         uses: zizmorcore/zizmor-action@70fb788f84895a7701f5643d103d587e460b5c99 # v0.6.3
         with:
           advanced-security: false
+          config: .github/zizmor.yml
 
   dependency-review:
     if: github.event_name == 'pull_request'

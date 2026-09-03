@@ -1,3 +1,4 @@
+actionlint
 Biome
 Canonicalize
 ChkTeX

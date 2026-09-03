@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-TeX Live 2026 的 tlmgr 没有独立 `array` 包（它在 `tools` 里）；CI 宏包清单改为安装 `chktex` 与 `latexindent`。Vale 使用项目词表，避免把工具名当成拼写错误。所有 `actions/checkout` 设置 `persist-credentials: false`。同仓可复用 workflow 使用 `$/` 自引用语法。
+TeX Live 2026 的 tlmgr 没有独立 `array` 包（它在 `tools` 里）；CI 宏包清单改为安装 `chktex` 与 `latexindent`。Vale 使用项目词表，避免把工具名当成拼写错误。所有 `actions/checkout` 设置 `persist-credentials: false`。同仓可复用 workflow 保持 `./` 路径，因为 actionlint 不接受 `$/`；zizmor 的 `self-repository` 规则在 `.github/zizmor.yml` 中忽略这两份调用文件。Rust CI 在 mise 之后显式 `rustup component add rustfmt clippy`，因为 `profile = "minimal"` 的 toolchain 默认不含它们。
 
 ## 考虑过的替代方案
 
