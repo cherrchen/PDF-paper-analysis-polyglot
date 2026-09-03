@@ -34,7 +34,8 @@ def _need(name: str) -> str:
 def _version_ok(command: str, expected_prefix: str, argv: Sequence[str]) -> None:
     output = _run(argv)
     first = output.splitlines()[0] if output else ""
-    if expected_prefix not in first and expected_prefix not in output:
+    haystack = f"{first}\n{output}".lower()
+    if expected_prefix.lower() not in haystack:
         raise DoctorError(
             f"{command} version mismatch: expected {expected_prefix!r}, got {first!r}"
         )

@@ -1,7 +1,4 @@
 title = "PDF Paper Analysis"
 
 [allowlist]
-paths = [
-  '''gitleaks\.toml''',
-  '''\.env\.example$''',
-]
+paths = ['''gitleaks\.toml''', '''\.env\.example$''']

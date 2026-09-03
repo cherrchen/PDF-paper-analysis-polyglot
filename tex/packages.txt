@@ -1,9 +1,12 @@
 # First-party TeX Live packages. Keep this set small.
 # Names are tlmgr package names. Add a package only with a concrete need.
+# `array` is not a tlmgr package; it ships inside `tools`.
 
 latex-bin
 luatex
 latexmk
+chktex
+latexindent
 fontspec
 luaotfload
 lm
@@ -54,7 +57,6 @@ lualatex-math
 unicode-math
 amscls
 colortbl
-array
 graphics-cfg
 graphics-def
 epstopdf-pkg

@@ -16,7 +16,7 @@ Keep orchestration, I/O, and LLM integration in Python. Place proven hot paths i
 
 - All-Python would delay native cost but may cap throughput.
 - All-Rust would slow iteration on research code.
-- Ad hoc FFI from `apps/` would hide the bindings crate.
+- Ad-hoc FFI from `apps/` would hide the bindings crate.
 
 ## Acceptance criteria
 

@@ -28,7 +28,8 @@ def compile_tex(source: Path) -> None:
     completed = subprocess.run(
         [
             "latexmk",
-            f"-r={LATEXMKRC}",
+            "-r",
+            str(LATEXMKRC),
             "-cd",
             str(source),
         ],
@@ -47,7 +48,7 @@ def compile_tex(source: Path) -> None:
 def clean_tex(source: Path) -> None:
     _need("latexmk")
     subprocess.run(
-        ["latexmk", f"-r={LATEXMKRC}", "-C", "-cd", str(source)],
+        ["latexmk", "-r", str(LATEXMKRC), "-C", "-cd", str(source)],
         check=False,
         cwd=ROOT,
     )

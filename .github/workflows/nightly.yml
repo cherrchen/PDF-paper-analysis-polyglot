@@ -10,14 +10,14 @@ permissions:
 
 jobs:
   python:
-    uses: ./.github/workflows/ci-python.yml
+    uses: $/.github/workflows/ci-python.yml
   typescript:
-    uses: ./.github/workflows/ci-typescript.yml
+    uses: $/.github/workflows/ci-typescript.yml
   rust:
-    uses: ./.github/workflows/ci-rust.yml
+    uses: $/.github/workflows/ci-rust.yml
   latex:
-    uses: ./.github/workflows/ci-latex.yml
+    uses: $/.github/workflows/ci-latex.yml
   docs:
-    uses: ./.github/workflows/ci-docs.yml
+    uses: $/.github/workflows/ci-docs.yml
   security:
-    uses: ./.github/workflows/ci-security.yml
+    uses: $/.github/workflows/ci-security.yml

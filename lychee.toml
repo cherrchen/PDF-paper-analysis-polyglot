@@ -1,4 +1,11 @@
-exclude_path = ["target", "node_modules", ".venv", "dist", "build", "pnpm-lock.yaml"]
+exclude_path = [
+  "target",
+  "node_modules",
+  ".venv",
+  "dist",
+  "build",
+  "pnpm-lock.yaml",
+]
 include_mail = false
 max_redirects = 5
 offline = true

@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install mise tools
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
@@ -23,6 +25,9 @@ jobs:
         with:
           texlive_version: 2026
           package_file: tex/packages.txt
+
+      - name: Install latexindent Perl modules
+        run: sudo apt-get update && sudo apt-get install -y libfile-homedir-perl libyaml-tiny-perl libunicode-linebreak-perl liblog-log4perl-perl
 
       - name: Install Python helpers
         run: just setup-ci

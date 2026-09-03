@@ -73,15 +73,20 @@ select = [
   "UP",
   "W",
 ]
-ignore = [
-  "ISC001",
-  "PLR0913",
-  "PLR2004",
-  "TRY003",
-]
+ignore = ["ISC001", "PLR0913", "PLR2004", "TRY003"]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/**/*.py" = ["INP001", "T201", "E402", "S603", "S607", "TC003", "PLR0912", "PERF401", "ANN401"]
+"scripts/**/*.py" = [
+  "INP001",
+  "T201",
+  "E402",
+  "S603",
+  "S607",
+  "TC003",
+  "PLR0912",
+  "PERF401",
+  "ANN401",
+]
 "apps/*/src/**/__main__.py" = ["T201", "N802", "A002"]
 "**/tests/**/*.py" = ["S101", "INP001", "PLC0415"]
 "apps/*/tests/**/*.py" = ["S101", "INP001"]
@@ -147,7 +152,4 @@ omit = ["**/tests/**", "**/__main__.py"]
 fail_under = 80
 show_missing = true
 skip_covered = true
-exclude_lines = [
-  "pragma: no cover",
-  "if TYPE_CHECKING:",
-]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]

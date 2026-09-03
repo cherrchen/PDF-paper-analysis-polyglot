@@ -50,7 +50,9 @@ blob-report/
 target/
 **/*.rs.bk
 
-# LaTeX auxiliary / latexmk
+# Auxiliary / backups
+*.bak0
+*.bak*
 *.aux
 *.bbl
 *.bcf
