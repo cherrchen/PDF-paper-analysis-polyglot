@@ -2,10 +2,17 @@
 
 [中文](./semantic-document.md) | [English](./semantic-document.en.md)
 
-Canonical contract location: `schemas/semantic-document/`.
+Semantic model definition: [`document-architecture.en.md`](document-architecture.en.md) sections 13–17.
 
-The schema is a placeholder. Intended concepts include Page, Block, TextSpan, BoundingBox, Figure, Table, Equation, Citation, and SourceMapping. Their fields are not decided.
+Canonical contract location (to be implemented): `schemas/semantic-document/` and related physical, layout, mapping, and evidence schemas.
 
-See [`.agents/notes/proposed/architecture/2026-09-03-semantic-document-canonical-model.md`](../../.agents/notes/proposed/architecture/2026-09-03-semantic-document-canonical-model.en.md).
+Key points:
 
-Language packages may hold convenience types only after they track this schema. They are not independent sources of truth.
+- Tree + graph: `SemanticNode` parent-child; `SemanticRelation` for caption, citation, footnote, etc.
+- Section and Heading are separate
+- Block semantics → `SemanticNode`; inline semantics → `RichText` marks
+- Forbidden: page, bbox, column, font size, and other layout information
+
+See implemented note [`.agents/notes/implemented/architecture/2026-09-03-document-architecture.en.md`](../../.agents/notes/implemented/architecture/2026-09-03-document-architecture.en.md).
+
+Language packages may hold convenience types only after schemas land. They are not independent sources of truth.

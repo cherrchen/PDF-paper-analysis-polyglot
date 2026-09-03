@@ -2,9 +2,14 @@
 
 [中文](./pipeline.md) | [English](./pipeline.en.md)
 
-The intended conceptual pipeline is described in [`overview.md`](overview.en.md).
+Full pipeline definition: [`document-architecture.en.md`](document-architecture.en.md) sections 1, 9, 42, and 50.
 
-Extraction, layout analysis, translation, and LLM analysis are **intentionally unresolved**. See:
+```text
+PDF → PhysicalDocument → Evidence → LayoutDocument
+    → SemanticDocument → Derived Layers → RenderComposer
+    → RenderDocument → LaTeX → Target PDF
+```
 
-- [`.agents/notes/proposed/architecture/2026-09-03-layout-reconstruction-pipeline.md`](../../.agents/notes/proposed/architecture/2026-09-03-layout-reconstruction-pipeline.en.md)
-- [`.agents/notes/proposed/architecture/2026-09-03-python-rust-performance-boundary.md`](../../.agents/notes/proposed/architecture/2026-09-03-python-rust-performance-boundary.en.md)
+Language allocation and package layout: [`document-architecture.en.md`](document-architecture.en.md) sections 44–45.
+
+Python / Rust performance boundary: same document section 45 and implemented note [`.agents/notes/implemented/architecture/2026-09-03-document-architecture.en.md`](../../.agents/notes/implemented/architecture/2026-09-03-document-architecture.en.md).

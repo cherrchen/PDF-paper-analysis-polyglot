@@ -2,9 +2,14 @@
 
 [中文](./pipeline.md) | [English](./pipeline.en.md)
 
-概念流水线见 [`overview.md`](overview.md)。
+完整流水线定义见 [`document-architecture.md`](document-architecture.md) 第 1、9、42、50 节。
 
-抽取、版面分析、翻译与 LLM 分析 **有意未决**。见：
+```text
+PDF → PhysicalDocument → Evidence → LayoutDocument
+    → SemanticDocument → Derived Layers → RenderComposer
+    → RenderDocument → LaTeX → Target PDF
+```
 
-- [`.agents/notes/proposed/architecture/2026-09-03-layout-reconstruction-pipeline.md`](../../.agents/notes/proposed/architecture/2026-09-03-layout-reconstruction-pipeline.md)
-- [`.agents/notes/proposed/architecture/2026-09-03-python-rust-performance-boundary.md`](../../.agents/notes/proposed/architecture/2026-09-03-python-rust-performance-boundary.md)
+语言分工与 package 布局见 [`document-architecture.md`](document-architecture.md) 第 44–45 节。
+
+Python / Rust 性能边界见同文档第 45 节与已落地 note [`.agents/notes/implemented/architecture/2026-09-03-document-architecture.md`](../../.agents/notes/implemented/architecture/2026-09-03-document-architecture.md)。

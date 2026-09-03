@@ -2,8 +2,13 @@
 
 [中文](./pdf-ingestion.md) | [English](./pdf-ingestion.en.md)
 
-PDF ingestion, OCR, and parser selection are **intentionally unresolved**.
+PDF ingestion, parser selection, and adaptive routing: [`document-architecture.en.md`](document-architecture.en.md) sections 34–42 and 36–40.
 
-See [`.agents/notes/proposed/architecture/2026-09-03-layout-reconstruction-pipeline.md`](../../.agents/notes/proposed/architecture/2026-09-03-layout-reconstruction-pipeline.en.md).
+Key points:
+
+- **Canonical Physical Backend**: PDFium → `PhysicalDocument`
+- **Layout evidence**: MinerU (primary), Docling (challenger / table)
+- **Scholarly evidence**: GROBID
+- **Adaptive routing**: `DocumentProbe` decides which parsers run; not every parser on every run
 
 Heavy native dependencies (PDFium, MuPDF, Poppler, Ghostscript, OpenCV, Tesseract, Torch) require an Agent Note before adoption. See [`docs/development/dependencies.md`](../development/dependencies.en.md).

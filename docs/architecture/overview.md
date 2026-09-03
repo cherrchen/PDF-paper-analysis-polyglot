@@ -2,23 +2,32 @@
 
 [中文](./overview.md) | [English](./overview.en.md)
 
+权威基准：[**Document Architecture v0.1**](./document-architecture.md)（冻结契约）。
+
 ```text
 Source PDF
     │
     ▼
-Document Extraction
+PhysicalDocument
     │
     ▼
-Layout Analysis
+Evidence → Layout Recovery
+    │
+    ▼
+LayoutDocument
+    │
+    ▼
+Semantic Recovery
     │
     ▼
 SemanticDocument
     │
-    ├────────► Analysis / LLM
+    ├────────► Translation / Analysis / Annotation
     │
-    ├────────► Translation
-    │
-    └────────► Rendering Projection
+    └────────► RenderComposer
+                        │
+                        ▼
+                 RenderDocument
                         │
                         ▼
                       LaTeX
@@ -30,6 +39,6 @@ SemanticDocument
                  Translated PDF
 ```
 
-SemanticDocument 是语义真源。LaTeX 是渲染表示。LuaLaTeX 是引擎。
+SemanticDocument 是语义真源。RenderDocument 是渲染中间表示。LaTeX 是渲染后端投影。LuaLaTeX 是引擎。
 
-渲染后端之上的产品阶段尚未实现。未决设计记在 proposed Agent Note 中，不写在本页。
+专题索引：[`pipeline.md`](pipeline.md)、[`pdf-ingestion.md`](pdf-ingestion.md)、[`source-mapping.md`](source-mapping.md)、[`semantic-document.md`](semantic-document.md)、[`rendering.md`](rendering.md)。

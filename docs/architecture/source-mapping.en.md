@@ -2,6 +2,14 @@
 
 [中文](./source-mapping.md) | [English](./source-mapping.en.md)
 
-Stable relations among original PDF, SemanticDocument, and rendered PDF are required as a capability, but the identity model is **intentionally unresolved**.
+Mapping architecture: [`document-architecture.en.md`](document-architecture.en.md) sections 18–21 and 33.
 
-See [`.agents/notes/proposed/architecture/2026-09-03-source-mapping-identity-model.md`](../../.agents/notes/proposed/architecture/2026-09-03-source-mapping-identity-model.en.md).
+Three-layer mapping chain:
+
+```text
+PhysicalLayoutBinding → SourceAnchor → SourceSemanticBinding
+```
+
+Supports N Layout ↔ N Semantic (e.g. cross-column paragraphs). Bidirectional navigation uses semantic blocks such as Heading and Paragraph, not Section as the primary geometric unit.
+
+v0.1 excludes character-level mapping. `SourceFragment` is `LayoutRegionRef` only.
