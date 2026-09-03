@@ -10,14 +10,14 @@ permissions:
 
 jobs:
   python:
-    uses: ./.github/workflows/ci-python.yml
+    uses: ./.github/workflows/ci-python.yml  # zizmor: ignore[self-repository]
   typescript:
-    uses: ./.github/workflows/ci-typescript.yml
+    uses: ./.github/workflows/ci-typescript.yml  # zizmor: ignore[self-repository]
   rust:
-    uses: ./.github/workflows/ci-rust.yml
+    uses: ./.github/workflows/ci-rust.yml  # zizmor: ignore[self-repository]
   latex:
-    uses: ./.github/workflows/ci-latex.yml
+    uses: ./.github/workflows/ci-latex.yml  # zizmor: ignore[self-repository]
   docs:
-    uses: ./.github/workflows/ci-docs.yml
+    uses: ./.github/workflows/ci-docs.yml  # zizmor: ignore[self-repository]
   security:
-    uses: ./.github/workflows/ci-security.yml
+    uses: ./.github/workflows/ci-security.yml  # zizmor: ignore[self-repository]

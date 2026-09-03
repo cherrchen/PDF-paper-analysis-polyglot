@@ -1,7 +1,9 @@
-# actionlint rejects GitHub's `$/` self-repo syntax, so reusable
-# workflow calls stay as `./...`. Ignore zizmor's self-repository rule.
+# GitHub Actions and actionlint both require workspace-relative `./...`
+# for same-repo reusable workflows. `$/` is not usable here, so this
+# audit is disabled rather than auto-fixed to `$/`.
 rules:
   self-repository:
+    disable: true
     ignore:
-      - .github/workflows/ci.yml
-      - .github/workflows/nightly.yml
+      - ci.yml
+      - nightly.yml

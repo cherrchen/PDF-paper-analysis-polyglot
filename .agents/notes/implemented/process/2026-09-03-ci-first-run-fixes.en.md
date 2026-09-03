@@ -10,7 +10,7 @@ The first `CI / gate` run failed on the LaTeX, docs, and security jobs even thou
 
 ## Decision
 
-TeX Live 2026 tlmgr has no standalone `array` package (it ships in `tools`). The CI package list installs `chktex` and `latexindent` instead of `array`. Vale uses a project vocabulary so tool names are not spelling errors. Every `actions/checkout` sets `persist-credentials: false`. Same-repo reusable workflows keep `./` paths because actionlint rejects `$/`. zizmor's `self-repository` rule is ignored for those caller files in `.github/zizmor.yml`. Rust CI runs `rustup component add rustfmt clippy` after mise, because a `minimal` toolchain profile does not include them.
+TeX Live 2026 tlmgr has no standalone `array` package (it ships in `tools`). The CI package list installs `chktex` and `latexindent` instead of `array`. Vale uses a project vocabulary so tool names are not spelling errors. Every `actions/checkout` sets `persist-credentials: false`. Same-repo reusable workflows keep `./` paths: GitHub Actions and actionlint both reject `$/`, so zizmor's `self-repository` rule is disabled in `.github/zizmor.yml` and ignored on the caller lines. Rust CI runs `rustup component add rustfmt clippy` after mise, because a `minimal` toolchain profile does not include them. Action pin comments use two spaces before `#` to satisfy yamllint.
 
 ## Alternatives considered
 

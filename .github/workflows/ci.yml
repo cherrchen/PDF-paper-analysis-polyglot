@@ -10,22 +10,22 @@ permissions:
 
 jobs:
   python:
-    uses: ./.github/workflows/ci-python.yml
+    uses: ./.github/workflows/ci-python.yml  # zizmor: ignore[self-repository]
 
   typescript:
-    uses: ./.github/workflows/ci-typescript.yml
+    uses: ./.github/workflows/ci-typescript.yml  # zizmor: ignore[self-repository]
 
   rust:
-    uses: ./.github/workflows/ci-rust.yml
+    uses: ./.github/workflows/ci-rust.yml  # zizmor: ignore[self-repository]
 
   latex:
-    uses: ./.github/workflows/ci-latex.yml
+    uses: ./.github/workflows/ci-latex.yml  # zizmor: ignore[self-repository]
 
   docs:
-    uses: ./.github/workflows/ci-docs.yml
+    uses: ./.github/workflows/ci-docs.yml  # zizmor: ignore[self-repository]
 
   security:
-    uses: ./.github/workflows/ci-security.yml
+    uses: ./.github/workflows/ci-security.yml  # zizmor: ignore[self-repository]
 
   gate:
     name: gate
@@ -34,7 +34,7 @@ jobs:
     if: always() && !cancelled()
     steps:
       - name: Require all jobs
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         with:
           script: |
             const results = {
