@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
-__all__ = ["provider_status"]
+from paper_llm.translation import (
+    TRANSLATION_MARKER,
+    DummyTranslationProvider,
+    translate_document,
+)
+
+__all__ = [
+    "TRANSLATION_MARKER",
+    "DummyTranslationProvider",
+    "provider_status",
+    "translate_document",
+]
 
 
 def provider_status() -> str:

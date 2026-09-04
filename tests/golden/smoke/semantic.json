@@ -1,0 +1,224 @@
+{
+  "schemaVersion": "0.1.0",
+  "id": "8cd12c0c-d384-5a08-ab7b-f09118120439",
+  "layoutDocumentId": "4c3fcaff-7f17-6377-4fe9-487991b53a46",
+  "rootId": "30907f81-384f-30eb-5020-557299266aa0",
+  "nodes": [
+    {
+      "id": "30907f81-384f-30eb-5020-557299266aa0",
+      "kind": "DOCUMENT",
+      "parentId": null,
+      "children": [
+        "0a426618-9a9e-04f2-7228-ea9c36902636",
+        "770986d0-8314-961a-0e5b-26526ac444ba",
+        "274d26c7-33b8-eaf4-c208-cec9286f9456",
+        "229ba3c5-f2e6-6fd3-933e-767fa1e29892",
+        "20655b7c-c210-daba-e036-f12673a8497b",
+        "ac286ac3-8cfd-8ce7-ca2f-65060ea1402e",
+        "98614979-0e2a-8cb3-7728-2cf1a8115b69",
+        "23c08a89-9a97-bfcb-4831-82602cf7881c",
+        "5c738751-77f2-5aa8-ac83-8da6cf79d03d",
+        "574c662f-2b8f-c9c8-6197-f30be193e6bc",
+        "58f8aa27-fe30-53f1-e772-3c8e3b16a81a"
+      ],
+      "content": {
+        "text": "",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 1.0,
+        "reason": "document root"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "0a426618-9a9e-04f2-7228-ea9c36902636",
+      "kind": "HEADING",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] Smoke Fixture",
+        "marks": []
+      },
+      "attributes": {
+        "level": 1
+      },
+      "confidence": {
+        "score": 0.6,
+        "reason": "font-size heuristic"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "770986d0-8314-961a-0e5b-26526ac444ba",
+      "kind": "HEADING",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] Repository fixture",
+        "marks": []
+      },
+      "attributes": {
+        "level": 1
+      },
+      "confidence": {
+        "score": 0.6,
+        "reason": "font-size heuristic"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "274d26c7-33b8-eaf4-c208-cec9286f9456",
+      "kind": "PARAGRAPH",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] 2026-09-03",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.8,
+        "reason": "layout text region"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "229ba3c5-f2e6-6fd3-933e-767fa1e29892",
+      "kind": "HEADING",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] This fixture is the minimum LuaLaTeX regression document.",
+        "marks": []
+      },
+      "attributes": {
+        "level": 1
+      },
+      "confidence": {
+        "score": 0.6,
+        "reason": "font-size heuristic"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "20655b7c-c210-daba-e036-f12673a8497b",
+      "kind": "HEADING",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] Unicode: Café, naïve, Zürich.",
+        "marks": []
+      },
+      "attributes": {
+        "level": 1
+      },
+      "confidence": {
+        "score": 0.6,
+        "reason": "font-size heuristic"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "ac286ac3-8cfd-8ce7-ca2f-65060ea1402e",
+      "kind": "PARAGRAPH",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] Math: ",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.8,
+        "reason": "layout text region"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "98614979-0e2a-8cb3-7728-2cf1a8115b69",
+      "kind": "HEADING",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] E  =  mc2  and  R \r\n0 1",
+        "marks": []
+      },
+      "attributes": {
+        "level": 1
+      },
+      "confidence": {
+        "score": 0.6,
+        "reason": "font-size heuristic"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "23c08a89-9a97-bfcb-4831-82602cf7881c",
+      "kind": "PARAGRAPH",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] R \r\n0",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.8,
+        "reason": "layout text region"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "5c738751-77f2-5aa8-ac83-8da6cf79d03d",
+      "kind": "PARAGRAPH",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] x",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.8,
+        "reason": "layout text region"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "574c662f-2b8f-c9c8-6197-f30be193e6bc",
+      "kind": "PARAGRAPH",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] 2  dx .",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.8,
+        "reason": "layout text region"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "58f8aa27-fe30-53f1-e772-3c8e3b16a81a",
+      "kind": "PARAGRAPH",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "[TRANSLATED] 1",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.8,
+        "reason": "layout text region"
+      },
+      "provenanceIds": []
+    }
+  ],
+  "relations": [],
+  "provenanceIds": []
+}
