@@ -83,7 +83,10 @@ ignore = ["ISC001", "PLR0913", "PLR2004", "TRY003"]
 
 [tool.ruff.lint.per-file-ignores]
 # Generated bindings mirror canonical JSON Schema field names (camelCase).
-"packages/python/document-model/src/document_model/generated/**" = ["N815", "E501"]
+"packages/python/document-model/src/document_model/generated/**" = [
+  "N815",
+  "E501",
+]
 "scripts/**/*.py" = [
   "INP001",
   "T201",

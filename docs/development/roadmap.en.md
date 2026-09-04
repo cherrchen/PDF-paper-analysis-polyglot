@@ -2,7 +2,7 @@
 
 [中文](./roadmap.md) | [English](./roadmap.en.md)
 
-**PDF Paper Semantic Parsing and Translation System**
+## PDF Paper Semantic Parsing and Translation System
 
 Status: Master development roadmap after architecture freeze
 Scope: From project initialization through core IR, PDF Recovery, Semantic Recovery, Translation, LaTeX Rendering, bidirectional PDF Viewer, to productionization

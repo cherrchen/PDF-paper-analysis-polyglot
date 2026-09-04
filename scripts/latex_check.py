@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -31,6 +32,21 @@ def _need(name: str) -> str:
     if path is None:
         raise SystemExit(f"missing {name}. Install TeX Live 2026 / MacTeX and re-run just doctor.")
     return path
+
+
+def _latexindent_env() -> dict[str, str]:
+    """Ensure latexindent's Perl modules are importable.
+
+    TeX Live ships latexindent without its Perl dependencies on some
+    installs (CI installs them via apt). Locally they live in ~/perl5
+    when installed via cpanm --local, so add it to PERL5LIB if present.
+    """
+    env = dict(os.environ)
+    local_lib = Path.home() / "perl5" / "lib" / "perl5"
+    if local_lib.is_dir():
+        existing = env.get("PERL5LIB")
+        env["PERL5LIB"] = f"{local_lib}:{existing}" if existing else str(local_lib)
+    return env
 
 
 def chktex(sources: list[Path]) -> None:
@@ -67,6 +83,7 @@ def latexindent_check(sources: list[Path]) -> None:
                 check=False,
                 capture_output=True,
                 text=True,
+                env=_latexindent_env(),
             )
             if completed.returncode != 0:
                 sys.stderr.write(completed.stderr)
@@ -91,6 +108,7 @@ def latexindent_write(sources: list[Path]) -> None:
                 str(source),
             ],
             check=False,
+            env=_latexindent_env(),
         )
         if completed.returncode != 0:
             raise SystemExit(f"latexindent failed for {source.relative_to(ROOT)}")

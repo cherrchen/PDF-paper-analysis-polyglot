@@ -2,7 +2,7 @@
 
 [中文](./roadmap.md) | [English](./roadmap.en.md)
 
-**PDF 论文语义解析与翻译系统**
+## PDF 论文语义解析与翻译系统
 
 状态：架构冻结后的开发总路线
 适用范围：项目从初始化、核心 IR、PDF Recovery、Semantic Recovery、Translation、LaTeX Rendering、双向 PDF Viewer，直到生产化
