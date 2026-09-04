@@ -52,6 +52,34 @@ def test_semantic_node_with_page_is_flagged(
 
 
 @pytest.mark.unit
+def test_semantic_node_with_camel_case_geometry_is_flagged(
+    layout_data: dict[str, Any], semantic_data: dict[str, Any]
+) -> None:
+    polluted = dict(semantic_data)
+    polluted["nodes"] = [
+        {**node, "attributes": {"fontSize": 12}} if node["kind"] == "PARAGRAPH" else node
+        for node in semantic_data["nodes"]
+    ]
+    issues = validate_layer_separation(layout_data, polluted)
+    assert any("fontSize" in issue for issue in issues)
+
+
+@pytest.mark.unit
+def test_nested_semantic_geometry_is_flagged(
+    layout_data: dict[str, Any], semantic_data: dict[str, Any]
+) -> None:
+    polluted = dict(semantic_data)
+    polluted["nodes"] = [
+        {**node, "attributes": {"debug": [{"source": {"bbox": [0, 0, 1, 1]}}]}}
+        if node["kind"] == "PARAGRAPH"
+        else node
+        for node in semantic_data["nodes"]
+    ]
+    issues = validate_layer_separation(layout_data, polluted)
+    assert any("attributes.debug[0].source.bbox" in issue for issue in issues)
+
+
+@pytest.mark.unit
 def test_layout_region_with_semantic_label_is_flagged(
     layout_data: dict[str, Any], semantic_data: dict[str, Any]
 ) -> None:

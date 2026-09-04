@@ -105,4 +105,30 @@ describe("canonical document contracts", () => {
     delete doc.metadata.title;
     expect(validateDocument("physical-document", doc as JsonValue)).toEqual([]);
   });
+
+  it("rejects formula candidates without a representation", () => {
+    const doc = loadFixture("evidence/mock-providers.valid.json") as {
+      candidates: Array<Record<string, unknown>>;
+    };
+    const formula = doc.candidates.find((candidate) => candidate.evidenceType === "FORMULA");
+    if (!formula) throw new Error("fixture must have a formula candidate");
+    delete formula.latex;
+    delete formula.mathml;
+    delete formula.unicodeText;
+    delete formula.rawText;
+    delete formula.previewResourceId;
+    const errors = validateDocument("evidence", doc as JsonValue);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it("continues object validation after a matching anyOf branch", () => {
+    const doc = loadFixture("evidence/mock-providers.valid.json") as {
+      candidates: Array<Record<string, unknown>>;
+    };
+    const formula = doc.candidates.find((candidate) => candidate.evidenceType === "FORMULA");
+    if (!formula) throw new Error("fixture must have a formula candidate");
+    delete formula.id;
+    const errors = validateDocument("evidence", doc as JsonValue);
+    expect(errors.length).toBeGreaterThan(0);
+  });
 });

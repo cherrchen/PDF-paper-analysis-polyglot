@@ -11,7 +11,8 @@ Key points:
 - Tree + graph: `SemanticNode` parent-child; `SemanticRelation` for caption, citation, footnote, etc.
 - Section and Heading are separate
 - Block semantics → `SemanticNode`; inline semantics → `RichText` marks
-- Forbidden: page, bbox, column, font size, and other layout information; the only open location is `SemanticNode.attributes` (layer boundary enforced by `document_model.validators.validate_layer_separation`)
+- Forbidden: page, bbox, column, font size, and other layout information; `SemanticNode.attributes` is the only open location, and `document_model.validators.validate_layer_separation` recursively checks its nested objects
+- `EquationContent` and formula Evidence must preserve at least one representation: LaTeX, MathML, Unicode/raw text, or a source preview; content-free formulas are invalid
 
 See implemented note [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md).
 

@@ -196,6 +196,13 @@
       "description": "Equation representation with mandatory fallbacks: LaTeX unreliability must not lose content.",
       "additionalProperties": false,
       "required": [],
+      "anyOf": [
+        { "required": ["latex"] },
+        { "required": ["mathml"] },
+        { "required": ["unicodeText"] },
+        { "required": ["rawText"] },
+        { "required": ["previewResourceId"] }
+      ],
       "properties": {
         "latex": {
           "type": "string"

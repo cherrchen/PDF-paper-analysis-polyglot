@@ -12,6 +12,12 @@
 | MINOR | 添加向后兼容能力 | 同上；更新 fixtures |
 | MAJOR | 破坏性结构变更 | migration + fixture + compatibility test + ADR |
 
+## 兼容性冻结边界
+
+在第一个可运行的端到端功能形成前，`0.1.0` 是开发目标版本，而不是已发布的兼容性承诺。当前阶段允许破坏性 schema 修正在保持 `0.1.0` 的同时落地，但必须在同一变更中更新 canonical schema、fixtures、生成绑定和跨语言测试。
+
+首个功能纵切通过 Exit Gate 后，上述版本语义开始约束已有数据和调用方。若在该边界前发布 schema 或生成包，则发布动作会提前建立兼容性冻结点。
+
 ## 核心 schema 范围
 
 ```text

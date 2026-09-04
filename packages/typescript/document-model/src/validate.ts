@@ -184,8 +184,8 @@ function validateAgainst(
     });
     if (matches.length === 0) {
       errors.push({ pointer, message: "value matches none of anyOf variants" });
+      return;
     }
-    return;
   }
 
   if (node.enum) {

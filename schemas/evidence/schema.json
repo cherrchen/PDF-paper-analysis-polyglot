@@ -109,6 +109,13 @@
       "description": "A formula candidate. Recognition may fail without losing content: LaTeX is optional and fallbacks (raw text, preview resource) must be preserved.",
       "additionalProperties": false,
       "required": ["evidenceType", "id", "pageId", "geometry", "confidence", "provenanceIds"],
+      "anyOf": [
+        { "required": ["latex"] },
+        { "required": ["mathml"] },
+        { "required": ["unicodeText"] },
+        { "required": ["rawText"] },
+        { "required": ["previewResourceId"] }
+      ],
       "properties": {
         "evidenceType": { "const": "FORMULA" },
         "id": { "$ref": "../common/schema.json#/$defs/EvidenceID" },

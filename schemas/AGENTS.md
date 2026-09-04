@@ -8,7 +8,7 @@ JSON Schema is the document-structure format. OpenAPI is the HTTP format. Do not
 
 ## Versioning
 
-Additive changes should be backward compatible within a major version. Breaking changes require a schema version change, language package updates, and an Agent Note.
+Before the first functional vertical slice establishes the compatibility freeze, `0.1.0` is a development target: breaking corrections may retain that version when schemas, fixtures, generated bindings, and tests change atomically. After the freeze, additive changes should be backward compatible within a major version; breaking changes require a schema version change, language package updates, and an Agent Note.
 
 ## Generated bindings
 

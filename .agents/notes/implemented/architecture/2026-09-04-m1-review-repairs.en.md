@@ -19,8 +19,14 @@ Complete the M1 contracts before M2 rather than deferring the gaps:
 5. `just generate` runs Ruff format on the Pydantic output so `just generate-check` matches `just fmt`.
 6. Schemas gain `StructureCandidate` and `LayoutGroup`. `RichText` is the canonical name; `TextNodeContent` remains an alias.
 7. Phase 1.2 "parse the same PDF twice" is JSON deserialization stability in M1; PDF-byte re-parse belongs to M2.1.
+8. After the second review, Pydantic models use strict JSON primitive validation: JSON integers accept `2.0` but reject string and Boolean coercion. Optional properties expose the honest runtime type `T | None` while still rejecting explicit JSON `null`; generated files are checked by the strict Python type checker again.
+9. Layer-responsibility validation normalizes camel-case forms such as `fontSize` and `pageBreak`, and recursively checks `SemanticNode.attributes`.
+10. Bundle reference validation covers Physical page membership; Layout pages, bands, columns, groups, and reading flow; Evidence; Semantic inline marks; cross-document IDs; and per-document provenance stores. External M1 ResourceStore and RenderAnchor references are explicitly outside this function's resolvable scope.
+11. Canonical-schema `anyOf` rules require `EquationContent` and `FormulaCandidate` to contain at least one representation or source preview, enforced by both Python and TypeScript runtimes.
 
 Cross-link: [M1 Core Document Contracts](./2026-09-04-m1-core-document-contracts.en.md). The original decision stands; this note records the equivalence and completeness constraints added after review.
+
+See [Schema version boundary before the first feature](../process/2026-09-04-pre-functional-schema-versioning.en.md) for the development-stage `0.1.0` compatibility freeze boundary.
 
 ## Alternatives considered
 
@@ -33,4 +39,6 @@ Cross-link: [M1 Core Document Contracts](./2026-09-04-m1-core-document-contracts
 - Python, JSON Schema, and TypeScript reject illegal ids, `title=null`, 5-point quads, and negative `byteLength` the same way.
 - Physical fixture object ids are unique; cross-page paragraph spans live on two pages.
 - The CI docs job (`just generate-check` and `just docs`, including Vale) is reproducible locally.
+- Generated Python models no longer rely on a type-checker exclusion or file-level type suppression; negative tests cover primitive coercion, empty formulas, and nested geometry.
+- The bundle validator reports dangling IDs for references resolvable within an M1 bundle and explicitly documents the external resource/render-anchor boundary.
 - M2 can depend on these five-layer contracts without first working around generator or fixture defects.

@@ -203,7 +203,7 @@ export declare namespace Evidence {
   /** Any unified evidence candidate. */
   export type Evidence = Evidence.RegionCandidate | Evidence.TableCandidate | Evidence.FormulaCandidate | Evidence.StructureCandidate | Evidence.MetadataCandidate;
   /** A formula candidate. Recognition may fail without losing content: LaTeX is optional and fallbacks (raw text, preview resource) must be preserved. */
-  export interface FormulaCandidate {
+  export type FormulaCandidate = {
     evidenceType: "FORMULA";
     id: Common.EvidenceID;
     pageId: Common.PageID;
@@ -216,7 +216,13 @@ export declare namespace Evidence {
     previewResourceId?: Common.ResourceID;
     confidence: Common.Confidence;
     provenanceIds: Common.ProvenanceID[];
-  }
+  } & (
+    | { latex: string }
+    | { mathml: string }
+    | { unicodeText: string }
+    | { rawText: string }
+    | { previewResourceId: Common.ResourceID }
+  );
   /** Document-level scholarly metadata (title, authors, abstract, section hints) from a specialist such as GROBID. */
   export interface MetadataCandidate {
     evidenceType: "METADATA";
@@ -358,14 +364,20 @@ export declare namespace SemanticDocument {
   /** v0.1 relation types for the non-tree graph. */
   export type RelationType = "CAPTION_OF" | "CITES" | "REFERENCES_FIGURE" | "REFERENCES_TABLE" | "REFERENCES_EQUATION" | "REFERENCES_SECTION" | "FOOTNOTE_OF";
   /** Equation representation with mandatory fallbacks: LaTeX unreliability must not lose content. */
-  export interface EquationContent {
+  export type EquationContent = {
     latex?: string;
     mathml?: string;
     unicodeText?: string;
     rawText?: string;
     number?: string;
     previewResourceId?: Common.ResourceID;
-  }
+  } & (
+    | { latex: string }
+    | { mathml: string }
+    | { unicodeText: string }
+    | { rawText: string }
+    | { previewResourceId: Common.ResourceID }
+  );
   export interface FigureContent {
     label?: string;
     resources: SemanticDocument.FigureResource;

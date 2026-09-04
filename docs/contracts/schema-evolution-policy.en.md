@@ -12,6 +12,12 @@ Authoritative definition: [`docs/architecture/document-architecture.en.md`](../a
 | MINOR | Add backward-compatible capability | Same; update fixtures |
 | MAJOR | Breaking structural change | migration + fixture + compatibility test + ADR |
 
+## Compatibility freeze boundary
+
+Before the first runnable end-to-end feature exists, `0.1.0` is a development target rather than a published compatibility promise. During this stage, breaking schema corrections may retain `0.1.0`, but the canonical schemas, fixtures, generated bindings, and cross-language tests must change atomically.
+
+The version semantics above begin protecting stored data and consumers after the first functional vertical slice passes its exit gate. Publishing a schema or generated package earlier establishes the compatibility freeze at that earlier release.
+
 ## Core schema scope
 
 ```text

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -78,3 +79,45 @@ def test_ts_rejects_invalid_document(tmp_path: Path) -> None:
     )
     assert result.returncode == 1
     assert "bbox" in result.stderr or "additional" in result.stderr
+
+
+@pytest.mark.integration
+def test_python_and_ts_reject_coerced_primitive(tmp_path: Path) -> None:
+    data = _fixture("physical-document", "two-page-two-column.valid.json")
+    data["metadata"]["pageCount"] = "2"
+    with pytest.raises(ValueError, match="expected a JSON integer"):
+        load_document("physical-document", data)
+
+    src = tmp_path / "coerced-number.json"
+    src.write_text(json.dumps(data), encoding="utf-8")
+    result = subprocess.run(  # noqa: S603 - node resolves from PATH, fixed inputs
+        ["node", str(ROUNDTRIP), "physical-document", str(src)],  # noqa: S607
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=False,
+    )
+    assert result.returncode == 1
+
+
+@pytest.mark.integration
+def test_python_and_ts_reject_formula_without_representation(tmp_path: Path) -> None:
+    data = deepcopy(_fixture("evidence", "mock-providers.valid.json"))
+    formula = next(
+        candidate for candidate in data["candidates"] if candidate["evidenceType"] == "FORMULA"
+    )
+    for field in ("latex", "mathml", "unicodeText", "rawText", "previewResourceId"):
+        formula.pop(field, None)
+    with pytest.raises(ValueError, match="at least one required-property group"):
+        load_document("evidence", data)
+
+    src = tmp_path / "empty-formula.json"
+    src.write_text(json.dumps(data), encoding="utf-8")
+    result = subprocess.run(  # noqa: S603 - node resolves from PATH, fixed inputs
+        ["node", str(ROUNDTRIP), "evidence", str(src)],  # noqa: S607
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=False,
+    )
+    assert result.returncode == 1

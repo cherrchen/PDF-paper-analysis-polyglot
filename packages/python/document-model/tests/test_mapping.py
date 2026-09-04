@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Any
 
 import document_model.generated.schema_models as m
@@ -149,12 +150,14 @@ def test_bundle_reference_validator_accepts_fixture_bundle(
     layout_data: dict[str, Any],
     semantic_data: dict[str, Any],
     mapping_data: dict[str, Any],
+    evidence_data: dict[str, Any],
 ) -> None:
     bundle = {
         "physical": physical_data,
         "layout": layout_data,
         "semantic": semantic_data,
         "mappings": mapping_data,
+        "evidence": evidence_data,
     }
     assert validate_bundle_references(bundle) == []
 
@@ -244,3 +247,116 @@ def test_bundle_reference_validator_detects_duplicate_ids(
     }
     issues = validate_bundle_references(bundle)
     assert any("duplicate id" in issue for issue in issues)
+
+
+@pytest.mark.unit
+def test_bundle_reference_validator_checks_physical_page_membership(
+    physical_data: dict[str, Any],
+    layout_data: dict[str, Any],
+    semantic_data: dict[str, Any],
+    mapping_data: dict[str, Any],
+) -> None:
+    broken = deepcopy(physical_data)
+    broken["pages"][0]["objectIds"].append("01J5M1FXTRES0AAAAAAA0GHOST")
+    issues = validate_bundle_references(
+        {
+            "physical": broken,
+            "layout": layout_data,
+            "semantic": semantic_data,
+            "mappings": mapping_data,
+        }
+    )
+    assert any("physical page" in issue and "unknown object" in issue for issue in issues)
+
+
+@pytest.mark.unit
+def test_bundle_reference_validator_checks_layout_containers_and_flow(
+    physical_data: dict[str, Any],
+    layout_data: dict[str, Any],
+    semantic_data: dict[str, Any],
+    mapping_data: dict[str, Any],
+) -> None:
+    ghost = "01J5M1FXTRES0AAAAAAA0GHOST"
+    broken = deepcopy(layout_data)
+    broken["pages"][0]["regionIds"].append(ghost)
+    broken["pages"][0]["bandIds"].append(ghost)
+    broken["bands"][0]["columnIds"].append(ghost)
+    broken["columns"][0]["regionIds"].append(ghost)
+    broken["readingFlow"]["nodes"].append(ghost)
+    broken["readingFlow"]["edges"][0]["target"] = ghost
+    broken["primaryFlow"].append(ghost)
+    issues = validate_bundle_references(
+        {
+            "physical": physical_data,
+            "layout": broken,
+            "semantic": semantic_data,
+            "mappings": mapping_data,
+        }
+    )
+    for fragment in (
+        "unknown region",
+        "unknown band",
+        "unknown column",
+        "unknown node",
+        "unknown target",
+        "primary flow",
+    ):
+        assert any(fragment in issue for issue in issues), fragment
+
+
+@pytest.mark.unit
+def test_bundle_reference_validator_checks_evidence_references(
+    physical_data: dict[str, Any],
+    layout_data: dict[str, Any],
+    semantic_data: dict[str, Any],
+    mapping_data: dict[str, Any],
+    evidence_data: dict[str, Any],
+) -> None:
+    ghost = "01J5M1FXTRES0AAAAAAA0GHOST"
+    broken_evidence = deepcopy(evidence_data)
+    broken_evidence["candidates"][0]["pageId"] = ghost
+    broken_evidence["candidates"][-1]["parentId"] = ghost
+    broken_layout = deepcopy(layout_data)
+    broken_layout["regions"][0]["labels"][0]["evidenceIds"] = [ghost]
+    issues = validate_bundle_references(
+        {
+            "physical": physical_data,
+            "layout": broken_layout,
+            "semantic": semantic_data,
+            "mappings": mapping_data,
+            "evidence": broken_evidence,
+        }
+    )
+    assert any("unknown pageId" in issue for issue in issues)
+    assert any("unknown parentId" in issue for issue in issues)
+    assert any("unknown evidence" in issue for issue in issues)
+
+
+@pytest.mark.unit
+def test_bundle_reference_validator_checks_document_inline_and_provenance_refs(
+    physical_data: dict[str, Any],
+    layout_data: dict[str, Any],
+    semantic_data: dict[str, Any],
+    mapping_data: dict[str, Any],
+) -> None:
+    ghost = "01J5M1FXTRES0AAAAAAA0GHOST"
+    broken_layout = deepcopy(layout_data)
+    broken_layout["physicalDocumentId"] = ghost
+    broken_semantic = deepcopy(semantic_data)
+    broken_semantic["layoutDocumentId"] = ghost
+    paragraph = next(node for node in broken_semantic["nodes"] if node["kind"] == "PARAGRAPH")
+    paragraph["content"]["marks"][0]["targetNodeId"] = ghost
+    broken_mapping = deepcopy(mapping_data)
+    broken_mapping["sourceAnchors"][0]["provenanceIds"] = [ghost]
+    issues = validate_bundle_references(
+        {
+            "physical": physical_data,
+            "layout": broken_layout,
+            "semantic": broken_semantic,
+            "mappings": broken_mapping,
+        }
+    )
+    assert any("physicalDocumentId" in issue for issue in issues)
+    assert any("layoutDocumentId" in issue for issue in issues)
+    assert any("inline mark" in issue for issue in issues)
+    assert any("unknown provenance" in issue for issue in issues)
