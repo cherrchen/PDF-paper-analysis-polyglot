@@ -15,7 +15,9 @@
       "!**/target",
       "!**/.venv",
       "!**/coverage",
-      "!**/pnpm-lock.yaml"
+      "!**/pnpm-lock.yaml",
+      "!packages/typescript/document-model/src/generated",
+      "!packages/python/document-model/src/document_model/generated"
     ]
   },
   "formatter": {

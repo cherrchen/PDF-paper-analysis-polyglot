@@ -6,7 +6,9 @@ readme = "README.md"
 license = { text = "MIT with Non-Commercial additional terms (see LICENSE)" }
 requires-python = ">=3.13,<3.14"
 authors = [{ name = "PDF Paper Analysis contributors" }]
-dependencies = []
+dependencies = [
+    "pydantic>=2.12,<3",
+]
 
 [build-system]
 requires = ["hatchling"]
