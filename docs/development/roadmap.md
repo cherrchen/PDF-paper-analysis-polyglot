@@ -13,16 +13,16 @@
 ## 当前进度追踪
 
 **最后更新：** 2026-09-04
-**当前位置：** M0 已完成；进入 M1（核心文档契约）
+**当前位置：** M1 已完成；进入 M2（Walking Skeleton）
 
-README 状态：工程脚手架。产品流水线尚未实现。
+README 状态：工程脚手架 + 核心文档契约。产品流水线尚未实现。
 
 ### Milestone 总览
 
 | Milestone | 状态 | 说明 |
 | --- | --- | --- |
 | M0 Engineering Foundation | 已完成 | 0.1–0.3 全部完成；Tier 1 语料已建立 |
-| M1 Core Document Contracts | 未开始 | 仅有 SemanticDocument placeholder schema |
+| M1 Core Document Contracts | 已完成 | 六套 schema `0.1.0`；生成绑定 + 跨语言 roundtrip |
 | M2 Walking Skeleton | 未开始 | LaTeX smoke 与 web smoke 页面存在 |
 | M3 Layout Recovery Engine | 未开始 | — |
 | M4 Semantic Recovery Engine | 未开始 | — |
@@ -45,15 +45,15 @@ README 状态：工程脚手架。产品流水线尚未实现。
 
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
-| 1.1 Identity / Provenance / Resource | 未开始 | 类型仅在架构文档中描述 |
-| 1.2 PhysicalDocument Schema | 未开始 | 无 `schemas/physical-document/`；`crates/pdf-core` 为 stub |
-| 1.3 Evidence Schema | 未开始 | 无 Evidence schema 与 adapter mock |
-| 1.4 LayoutDocument Schema | 未开始 | 无 Layout schema；`crates/layout` 为 stub |
-| 1.5 SemanticDocument Schema | 部分完成 | `schemas/semantic-document/schema.json` placeholder（`0.0.0-unresolved`） |
-| 1.6 Mapping Schema | 未开始 | SourceAnchor / RenderAnchor 仅在文档中 |
-| 1.7 Schema Generation & Compatibility | 未开始 | `scripts/generate.py` 尚无注册生成器 |
+| 1.1 Identity / Provenance / Resource | 已完成 | `schemas/common/schema.json`；Pydantic/TS 生成模型；ID 唯一性与 provenance 测试 |
+| 1.2 PhysicalDocument Schema | 已完成 | `schemas/physical-document/schema.json`；坐标稳定 / ID reconciliation 测试 |
+| 1.3 Evidence Schema | 已完成 | `schemas/evidence/schema.json`；FakeMinerU / FakeDocling adapter 测试 |
+| 1.4 LayoutDocument Schema | 已完成 | `schemas/layout-document/schema.json`；双栏 + 跨栏 Figure + Footnote fixture 与测试 |
+| 1.5 SemanticDocument Schema | 已完成 | `schemas/semantic-document/schema.json`（替换 placeholder）；结构独立性测试 |
+| 1.6 Mapping Schema | 已完成 | `schemas/mapping/schema.json`；N→1 / 1→N / N→N 三场景 fixture 与测试 |
+| 1.7 Schema Generation & Compatibility | 已完成 | `scripts/generate.py`；TS + Pydantic 生成物；`tests/integration/` 跨语言 roundtrip |
 
-**M1 Exit Gate：** 未达成
+**M1 Exit Gate：** 已达成（见 [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md)）
 
 ### M2 明细
 
@@ -71,8 +71,7 @@ README 状态：工程脚手架。产品流水线尚未实现。
 
 ### 建议下一步
 
-1. 进入 M1：冻结并生成 Physical / Layout / Semantic / Evidence / Mapping schema
-2. 打通 M2 Walking Skeleton 端到端闭环
+1. 进入 M2：Walking Skeleton——最小 PDFium backend、minimal layout/semantic recovery、dummy translation、LaTeX renderer、双向跳转
 
 ### 维护说明
 

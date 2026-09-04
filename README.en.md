@@ -4,7 +4,7 @@
 
 Polyglot monorepo for PDF paper analysis, document understanding, translation, structure reconstruction, and PDF rendering.
 
-**Status:** engineering bootstrap. Product pipelines are not implemented yet.
+**Status:** engineering bootstrap plus core document contracts (M1: six schemas, generated bindings, cross-language roundtrip). Product pipelines are not implemented yet.
 
 ## Rendering
 

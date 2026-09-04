@@ -13,16 +13,16 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-04
-**Current position:** M0 complete; entering M1 (core document contracts)
+**Current position:** M1 complete; entering M2 (Walking Skeleton)
 
-README status: engineering bootstrap. Product pipelines are not implemented yet.
+README status: engineering bootstrap plus core document contracts. Product pipelines are not implemented yet.
 
 ### Milestone overview
 
 | Milestone | Status | Notes |
 | --- | --- | --- |
 | M0 Engineering Foundation | Done | Phases 0.1–0.3 complete; Tier 1 corpus established |
-| M1 Core Document Contracts | Not started | SemanticDocument placeholder schema only |
+| M1 Core Document Contracts | Done | Six schemas at `0.1.0`; generated bindings + cross-language roundtrip |
 | M2 Walking Skeleton | Not started | LaTeX smoke and web smoke page exist |
 | M3 Layout Recovery Engine | Not started | — |
 | M4 Semantic Recovery Engine | Not started | — |
@@ -45,15 +45,15 @@ README status: engineering bootstrap. Product pipelines are not implemented yet.
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| 1.1 Identity / Provenance / Resource | Not started | Types described in architecture docs only |
-| 1.2 PhysicalDocument Schema | Not started | No `schemas/physical-document/`; `crates/pdf-core` is a stub |
-| 1.3 Evidence Schema | Not started | No Evidence schema or adapter mocks |
-| 1.4 LayoutDocument Schema | Not started | No Layout schema; `crates/layout` is a stub |
-| 1.5 SemanticDocument Schema | Partial | `schemas/semantic-document/schema.json` placeholder (`0.0.0-unresolved`) |
-| 1.6 Mapping Schema | Not started | SourceAnchor / RenderAnchor documented only |
-| 1.7 Schema Generation & Compatibility | Not started | `scripts/generate.py` has no registered generators |
+| 1.1 Identity / Provenance / Resource | Done | `schemas/common/schema.json`; generated Pydantic/TS models; ID uniqueness and provenance tests |
+| 1.2 PhysicalDocument Schema | Done | `schemas/physical-document/schema.json`; geometry stability / ID reconciliation tests |
+| 1.3 Evidence Schema | Done | `schemas/evidence/schema.json`; FakeMinerU / FakeDocling adapter tests |
+| 1.4 LayoutDocument Schema | Done | `schemas/layout-document/schema.json`; two-column + spanning figure + footnote fixture and tests |
+| 1.5 SemanticDocument Schema | Done | `schemas/semantic-document/schema.json` (replaces placeholder); structure independence tests |
+| 1.6 Mapping Schema | Done | `schemas/mapping/schema.json`; N→1 / 1→N / N→N scenario fixtures and tests |
+| 1.7 Schema Generation & Compatibility | Done | `scripts/generate.py`; TS + Pydantic generated bindings; cross-language roundtrip under `tests/integration/` |
 
-**M1 exit gate:** Not met
+**M1 exit gate:** Met (see [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md))
 
 ### M2 detail
 
@@ -71,8 +71,7 @@ README status: engineering bootstrap. Product pipelines are not implemented yet.
 
 ### Recommended next steps
 
-1. Enter M1: freeze and generate Physical / Layout / Semantic / Evidence / Mapping schemas
-2. Close the M2 walking skeleton end-to-end loop
+1. Enter M2: Walking Skeleton — minimal PDFium backend, minimal layout/semantic recovery, dummy translation, LaTeX renderer, bidirectional navigation
 
 ### Maintenance
 
