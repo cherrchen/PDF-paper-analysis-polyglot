@@ -1,0 +1,22 @@
+#panes {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.pane {
+  margin: 0;
+  flex: 1;
+}
+
+.pane canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid #ccc;
+}
+
+.pane figcaption {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}

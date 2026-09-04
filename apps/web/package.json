@@ -11,7 +11,8 @@
     "typecheck": "tsc --build"
   },
   "dependencies": {
-    "@paper/ui": "workspace:*"
+    "@paper/ui": "workspace:*",
+    "pdfjs-dist": "^6.3.289"
   },
   "devDependencies": {
     "typescript": "catalog:",
