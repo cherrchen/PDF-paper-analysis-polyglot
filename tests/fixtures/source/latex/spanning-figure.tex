@@ -1,0 +1,28 @@
+\documentclass[11pt,a4paper,twocolumn]{article}
+
+\usepackage{fontspec}
+\usepackage{graphicx}
+
+\setmainfont{Latin Modern Roman}
+
+\title{Spanning Figure Fixture}
+\author{Repository fixture}
+\date{2026-09-04}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\maketitle
+
+\section{Columns before figure}
+Introductory text in the first column precedes a figure that spans both columns.
+
+\begin{figure*}[t]
+  \centering
+  \rule{0.85\textwidth}{3cm}
+  \caption{Wide figure spanning both columns in a two-column article.}\label{fig:span}
+\end{figure*}
+
+\section{Columns after figure}
+Text resumes below the spanning figure. Layout recovery must treat the figure
+band separately from single-column reading flow.
+
+\end{document}

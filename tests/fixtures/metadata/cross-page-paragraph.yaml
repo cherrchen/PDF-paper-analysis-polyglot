@@ -1,14 +1,15 @@
 origin: repository-authored
 license: MIT with Non-Commercial additional terms
-purpose: LuaLaTeX toolchain smoke fixture
+purpose: Single paragraph continuing across a page break
 generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
 tier: 1
 layout:
   columns: 1
-  pages_expected: 1
-  has_math: true
+  pages_expected: 2
+  has_math: false
   has_table: false
   has_figure: false
   multilingual: false
 known_special_cases:
-  - Minimal single-column baseline for just latex-smoke
+  - Cross-page paragraph continuation
+  - Layout continuation evidence for semantic recovery

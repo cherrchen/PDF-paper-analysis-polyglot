@@ -13,7 +13,7 @@
 ## 当前进度追踪
 
 **最后更新：** 2026-09-04
-**当前位置：** M0 收尾阶段（架构已冻结；核心契约与流水线尚未实现）
+**当前位置：** M0 已完成；进入 M1（核心文档契约）
 
 README 状态：工程脚手架。产品流水线尚未实现。
 
@@ -21,7 +21,7 @@ README 状态：工程脚手架。产品流水线尚未实现。
 
 | Milestone | 状态 | 说明 |
 | --- | --- | --- |
-| M0 Engineering Foundation | 部分完成 | CI / monorepo / 架构文档就绪；测试语料库未建立 |
+| M0 Engineering Foundation | 已完成 | 0.1–0.3 全部完成；Tier 1 语料已建立 |
 | M1 Core Document Contracts | 未开始 | 仅有 SemanticDocument placeholder schema |
 | M2 Walking Skeleton | 未开始 | LaTeX smoke 与 web smoke 页面存在 |
 | M3 Layout Recovery Engine | 未开始 | — |
@@ -36,10 +36,10 @@ README 状态：工程脚手架。产品流水线尚未实现。
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
 | 0.1 Repository Baseline | 已完成 | monorepo 结构、`just` 命令界面、CI 在 clean checkout 可运行 |
-| 0.2 Architecture Governance | 部分完成 | `docs/architecture/` 与 Agent Note ADR 就绪；`docs/contracts/` 尚未建立 |
-| 0.3 Test Corpus Foundation | 未开始 | `tests/fixtures/pdf/` 尚无 benchmark PDF 语料 |
+| 0.2 Architecture Governance | 已完成 | `docs/architecture/`、`docs/contracts/`、`docs/decisions/` 与 Agent Note ADR |
+| 0.3 Test Corpus Foundation | 已完成 | 10 篇 Tier 1 LaTeX fixture + 元数据；Tier 4 扫描 PDF 占位 |
 
-**M0 Exit Gate：** 未达成（缺 0.3）
+**M0 Exit Gate：** 已达成
 
 ### M1 明细
 
@@ -71,9 +71,8 @@ README 状态：工程脚手架。产品流水线尚未实现。
 
 ### 建议下一步
 
-1. 完成 M0.3：建立首批 regression benchmark PDF 语料
-2. 进入 M1：冻结并生成 Physical / Layout / Semantic / Evidence / Mapping schema
-3. 打通 M2 Walking Skeleton 端到端闭环
+1. 进入 M1：冻结并生成 Physical / Layout / Semantic / Evidence / Mapping schema
+2. 打通 M2 Walking Skeleton 端到端闭环
 
 ### 维护说明
 

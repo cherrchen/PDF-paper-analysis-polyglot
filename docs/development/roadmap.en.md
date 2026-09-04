@@ -13,7 +13,7 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-04
-**Current position:** Closing out M0 (architecture frozen; core contracts and pipeline not implemented yet)
+**Current position:** M0 complete; entering M1 (core document contracts)
 
 README status: engineering bootstrap. Product pipelines are not implemented yet.
 
@@ -21,7 +21,7 @@ README status: engineering bootstrap. Product pipelines are not implemented yet.
 
 | Milestone | Status | Notes |
 | --- | --- | --- |
-| M0 Engineering Foundation | Partial | CI / monorepo / architecture docs in place; test corpus missing |
+| M0 Engineering Foundation | Done | Phases 0.1–0.3 complete; Tier 1 corpus established |
 | M1 Core Document Contracts | Not started | SemanticDocument placeholder schema only |
 | M2 Walking Skeleton | Not started | LaTeX smoke and web smoke page exist |
 | M3 Layout Recovery Engine | Not started | — |
@@ -36,10 +36,10 @@ README status: engineering bootstrap. Product pipelines are not implemented yet.
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | 0.1 Repository Baseline | Done | Monorepo layout, `just` command surface, CI passes on clean checkout |
-| 0.2 Architecture Governance | Partial | `docs/architecture/` and Agent Note ADRs in place; `docs/contracts/` not created yet |
-| 0.3 Test Corpus Foundation | Not started | No benchmark PDF corpus in `tests/fixtures/pdf/` |
+| 0.2 Architecture Governance | Done | `docs/architecture/`, `docs/contracts/`, `docs/decisions/`, and Agent Note ADRs |
+| 0.3 Test Corpus Foundation | Done | 10 Tier 1 LaTeX fixtures + metadata; Tier 4 scanned PDF placeholder |
 
-**M0 exit gate:** Not met (0.3 outstanding)
+**M0 exit gate:** Met
 
 ### M1 detail
 
@@ -71,9 +71,8 @@ README status: engineering bootstrap. Product pipelines are not implemented yet.
 
 ### Recommended next steps
 
-1. Finish M0.3: establish the first regression benchmark PDF corpus
-2. Enter M1: freeze and generate Physical / Layout / Semantic / Evidence / Mapping schemas
-3. Close the M2 walking skeleton end-to-end loop
+1. Enter M1: freeze and generate Physical / Layout / Semantic / Evidence / Mapping schemas
+2. Close the M2 walking skeleton end-to-end loop
 
 ### Maintenance
 

@@ -1,0 +1,30 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\setmainfont{Latin Modern Roman}
+
+\title{Equation Fixture}
+\author{Repository fixture}
+\date{2026-09-04}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\maketitle
+
+\section{Inline and display math}
+Inline identity \(f(x) = x^{2}\) appears beside prose.
+
+A displayed integral:
+\[
+  \int_{0}^{1} x^{2}\,\mathrm{d}x = \frac{1}{3}.
+\]
+
+A multi-line alignment:
+\begin{align}
+  a^{2} + b^{2} & = c^{2}, \\
+  e^{i\pi} + 1  & = 0.
+\end{align}
+
+\end{document}

@@ -1,14 +1,15 @@
 origin: repository-authored
 license: MIT with Non-Commercial additional terms
-purpose: LuaLaTeX toolchain smoke fixture
+purpose: Structured table with booktabs rules and caption
 generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
 tier: 1
 layout:
   columns: 1
   pages_expected: 1
-  has_math: true
-  has_table: false
+  has_math: false
+  has_table: true
   has_figure: false
   multilingual: false
 known_special_cases:
-  - Minimal single-column baseline for just latex-smoke
+  - Table structure recovery
+  - Table caption association

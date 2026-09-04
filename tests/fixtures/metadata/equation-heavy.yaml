@@ -1,6 +1,6 @@
 origin: repository-authored
 license: MIT with Non-Commercial additional terms
-purpose: LuaLaTeX toolchain smoke fixture
+purpose: Inline and display equations including align environment
 generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
 tier: 1
 layout:
@@ -11,4 +11,5 @@ layout:
   has_figure: false
   multilingual: false
 known_special_cases:
-  - Minimal single-column baseline for just latex-smoke
+  - Inline math
+  - Display math and multi-line align

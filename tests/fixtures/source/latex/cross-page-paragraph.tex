@@ -1,0 +1,30 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage{geometry}
+
+\geometry{margin=20mm}
+\setmainfont{Latin Modern Roman}
+
+\title{Cross-Page Paragraph Fixture}
+\author{Repository fixture}
+\date{2026-09-04}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\maketitle
+
+\section{Continuous paragraph}
+This paragraph is intentionally long so that it continues across a page break in
+a single-column article. Layout recovery should emit continuation evidence for
+semantic paragraph assembly rather than treating the fragments as unrelated
+blocks. The same semantic paragraph identity should survive the page boundary
+even when the visual blocks are split by pagination artifacts in the PDF.\@
+
+The paragraph keeps going with additional synthetic academic prose about document
+compilers, evidence pipelines, and reading-order graphs. Repetition is
+deliberate: it inflates vertical extent without introducing new structural
+elements. More lines follow to guarantee a second page in typical LuaLaTeX
+output. Still more text ensures the break happens before any new section heading
+appears, isolating the cross-page continuation case for benchmark evaluation.
+
+\end{document}

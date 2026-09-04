@@ -1,0 +1,29 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+
+\setmainfont{Latin Modern Roman}
+
+\title{Bibliography Fixture}
+\author{Repository fixture}
+\date{2026-09-04}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+Prior work on document understanding~\cite{smith2020docs} and citation
+resolution~\cite{doe2021refs} motivates this synthetic bibliography fixture.
+
+\begin{thebibliography}{9}
+  \bibitem{smith2020docs}
+  A.~Smith.
+  Synthetic references for regression tests.
+  \emph{Fixture Journal}, 1(1):1--2, 2020.
+  \bibitem{doe2021refs}
+  J.~Doe.
+  Citation marks in academic PDFs.
+  \emph{Layout Letters}, 2(3):10--12, 2021.
+\end{thebibliography}
+
+\end{document}

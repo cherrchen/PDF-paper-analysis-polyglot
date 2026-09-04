@@ -10,4 +10,4 @@
 
 命令归属：[`.agents/notes/implemented/process/2026-09-03-canonical-repository-commands.md`](../../.agents/notes/implemented/process/2026-09-03-canonical-repository-commands.md)。
 
-人文档配对：[`bilingual.md`](bilingual.md)。开发总路线：[`roadmap.md`](roadmap.md)。
+人文档配对：[`bilingual.md`](bilingual.md)。开发总路线：[`roadmap.md`](roadmap.md)。契约索引：[`../contracts/README.md`](../contracts/README.md)。

@@ -1,14 +1,15 @@
 origin: repository-authored
 license: MIT with Non-Commercial additional terms
-purpose: LuaLaTeX toolchain smoke fixture
+purpose: Standard two-column article layout benchmark
 generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
 tier: 1
 layout:
-  columns: 1
+  columns: 2
   pages_expected: 1
-  has_math: true
+  has_math: false
   has_table: false
   has_figure: false
   multilingual: false
 known_special_cases:
-  - Minimal single-column baseline for just latex-smoke
+  - Column boundary detection
+  - Reading-order baseline for twocolumn class

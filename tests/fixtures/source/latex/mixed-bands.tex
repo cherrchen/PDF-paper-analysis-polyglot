@@ -1,0 +1,36 @@
+\documentclass[11pt,a4paper,twocolumn]{article}
+
+\usepackage{fontspec}
+\usepackage{graphicx}
+
+\setmainfont{Latin Modern Roman}
+
+\title{Mixed Bands Fixture}
+\author{Repository fixture}
+\date{2026-09-04}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\twocolumn[
+  \maketitle
+  \begin{abstract}
+    Full-width title and abstract band followed by two columns, a wide figure
+    band, and resumed columns.
+  \end{abstract}
+]
+
+\section{First column section}
+Body text begins in two-column mode after the full-width front matter.
+
+\section{Second column section}
+More column text precedes a spanning figure band.
+
+\begin{figure*}[t]
+  \centering
+  \rule{0.8\textwidth}{2.5cm}
+  \caption{Wide figure between column bands.}
+\end{figure*}
+
+\section{After wide figure}
+Columns resume below the figure band for page-band detection benchmarks.
+
+\end{document}

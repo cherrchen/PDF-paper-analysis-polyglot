@@ -10,4 +10,4 @@ Use `just` for all repository tasks. Lefthook runs staged checks on commit (incl
 
 Command ownership: [`.agents/notes/implemented/process/2026-09-03-canonical-repository-commands.md`](../../.agents/notes/implemented/process/2026-09-03-canonical-repository-commands.en.md).
 
-Human docs pairing: [`bilingual.md`](bilingual.en.md). Development roadmap: [`roadmap.en.md`](roadmap.en.md).
+Human docs pairing: [`bilingual.md`](bilingual.en.md). Development roadmap: [`roadmap.en.md`](roadmap.en.md). Contract index: [`../contracts/README.en.md`](../contracts/README.en.md).

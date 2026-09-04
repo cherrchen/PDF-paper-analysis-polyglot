@@ -1,0 +1,25 @@
+\documentclass[11pt,a4paper,twocolumn]{article}
+
+\usepackage{fontspec}
+
+\setmainfont{Latin Modern Roman}
+
+\title{Footnote Fixture}
+\author{Repository fixture}
+\date{2026-09-04}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\maketitle
+
+\section{Main text with notes}
+A claim about sample efficiency\footnote{Synthetic footnote for layout tests.}
+appears in the first column.
+
+A second reference\footnote{Footnotes should not pollute the main reading-order
+  graph when recovered correctly.} appears nearby.
+
+\section{Follow-up}
+Additional body text without footnotes checks that footnote regions are isolated
+from ordinary paragraph flow.
+
+\end{document}

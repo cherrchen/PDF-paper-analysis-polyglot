@@ -1,0 +1,28 @@
+\documentclass[11pt,a4paper,twocolumn]{article}
+
+\usepackage{fontspec}
+\usepackage{amsmath}
+
+\setmainfont{Latin Modern Roman}
+
+\title{Two-Column Fixture}
+\author{Repository fixture}
+\date{2026-09-04}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\maketitle
+
+\section{Left column start}
+This fixture exercises a standard two-column article layout with sequential
+paragraphs in each column.
+
+\section{Second block}
+The recovery pipeline should infer column boundaries and reading order without
+relying on a naive sort-by-y-then-x heuristic alone.
+
+Left column continues with enough text to wrap within the column width.
+
+Right column material appears after the left column block in source order when
+using the default \texttt{twocolumn} flow.
+
+\end{document}

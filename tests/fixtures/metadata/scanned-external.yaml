@@ -1,0 +1,15 @@
+origin: external-manual
+license: not-applicable
+purpose: Placeholder metadata for Tier 4 scanned PDFs kept outside the repository
+generation_method: manual acquisition; not generated in-repo
+tier: 4
+layout:
+  columns: unknown
+  pages_expected: unknown
+  has_math: unknown
+  has_table: unknown
+  has_figure: unknown
+  multilingual: unknown
+known_special_cases:
+  - Scanned PDFs require OCR path and are not committed to git
+  - Add per-document metadata when a redistributable scan is approved

@@ -1,14 +1,16 @@
 origin: repository-authored
 license: MIT with Non-Commercial additional terms
-purpose: LuaLaTeX toolchain smoke fixture
+purpose: Full-width front matter, columns, wide figure, resumed columns
 generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
 tier: 1
 layout:
-  columns: 1
+  columns: 2
   pages_expected: 1
-  has_math: true
+  has_math: false
   has_table: false
-  has_figure: false
+  has_figure: true
   multilingual: false
 known_special_cases:
-  - Minimal single-column baseline for just latex-smoke
+  - Page band detection
+  - Title/abstract full-width band
+  - Spanning figure between column bands
