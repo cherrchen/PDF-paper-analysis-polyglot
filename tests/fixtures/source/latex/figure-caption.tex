@@ -1,0 +1,28 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage{graphicx}
+
+\setmainfont{Latin Modern Roman}
+
+\title{Figure Caption Fixture}
+\author{Repository fixture}
+\date{2026-09-04}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\maketitle
+
+\section{Figure with caption}
+This fixture embeds a raster placeholder so the physical backend sees a real
+image object and the caption heuristic has a figure to bind to.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.5\textwidth]{../assets/figure-placeholder.png}
+  \caption{Synthetic raster figure used by the caption recovery test.}
+\end{figure}
+
+\section{Text after the figure}
+Reading resumes below the figure block once the caption has been associated.
+
+\end{document}

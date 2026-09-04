@@ -1,0 +1,15 @@
+origin: repository-authored
+license: MIT with Non-Commercial additional terms
+purpose: Figure with caption baseline for semantic recovery
+generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
+tier: 1
+layout:
+  columns: 1
+  pages_expected: 1
+  has_math: false
+  has_table: false
+  has_figure: true
+  multilingual: false
+known_special_cases:
+  - Embedded raster image object
+  - Caption-to-figure association heuristic

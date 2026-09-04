@@ -18,9 +18,11 @@ See `docs/testing/fixtures.md`.
 | `cross-page-paragraph` | `source/latex/cross-page-paragraph.tex` | `metadata/cross-page-paragraph.yaml` | Cross-page paragraph |
 | `mixed-bands` | `source/latex/mixed-bands.tex` | `metadata/mixed-bands.yaml` | Full-width bands + columns |
 | `tikz-vector` | `source/latex/tikz-vector.tex` | `metadata/tikz-vector.yaml` | Vector figure (TikZ) |
+| `figure-caption` | `source/latex/figure-caption.tex` | `metadata/figure-caption.yaml` | Embedded raster figure + caption binding |
 
 ## Tier 4 external
 
 | Fixture | Metadata | Notes |
 | --- | --- | --- |
 | scanned PDFs | `metadata/scanned-external.yaml` | Manual/external only; not committed |
+| arXiv public papers | downloaded by `tests/test_physical_external.py` | Cached under `tests/fixtures/external/papers/` (gitignored); Phase 2.1 validation corpus |
