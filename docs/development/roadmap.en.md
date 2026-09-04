@@ -13,9 +13,9 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-04
-**Current position:** M1 complete; entering M2 (Walking Skeleton)
+**Current position:** M2 complete; entering M3 (Layout Recovery Engine)
 
-README status: engineering bootstrap plus core document contracts. Product pipelines are not implemented yet.
+README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline.
 
 ### Milestone overview
 
@@ -23,7 +23,7 @@ README status: engineering bootstrap plus core document contracts. Product pipel
 | --- | --- | --- |
 | M0 Engineering Foundation | Done | Phases 0.1–0.3 complete; Tier 1 corpus established |
 | M1 Core Document Contracts | Done | Six schemas at `0.1.0`; generated bindings + cross-language roundtrip |
-| M2 Walking Skeleton | Not started | LaTeX smoke and web smoke page exist |
+| M2 Walking Skeleton | Done | PDFium→Physical→Layout→Semantic→Translation→LaTeX→Target PDF→bidirectional navigation holds end to end |
 | M3 Layout Recovery Engine | Not started | — |
 | M4 Semantic Recovery Engine | Not started | — |
 | M5 Translation & Rendering | Not started | — |
@@ -59,19 +59,19 @@ README status: engineering bootstrap plus core document contracts. Product pipel
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| 2.1 Minimal PDF Backend | Not started | No PDFium integration |
-| 2.2 Minimal Layout | Not started | No layout recovery implementation |
-| 2.3 Minimal Semantic Recovery | Not started | No semantic recovery implementation |
-| 2.4 Dummy Translation | Not started | `packages/python/llm` is a stub |
-| 2.5 Minimal LaTeX Renderer | Partial | `templates/latex/smoke.tex` + `just latex-smoke` |
-| 2.6 Minimal RenderAnchor | Not started | No RenderAnchor extraction |
-| 2.7 Minimal Viewer | Partial | `apps/web` smoke page; no bidirectional PDF navigation |
+| 2.1 Minimal PDF Backend | Done | `pdf_pipeline.physical` (pypdfium2); 3 real-paper validation + determinism tests |
+| 2.2 Minimal Layout | Done | `pdf_pipeline.layout`; two-column/single-column detection on real papers + region/flow tests |
+| 2.3 Minimal Semantic Recovery | Done | `pdf_pipeline.semantic`; four node kinds + CAPTION_OF; layer separation and bundle checks clean |
+| 2.4 Dummy Translation | Done | `paper_llm.translation`; identity preservation tests |
+| 2.5 Minimal LaTeX Renderer | Done | `templates/latex/generic-academic.tex` + `pdf_pipeline.render_latex`; compile tests |
+| 2.6 Minimal RenderAnchor | Done | `pdf_pipeline.render_anchor`; hypertarget recovery + MappingBundle validation |
+| 2.7 Minimal Viewer | Done | `apps/web` + pdfjs-dist dual canvases; Playwright mapping/loading e2e |
 
-**M2 exit gate:** Not met
+**M2 exit gate:** Met (see [`.agents/notes/implemented/architecture/2026-09-04-m2-walking-skeleton.en.md`](../../.agents/notes/implemented/architecture/2026-09-04-m2-walking-skeleton.en.md))
 
 ### Recommended next steps
 
-1. Enter M2: Walking Skeleton — minimal PDFium backend, minimal layout/semantic recovery, dummy translation, LaTeX renderer, bidirectional navigation
+1. Enter M3: Layout Recovery Engine — real band/column segmentation, MinerU evidence ingestion, caption/heading heuristic upgrades
 
 ### Maintenance
 

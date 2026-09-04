@@ -92,3 +92,11 @@ validator
 validators
 yamllint
 zizmor
+arXiv
+gitignored
+hyperref
+hypertarget
+primaryFlow
+pypdfium2
+pdfjs
+PDF.js

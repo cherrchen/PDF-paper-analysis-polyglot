@@ -13,9 +13,9 @@
 ## 当前进度追踪
 
 **最后更新：** 2026-09-04
-**当前位置：** M1 已完成；进入 M2（Walking Skeleton）
+**当前位置：** M2 已完成；进入 M3（Layout Recovery Engine）
 
-README 状态：工程脚手架 + 核心文档契约。产品流水线尚未实现。
+README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线。
 
 ### Milestone 总览
 
@@ -23,7 +23,7 @@ README 状态：工程脚手架 + 核心文档契约。产品流水线尚未实�
 | --- | --- | --- |
 | M0 Engineering Foundation | 已完成 | 0.1–0.3 全部完成；Tier 1 语料已建立 |
 | M1 Core Document Contracts | 已完成 | 六套 schema `0.1.0`；生成绑定 + 跨语言 roundtrip |
-| M2 Walking Skeleton | 未开始 | LaTeX smoke 与 web smoke 页面存在 |
+| M2 Walking Skeleton | 已完成 | PDFium→Physical→Layout→Semantic→Translation→LaTeX→Target PDF→双向导航全链成立 |
 | M3 Layout Recovery Engine | 未开始 | — |
 | M4 Semantic Recovery Engine | 未开始 | — |
 | M5 Translation & Rendering | 未开始 | — |
@@ -59,19 +59,19 @@ README 状态：工程脚手架 + 核心文档契约。产品流水线尚未实�
 
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
-| 2.1 Minimal PDF Backend | 未开始 | 无 PDFium 接入 |
-| 2.2 Minimal Layout | 未开始 | 无 layout recovery 实现 |
-| 2.3 Minimal Semantic Recovery | 未开始 | 无 semantic recovery 实现 |
-| 2.4 Dummy Translation | 未开始 | `packages/python/llm` 为 stub |
-| 2.5 Minimal LaTeX Renderer | 部分完成 | `templates/latex/smoke.tex` + `just latex-smoke` |
-| 2.6 Minimal RenderAnchor | 未开始 | 无 RenderAnchor 提取 |
-| 2.7 Minimal Viewer | 部分完成 | `apps/web` smoke 页面；无 PDF 双向跳转 |
+| 2.1 Minimal PDF Backend | 已完成 | `pdf_pipeline.physical`（pypdfium2）；3 篇真实论文验证 + 确定性测试 |
+| 2.2 Minimal Layout | 已完成 | `pdf_pipeline.layout`；双栏/单栏真实论文检测 + region/flow 测试 |
+| 2.3 Minimal Semantic Recovery | 已完成 | `pdf_pipeline.semantic`；四类节点 + CAPTION_OF；层分离与 bundle 校验全绿 |
+| 2.4 Dummy Translation | 已完成 | `paper_llm.translation`；身份保持测试 |
+| 2.5 Minimal LaTeX Renderer | 已完成 | `templates/latex/generic-academic.tex` + `pdf_pipeline.render_latex`；编译测试 |
+| 2.6 Minimal RenderAnchor | 已完成 | `pdf_pipeline.render_anchor`；hypertarget 恢复 + MappingBundle 校验 |
+| 2.7 Minimal Viewer | 已完成 | `apps/web` + pdfjs-dist 双画布；Playwright 映射/加载 e2e |
 
-**M2 Exit Gate：** 未达成
+**M2 Exit Gate：** 已达成（见 [`.agents/notes/implemented/architecture/2026-09-04-m2-walking-skeleton.md`](../../.agents/notes/implemented/architecture/2026-09-04-m2-walking-skeleton.md)）
 
 ### 建议下一步
 
-1. 进入 M2：Walking Skeleton——最小 PDFium backend、minimal layout/semantic recovery、dummy translation、LaTeX renderer、双向跳转
+1. 进入 M3：Layout Recovery Engine——真实 band/column 分割、MinerU Evidence 接入、caption/heading 启发式升级
 
 ### 维护说明
 
