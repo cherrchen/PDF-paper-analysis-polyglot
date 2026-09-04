@@ -59,10 +59,77 @@ def test_one_layout_to_n_semantic(mapping_data: dict[str, Any]) -> None:
 
 @pytest.mark.unit
 def test_n_layout_to_n_semantic(mapping_data: dict[str, Any]) -> None:
-    """Cross-page paragraph: two anchors -> one node, node reuses region family."""
+    """Figure + caption regions share an anchor that binds two semantic nodes."""
     doc = m.MappingBundle.model_validate(mapping_data)
-    cross_page = [b for b in doc.sourceSemanticBindings if len(b.sourceAnchorIds) >= 2]
-    assert cross_page, "fixture must include a multi-anchor binding"
+    anchors_by_id = {anchor.id: anchor for anchor in doc.sourceAnchors}
+    region_nodes: dict[str, set[str]] = {}
+    node_regions: dict[str, set[str]] = {}
+    for binding in doc.sourceSemanticBindings:
+        regions: set[str] = set()
+        for anchor_id in binding.sourceAnchorIds:
+            anchor = anchors_by_id[anchor_id]
+            regions.update(fragment.layoutRegionId for fragment in anchor.fragments)
+        node_regions.setdefault(binding.semanticNodeId, set()).update(regions)
+        for region in regions:
+            region_nodes.setdefault(region, set()).add(binding.semanticNodeId)
+
+    visited: set[str] = set()
+    found_many_to_many = False
+    for start in node_regions:
+        if start in visited:
+            continue
+        stack: list[tuple[str, str]] = [("n", start)]
+        seen: set[tuple[str, str]] = set()
+        component_nodes: set[str] = set()
+        component_regions: set[str] = set()
+        while stack:
+            kind, ident = stack.pop()
+            key = (kind, ident)
+            if key in seen:
+                continue
+            seen.add(key)
+            if kind == "n":
+                visited.add(ident)
+                component_nodes.add(ident)
+                stack.extend(("r", region) for region in node_regions[ident])
+            else:
+                component_regions.add(ident)
+                stack.extend(("n", node) for node in region_nodes[ident])
+        if len(component_nodes) >= 2 and len(component_regions) >= 2:
+            found_many_to_many = True
+            break
+    assert found_many_to_many, "fixture must include a connected N-layout to N-semantic mapping"
+
+
+@pytest.mark.unit
+def test_cross_page_paragraph_uses_two_pages(
+    mapping_data: dict[str, Any],
+    layout_data: dict[str, Any],
+    physical_data: dict[str, Any],
+) -> None:
+    """Cross-page paragraph: two regions on two pages, two physical spans on two pages."""
+    mapping = m.MappingBundle.model_validate(mapping_data)
+    layout = m.LayoutDocument.model_validate(layout_data)
+    physical = m.PhysicalDocument.model_validate(physical_data)
+    page_by_region = {region.id: region.pageId for region in layout.regions}
+    objects_by_id = {obj.id: obj for obj in physical.objects}
+    regions_by_id = {region.id: region for region in layout.regions}
+    anchors_by_id = {anchor.id: anchor for anchor in mapping.sourceAnchors}
+
+    found = False
+    for binding in mapping.sourceSemanticBindings:
+        region_pages: set[str] = set()
+        object_pages: set[str] = set()
+        for anchor_id in binding.sourceAnchorIds:
+            for fragment in anchors_by_id[anchor_id].fragments:
+                region_pages.add(page_by_region[fragment.layoutRegionId])
+                region = regions_by_id[fragment.layoutRegionId]
+                for obj_id in region.physicalObjectIds:
+                    object_pages.add(objects_by_id[obj_id].pageId)
+        if len(region_pages) >= 2 and len(object_pages) >= 2:
+            found = True
+            break
+    assert found, "cross-page paragraph must use two pages for both regions and physical objects"
 
 
 @pytest.mark.unit
@@ -116,3 +183,64 @@ def test_bundle_reference_validator_detects_dangling_ids(
     }
     issues = validate_bundle_references(bundle)
     assert any("unknown node" in issue for issue in issues)
+
+
+@pytest.mark.unit
+def test_bundle_reference_validator_detects_unknown_root(
+    physical_data: dict[str, Any],
+    layout_data: dict[str, Any],
+    semantic_data: dict[str, Any],
+    mapping_data: dict[str, Any],
+) -> None:
+    broken = dict(semantic_data)
+    broken["rootId"] = "01J5M1FXTRES0AAAAAAA0GHOST"
+    bundle = {
+        "physical": physical_data,
+        "layout": layout_data,
+        "semantic": broken,
+        "mappings": mapping_data,
+    }
+    issues = validate_bundle_references(bundle)
+    assert any("unknown rootId" in issue for issue in issues)
+
+
+@pytest.mark.unit
+def test_bundle_reference_validator_detects_unknown_relation_target(
+    physical_data: dict[str, Any],
+    layout_data: dict[str, Any],
+    semantic_data: dict[str, Any],
+    mapping_data: dict[str, Any],
+) -> None:
+    broken = dict(semantic_data)
+    relations = list(semantic_data["relations"])
+    first = dict(relations[0])
+    first["target"] = "01J5M1FXTRES0AAAAAAA0GHOST"
+    broken["relations"] = [first, *relations[1:]]
+    bundle = {
+        "physical": physical_data,
+        "layout": layout_data,
+        "semantic": broken,
+        "mappings": mapping_data,
+    }
+    issues = validate_bundle_references(bundle)
+    assert any("unknown target" in issue for issue in issues)
+
+
+@pytest.mark.unit
+def test_bundle_reference_validator_detects_duplicate_ids(
+    physical_data: dict[str, Any],
+    layout_data: dict[str, Any],
+    semantic_data: dict[str, Any],
+    mapping_data: dict[str, Any],
+) -> None:
+    broken = dict(physical_data)
+    objects = list(physical_data["objects"])
+    broken["objects"] = [objects[0], objects[0], *objects[1:]]
+    bundle = {
+        "physical": broken,
+        "layout": layout_data,
+        "semantic": semantic_data,
+        "mappings": mapping_data,
+    }
+    issues = validate_bundle_references(bundle)
+    assert any("duplicate id" in issue for issue in issues)

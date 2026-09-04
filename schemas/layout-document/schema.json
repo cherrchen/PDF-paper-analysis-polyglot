@@ -13,6 +13,7 @@
     "regions",
     "bands",
     "columns",
+    "groups",
     "readingFlow",
     "primaryFlow"
   ],
@@ -49,6 +50,13 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/Column"
+      }
+    },
+    "groups": {
+      "type": "array",
+      "description": "Visual groupings of regions (figure+caption, list items) without paper semantics.",
+      "items": {
+        "$ref": "#/$defs/LayoutGroup"
       }
     },
     "readingFlow": {
@@ -226,6 +234,38 @@
           "items": {
             "$ref": "../common/schema.json#/$defs/ColumnID"
           }
+        }
+      }
+    },
+    "LayoutGroupKind": {
+      "type": "string",
+      "description": "Visual grouping kinds. FIGURE_BLOCK means a figure-like cluster, not a semantic figure.",
+      "enum": ["FIGURE_BLOCK", "TABLE_BLOCK", "LIST_BLOCK", "FOOTNOTE_BLOCK", "OTHER"]
+    },
+    "LayoutGroup": {
+      "type": "object",
+      "description": "A visual grouping of layout regions that should be kept together without assigning paper semantics.",
+      "additionalProperties": false,
+      "required": ["id", "kind", "memberIds"],
+      "properties": {
+        "id": {
+          "$ref": "../common/schema.json#/$defs/LayoutGroupID"
+        },
+        "kind": {
+          "$ref": "#/$defs/LayoutGroupKind"
+        },
+        "memberIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+          }
+        },
+        "pageId": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "confidence": {
+          "$ref": "#/$defs/LayoutConfidence"
         }
       }
     },

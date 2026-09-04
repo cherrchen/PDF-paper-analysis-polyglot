@@ -60,4 +60,49 @@ describe("canonical document contracts", () => {
     const errors = validateDocument("semantic-document", doc as JsonValue);
     expect(errors.some((e) => e.message.includes("pattern"))).toBe(true);
   });
+
+  it("rejects explicit null for an optional string", () => {
+    const doc = loadFixture("physical-document/two-page-two-column.valid.json") as {
+      metadata: { title?: string | null };
+    };
+    doc.metadata.title = null;
+    const errors = validateDocument("physical-document", doc as JsonValue);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it("rejects a five-point quad", () => {
+    const errors = validateDocument("physical-document", {
+      schemaVersion: "0.1.0",
+      id: "01J5M1FXTRES0AAAAAAA0DOC00",
+      pages: [],
+      objects: [
+        {
+          objectType: "textSpan",
+          id: "01J5M1FXTRES0AAAAAAA0OBJ00",
+          pageId: "01J5M1FXTRES0AAAAAAA0PAGE0",
+          text: "x",
+          geometry: {
+            kind: "quad",
+            points: [
+              { x: 0, y: 0 },
+              { x: 1, y: 0 },
+              { x: 1, y: 1 },
+              { x: 0, y: 1 },
+              { x: 0.5, y: 0.5 },
+            ],
+          },
+        },
+      ],
+      metadata: {},
+    });
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it("accepts an omitted optional title", () => {
+    const doc = loadFixture("physical-document/two-page-two-column.valid.json") as {
+      metadata: Record<string, unknown>;
+    };
+    delete doc.metadata.title;
+    expect(validateDocument("physical-document", doc as JsonValue)).toEqual([]);
+  });
 });

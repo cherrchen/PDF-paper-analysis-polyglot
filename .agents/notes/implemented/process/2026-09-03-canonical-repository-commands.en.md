@@ -20,4 +20,4 @@ Developers, Git hooks, CI, documentation, and Coding Agents must not each invent
 
 ## Consequences
 
-New quality checks are added to the `justfile` first, then hooked from CI and Lefthook. Command semantics live in the `justfile`, not in copied documentation.
+New quality checks are added to the `justfile` first, then hooked from CI and Lefthook. Command semantics live in the `justfile`, not in copied documentation. `just generate` Ruff-formats the Pydantic binding after writing it, so `just generate-check` and `just fmt` agree on generated output.

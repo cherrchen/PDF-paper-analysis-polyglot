@@ -246,6 +246,13 @@ class RegionCandidate(Evidence):
     provider_label: str
 ```
 
+```python
+class StructureCandidate(Evidence):
+    role: StructureRole
+    text_preview: str | None
+    page_id: PageID | None
+```
+
 MinerU：
 
 ```text
@@ -378,6 +385,24 @@ class PageBand:
         SPANNING
 
     column_ids: list[ColumnID]
+```
+
+LayoutGroup 把应保持在一起的视觉区域成组，但不赋予论文语义：
+
+```python
+class LayoutGroup:
+    id: LayoutGroupID
+
+    kind:
+        FIGURE_BLOCK
+        TABLE_BLOCK
+        LIST_BLOCK
+        FOOTNOTE_BLOCK
+        OTHER
+
+    member_ids: list[LayoutRegionID]
+
+    page_id: PageID | None
 ```
 
 这比给整页定义 `page.columns = 2` 更可靠。

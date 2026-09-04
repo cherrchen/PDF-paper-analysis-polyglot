@@ -128,9 +128,10 @@ latex-clean:
 
 generate:
     {{ python }} scripts/generate.py
+    uv run ruff format packages/python/document-model/src/document_model/generated/schema_models.py
 
 generate-check:
-    {{ python }} scripts/generate.py
+    just generate
     git diff --exit-code
 
 schema:

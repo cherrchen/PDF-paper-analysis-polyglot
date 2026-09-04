@@ -165,3 +165,11 @@ def test_formula_candidate_keeps_fallback_text(evidence_data: dict[str, Any]) ->
     assert formula.latex is None
     assert formula.mathml is None
     assert formula.rawText == "E = m c^2"
+
+
+@pytest.mark.unit
+def test_structure_candidate_is_unified_evidence(evidence_data: dict[str, Any]) -> None:
+    bundle = m.EvidenceBundle.model_validate(evidence_data)
+    structures = [c for c in bundle.candidates if c.evidenceType == "STRUCTURE"]
+    assert structures, "fixture must include a structure candidate"
+    assert structures[0].role == "SECTION"

@@ -3,7 +3,8 @@
  * schemas/. The validator implements the JSON Schema subset the canonical
  * schemas use: type, required, additionalProperties, properties, items,
  * enum, const, oneOf, anyOf, $ref (intra- and cross-document), pattern,
- * minimum/maximum, minItems, minLength, exclusiveMinimum.
+ * minimum/maximum, minItems/maxItems, minLength/maxLength,
+ * exclusiveMinimum/exclusiveMaximum.
  *
  * Cross-document $refs such as "../common/schema.json#/$defs/Rect" are
  * resolved against the schema root directory.
@@ -32,8 +33,11 @@ export interface JsonSchemaNode {
   minimum?: number;
   maximum?: number;
   exclusiveMinimum?: number;
+  exclusiveMaximum?: number;
   minItems?: number;
+  maxItems?: number;
   minLength?: number;
+  maxLength?: number;
   $defs?: Record<string, JsonSchemaNode>;
   description?: string;
 }
@@ -213,6 +217,9 @@ function validateAgainst(
     if (node.minLength !== undefined && value.length < node.minLength) {
       errors.push({ pointer, message: `string shorter than minLength ${node.minLength}` });
     }
+    if (node.maxLength !== undefined && value.length > node.maxLength) {
+      errors.push({ pointer, message: `string longer than maxLength ${node.maxLength}` });
+    }
   }
 
   if (typeof value === "number") {
@@ -228,11 +235,20 @@ function validateAgainst(
         message: `number not above exclusiveMinimum ${node.exclusiveMinimum}`,
       });
     }
+    if (node.exclusiveMaximum !== undefined && value >= node.exclusiveMaximum) {
+      errors.push({
+        pointer,
+        message: `number not below exclusiveMaximum ${node.exclusiveMaximum}`,
+      });
+    }
   }
 
   if (Array.isArray(value)) {
     if (node.minItems !== undefined && value.length < node.minItems) {
       errors.push({ pointer, message: `array shorter than minItems ${node.minItems}` });
+    }
+    if (node.maxItems !== undefined && value.length > node.maxItems) {
+      errors.push({ pointer, message: `array longer than maxItems ${node.maxItems}` });
     }
     if (node.items) {
       value.forEach((item, index) => {

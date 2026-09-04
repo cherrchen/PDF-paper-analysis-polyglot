@@ -25,6 +25,7 @@ def test_required_node_kinds_present(semantic_data: dict[str, Any]) -> None:
         "DOCUMENT",
         "HEADING",
         "PARAGRAPH",
+        "FIGURE",
         "FIGURE_CAPTION",
         "FOOTNOTE",
         "BIBLIOGRAPHY_ENTRY",
@@ -57,7 +58,7 @@ def test_section_heading_independence(semantic_data: dict[str, Any]) -> None:
     assert headings, "heading must exist as its own node"
     heading = headings[0]
     heading_content = heading.content
-    assert isinstance(heading_content, m.TextNodeContent)
+    assert isinstance(heading_content, m.RichText)
     assert heading_content.text.startswith("1."), (
         "heading is a semantic block, translatable on its own"
     )
@@ -78,7 +79,7 @@ def test_citation_mark_targets_resolved_node(semantic_data: dict[str, Any]) -> N
     node_ids = {n.id for n in doc.nodes}
     for node in doc.nodes:
         content = node.content
-        if isinstance(content, m.TextNodeContent):
+        if isinstance(content, m.RichText):
             for mark in content.marks:
                 if mark.type == "CITATION":
                     assert mark.targetNodeId in node_ids

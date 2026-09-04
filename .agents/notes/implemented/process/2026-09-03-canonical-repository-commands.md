@@ -20,4 +20,4 @@ Status: implemented
 
 ## 后果
 
-新质量检查先写入 `justfile`，再挂到 CI 与 Lefthook。命令语义活在 `justfile` 中，而不是复制粘贴的文档里。
+新质量检查先写入 `justfile`，再挂到 CI 与 Lefthook。命令语义活在 `justfile` 中，而不是复制粘贴的文档里。`just generate` 在写出 Pydantic 绑定后运行 Ruff format，因此 `just generate-check` 与 `just fmt` 对生成物的看法一致。

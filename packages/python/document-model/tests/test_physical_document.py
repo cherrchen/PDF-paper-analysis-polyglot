@@ -19,6 +19,10 @@ def test_physical_document_serialization_roundtrip(physical_data: dict[str, Any]
 
 @pytest.mark.unit
 def test_repeated_parsing_produces_stable_geometry(physical_data: dict[str, Any]) -> None:
+    """M1 checks contract stability by parsing the same PhysicalDocument JSON twice.
+
+    Parsing the same PDF bytes twice is Phase 2.1 (minimal PDF backend).
+    """
     first = m.PhysicalDocument.model_validate(physical_data)
     second = m.PhysicalDocument.model_validate(dump_document(first))
     assert first.pages[0].geometry == second.pages[0].geometry
@@ -43,6 +47,19 @@ def test_page_geometry_uses_canonical_space(physical_data: dict[str, Any]) -> No
     assert page.geometry.widthPt == 612
     assert page.geometry.heightPt == 792
     assert page.geometry.rotation == 0
+
+
+@pytest.mark.unit
+def test_physical_object_ids_are_unique(physical_data: dict[str, Any]) -> None:
+    doc = m.PhysicalDocument.model_validate(physical_data)
+    object_ids = [obj.id for obj in doc.objects]
+    assert len(object_ids) == len(set(object_ids))
+    for page in doc.pages:
+        assert len(page.objectIds) == len(set(page.objectIds))
+    pages_by_object = {obj.id: obj.pageId for obj in doc.objects}
+    assert len({pages_by_object[oid] for oid in doc.pages[0].objectIds}) == 1
+    assert len({pages_by_object[oid] for oid in doc.pages[1].objectIds}) == 1
+    assert pages_by_object[doc.pages[0].objectIds[0]] != pages_by_object[doc.pages[1].objectIds[0]]
 
 
 @pytest.mark.unit

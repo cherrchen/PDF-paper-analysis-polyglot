@@ -24,7 +24,7 @@
     "EvidenceType": {
       "type": "string",
       "description": "Unified evidence types. Providers map their native labels into these, e.g. MinerU display_formula -> FORMULA.",
-      "enum": ["REGION", "TABLE_STRUCTURE", "FORMULA", "METADATA"]
+      "enum": ["REGION", "TABLE_STRUCTURE", "FORMULA", "STRUCTURE", "METADATA"]
     },
     "RegionCandidate": {
       "type": "object",
@@ -156,12 +156,46 @@
         "language": { "type": "string" }
       }
     },
+    "StructureRole": {
+      "type": "string",
+      "description": "Visual/document-structure role hypothesized by a specialist such as GROBID. Not paper semantics: recovery still owns SemanticNode kinds.",
+      "enum": [
+        "TITLE",
+        "ABSTRACT",
+        "SECTION",
+        "SUBSECTION",
+        "ACKNOWLEDGEMENT",
+        "REFERENCES",
+        "UNKNOWN"
+      ]
+    },
+    "StructureCandidate": {
+      "type": "object",
+      "description": "A hierarchical document-structure candidate (title, sections) from a specialist such as GROBID. Distinct from MetadataCandidate, which holds flat key-value scholarly fields.",
+      "additionalProperties": false,
+      "required": ["evidenceType", "id", "role", "confidence", "provenanceIds"],
+      "properties": {
+        "evidenceType": { "const": "STRUCTURE" },
+        "id": { "$ref": "../common/schema.json#/$defs/EvidenceID" },
+        "role": { "$ref": "#/$defs/StructureRole" },
+        "textPreview": { "type": "string" },
+        "pageId": { "$ref": "../common/schema.json#/$defs/PageID" },
+        "geometry": { "$ref": "../common/schema.json#/$defs/Geometry" },
+        "parentId": { "$ref": "../common/schema.json#/$defs/EvidenceID" },
+        "confidence": { "$ref": "../common/schema.json#/$defs/Confidence" },
+        "provenanceIds": {
+          "type": "array",
+          "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
+        }
+      }
+    },
     "Evidence": {
       "description": "Any unified evidence candidate.",
       "oneOf": [
         { "$ref": "#/$defs/RegionCandidate" },
         { "$ref": "#/$defs/TableCandidate" },
         { "$ref": "#/$defs/FormulaCandidate" },
+        { "$ref": "#/$defs/StructureCandidate" },
         { "$ref": "#/$defs/MetadataCandidate" }
       ]
     }

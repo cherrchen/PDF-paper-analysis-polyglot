@@ -82,7 +82,7 @@
         }
       }
     },
-    "TextNodeContent": {
+    "RichText": {
       "type": "object",
       "description": "Rich text content for text-bearing nodes. Block semantics live on SemanticNode; inline semantics live in marks.",
       "additionalProperties": false,
@@ -98,6 +98,10 @@
           }
         }
       }
+    },
+    "TextNodeContent": {
+      "description": "Alias of RichText. Kept so generated bindings remain discoverable under the implementation name used during M1 drafting.",
+      "$ref": "#/$defs/RichText"
     },
     "FigureResource": {
       "type": "object",
@@ -158,7 +162,7 @@
           "minimum": 1
         },
         "content": {
-          "$ref": "#/$defs/TextNodeContent"
+          "$ref": "#/$defs/RichText"
         }
       }
     },
@@ -217,7 +221,7 @@
       "description": "Content payload by node kind: rich text, figure, table, or equation.",
       "oneOf": [
         {
-          "$ref": "#/$defs/TextNodeContent"
+          "$ref": "#/$defs/RichText"
         },
         {
           "$ref": "#/$defs/FigureContent"

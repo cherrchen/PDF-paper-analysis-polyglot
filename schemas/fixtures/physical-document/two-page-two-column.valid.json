@@ -1,10 +1,10 @@
 {
   "schemaVersion": "0.1.0",
-  "id": "01J5M1FXTRESPHYSD000000000",
+  "id": "01J5M1FXTRPHYS000000000012",
   "sourceFingerprint": "sha256:fixture",
   "pages": [
     {
-      "id": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTRPAGE000000000002",
       "index": 0,
       "geometry": {
         "widthPt": 612,
@@ -28,16 +28,18 @@
         }
       },
       "objectIds": [
-        "01J5M1FXTRES0BJT0000000000",
-        "01J5M1FXTRES0BJT0000000000",
-        "01J5M1FXTRES0BJTR000000000",
-        "01J5M1FXTRES0BJTR000000000",
-        "01J5M1FXTRES0BJF0000000000",
-        "01J5M1FXTRES0BJF0000000000"
+        "01J5M1FXTR0BJT000000000013",
+        "01J5M1FXTR0BJT000000000014",
+        "01J5M1FXTR0BJT000000000015",
+        "01J5M1FXTR0BJT000000000016",
+        "01J5M1FXTR0BJF000000000017",
+        "01J5M1FXTR0BJC000000000018",
+        "01J5M1FXTR0BJF000000000019",
+        "01J5M1FXTR0BJP00000000001A"
       ]
     },
     {
-      "id": "01J5M1FXTRESPAGEB000000000",
+      "id": "01J5M1FXTRPAGE000000000003",
       "index": 1,
       "geometry": {
         "widthPt": 612,
@@ -60,14 +62,14 @@
           "f": 0
         }
       },
-      "objectIds": ["01J5M1FXTRES0BJP2000000000", "01J5M1FXTRES0BJP2000000000"]
+      "objectIds": ["01J5M1FXTR0BJP00000000001B"]
     }
   ],
   "objects": [
     {
       "objectType": "textSpan",
-      "id": "01J5M1FXTRES0BJT0000000000",
-      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTR0BJT000000000013",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "text": "Left column paragraph part one.",
       "geometry": {
         "kind": "rect",
@@ -80,8 +82,8 @@
     },
     {
       "objectType": "textSpan",
-      "id": "01J5M1FXTRES0BJT0000000000",
-      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTR0BJT000000000014",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "text": "Left column paragraph part two.",
       "geometry": {
         "kind": "rect",
@@ -94,8 +96,8 @@
     },
     {
       "objectType": "textSpan",
-      "id": "01J5M1FXTRES0BJTR000000000",
-      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTR0BJT000000000015",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "text": "Right column paragraph part one.",
       "geometry": {
         "kind": "rect",
@@ -108,8 +110,8 @@
     },
     {
       "objectType": "textSpan",
-      "id": "01J5M1FXTRES0BJTR000000000",
-      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTR0BJT000000000016",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "text": "Right column paragraph part two.",
       "geometry": {
         "kind": "rect",
@@ -122,8 +124,8 @@
     },
     {
       "objectType": "imageObject",
-      "id": "01J5M1FXTRES0BJF0000000000",
-      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTR0BJF000000000017",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "geometry": {
         "kind": "rect",
         "x": 72,
@@ -134,8 +136,22 @@
     },
     {
       "objectType": "textSpan",
-      "id": "01J5M1FXTRES0BJF0000000000",
-      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTR0BJC000000000018",
+      "pageId": "01J5M1FXTRPAGE000000000002",
+      "text": "Figure 1: A spanning figure.",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 270,
+        "width": 200,
+        "height": 40
+      },
+      "fontSize": 10
+    },
+    {
+      "objectType": "textSpan",
+      "id": "01J5M1FXTR0BJF000000000019",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "text": "1. A footnote body.",
       "geometry": {
         "kind": "rect",
@@ -148,13 +164,13 @@
     },
     {
       "objectType": "textSpan",
-      "id": "01J5M1FXTRES0BJP2000000000",
-      "pageId": "01J5M1FXTRESPAGEB000000000",
+      "id": "01J5M1FXTR0BJP00000000001A",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "text": "Cross-page paragraph first page part.",
       "geometry": {
         "kind": "rect",
         "x": 72,
-        "y": 300,
+        "y": 650,
         "width": 200,
         "height": 40
       },
@@ -162,13 +178,13 @@
     },
     {
       "objectType": "textSpan",
-      "id": "01J5M1FXTRES0BJP2000000000",
-      "pageId": "01J5M1FXTRESPAGEB000000000",
+      "id": "01J5M1FXTR0BJP00000000001B",
+      "pageId": "01J5M1FXTRPAGE000000000003",
       "text": "Cross-page paragraph second page part.",
       "geometry": {
         "kind": "rect",
         "x": 72,
-        "y": 360,
+        "y": 300,
         "width": 200,
         "height": 40
       },

@@ -46,12 +46,12 @@ README status: engineering bootstrap plus core document contracts. Product pipel
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | 1.1 Identity / Provenance / Resource | Done | `schemas/common/schema.json`; generated Pydantic/TS models; ID uniqueness and provenance tests |
-| 1.2 PhysicalDocument Schema | Done | `schemas/physical-document/schema.json`; geometry stability / ID reconciliation tests |
-| 1.3 Evidence Schema | Done | `schemas/evidence/schema.json`; FakeMinerU / FakeDocling adapter tests |
-| 1.4 LayoutDocument Schema | Done | `schemas/layout-document/schema.json`; two-column + spanning figure + footnote fixture and tests |
-| 1.5 SemanticDocument Schema | Done | `schemas/semantic-document/schema.json` (replaces placeholder); structure independence tests |
-| 1.6 Mapping Schema | Done | `schemas/mapping/schema.json`; N→1 / 1→N / N→N scenario fixtures and tests |
-| 1.7 Schema Generation & Compatibility | Done | `scripts/generate.py`; TS + Pydantic generated bindings; cross-language roundtrip under `tests/integration/` |
+| 1.2 PhysicalDocument Schema | Done | `schemas/physical-document/schema.json`; geometry stability / ID reconciliation after JSON deserialize (PDF re-parse is M2.1) |
+| 1.3 Evidence Schema | Done | `schemas/evidence/schema.json` (includes StructureCandidate); FakeMinerU / FakeDocling adapter tests |
+| 1.4 LayoutDocument Schema | Done | `schemas/layout-document/schema.json` (includes LayoutGroup); two-column + spanning figure + footnote fixture and tests |
+| 1.5 SemanticDocument Schema | Done | `schemas/semantic-document/schema.json` (RichText + TextNodeContent alias); structure independence tests |
+| 1.6 Mapping Schema | Done | `schemas/mapping/schema.json`; N→1 / 1→N / N→N and cross-page paragraph fixtures and tests |
+| 1.7 Schema Generation & Compatibility | Done | `scripts/generate.py`; TS + Pydantic bindings with JSON Schema-equivalent constraints; cross-language roundtrip under `tests/integration/` |
 
 **M1 exit gate:** Met (see [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md))
 
@@ -693,13 +693,15 @@ Any PDF backend can output the same PhysicalDocument.
 
 #### Validation
 
-Parse the same PDF multiple times:
+M1 validates repeated deserialization of the same PhysicalDocument JSON:
 
 ```text
 Page geometry stable
 Text coordinates stable
 IDs reconcilable
 ```
+
+Parsing the same PDF bytes multiple times belongs to M2 Phase 2.1 (physical backend).
 
 ---
 

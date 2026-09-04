@@ -26,6 +26,8 @@ def test_describes_columns_and_spanning_figure(layout_data: dict[str, Any]) -> N
     geometry = figure.geometry
     assert isinstance(geometry, m.Rect)
     assert geometry.width > geometry.height
+    figure_group = next(g for g in doc.groups if g.kind == "FIGURE_BLOCK")
+    assert len(set(figure_group.memberIds)) >= 2
 
 
 @pytest.mark.unit

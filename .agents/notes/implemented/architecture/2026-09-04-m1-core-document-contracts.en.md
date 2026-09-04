@@ -13,17 +13,17 @@ Document Architecture v0.1 was frozen, but the core contracts existed only as pr
 All seven M1 phases are complete:
 
 1. **Six canonical JSON Schemas** (`schemas/<name>/schema.json`, version `0.1.0`):
-   - `common` — ID types (ULID/UUID pattern), Provenance, Origin, Resource, Issue, Geometry (Rect/Quad/Polygon), Matrix, LayoutLabel
+   - `common` — ID types (ULID/UUID pattern, including LayoutGroupID), Provenance, Origin, Resource, Issue, Geometry (Rect/Quad/Polygon), Matrix, LayoutLabel
    - `physical-document` — pages, TextSpan, ImageObject, VectorObject, LinkObject, Canonical Page Space
-   - `evidence` — RegionCandidate, TableCandidate, FormulaCandidate, MetadataCandidate; extra keys forbidden so provider payloads cannot leak, native labels preserved in `providerLabel`
-   - `layout-document` — LayoutRegion, PageBand, Column, ReadingFlowGraph (graph is source of truth, `primaryFlow` derived), ReadingOrderReason
-   - `semantic-document` — SemanticNode (tree) + SemanticRelation (graph), RichText/InlineMark, NodeContent (text/figure/table/equation); replaces the placeholder
+   - `evidence` — RegionCandidate, TableCandidate, FormulaCandidate, StructureCandidate, MetadataCandidate; extra keys forbidden so provider payloads cannot leak, native labels preserved in `providerLabel`
+   - `layout-document` — LayoutRegion, PageBand, Column, LayoutGroup, ReadingFlowGraph (graph is source of truth, `primaryFlow` derived), ReadingOrderReason
+   - `semantic-document` — SemanticNode (tree) + SemanticRelation (graph), RichText/InlineMark (`TextNodeContent` is a RichText alias), NodeContent (text/figure/table/equation); replaces the placeholder
    - `mapping` — PhysicalLayoutBinding, SourceAnchor (v0.1 LayoutRegionRef fragments only), SourceSemanticBinding, RenderAnchor/RenderBinding
-2. **Deterministic generator** `scripts/generate.py` (`just generate` / `just generate-check`): emits TS types (`packages/typescript/document-model/src/generated/schema.ts`) and Pydantic models (`packages/python/document-model/src/document_model/generated/schema_models.py`). All `$defs` names are globally unique across schemas, so both sides use flat namespaces. Generated files must never be hand-edited; CI enforces freshness.
+2. **Deterministic generator** `scripts/generate.py` (`just generate` / `just generate-check`): emits TS types (`packages/typescript/document-model/src/generated/schema.ts`) and Pydantic models (`packages/python/document-model/src/document_model/generated/schema_models.py`). Optional fields follow JSON Schema omit semantics (the key may be absent; JSON null is rejected unless the schema is nullable); `pattern` / `maxItems` / numeric constraints are generated. Pydantic output is Ruff-formatted so freshness checks match `just fmt`. All `$defs` names are globally unique across schemas, so both sides use flat namespaces. Generated files must never be hand-edited; CI enforces freshness.
 3. **TS runtime validator** `packages/typescript/document-model/src/validate.ts`: validates documents against the canonical JSON Schema files at runtime (covering the JSON Schema subset the canonical schemas use, including cross-file `$ref`), so generated types cannot drift from the contract.
 4. **Python helpers**: `document_model.ids` (ULID-style opaque IDs), `document_model.serialize` (`dump_document`/`load_document`), `document_model.validators` (layer-separation checks + bundle reference integrity).
-5. **Fixtures** (`schemas/fixtures/`, deterministically produced by `scripts/build_fixtures.py`): Physical/Layout documents with a two-column page, spanning figure and footnote; a Semantic document with every required NodeKind; mock-provider Evidence; a Mapping covering N→1, 1→N, and N→N scenarios.
-6. **Cross-language roundtrip integration test** `tests/integration/test_cross_language_roundtrip.py`: Python serialize → JSON → TS validate/re-serialize → Python parse, semantically identical; the TS side rejects geometry entering the semantic layer.
+5. **Fixtures** (`schemas/fixtures/`, deterministically produced by `scripts/build_fixtures.py`): Physical/Layout documents with a two-column page, spanning figure and footnote; a Semantic document with every required NodeKind; mock-provider Evidence including StructureCandidate; a Mapping covering N→1, 1→N, N→N, and cross-page N→1. Fixture IDs keep the sequence in the trailing characters to avoid collisions.
+6. **Cross-language roundtrip integration test** `tests/integration/test_cross_language_roundtrip.py`: Python serialize → JSON → TS validate/re-serialize → Python parse, semantically identical; the TS side rejects geometry entering the semantic layer. Post-review equivalence and reference-integrity repairs: [M1 contract review repairs](./2026-09-04-m1-review-repairs.en.md).
 
 ## Alternatives considered
 
@@ -34,7 +34,7 @@ All seven M1 phases are complete:
 
 ## Consequences
 
-- All five M1 exit-gate conditions hold: core schemas versioned (`0.1.0`), roundtrip stable, third-party parser schemas cannot leak (EvidenceBundle `additionalProperties: false` locked by tests), layer-responsibility tests complete, mapping many-to-many verified (three scenario fixtures + tests).
+- All five M1 exit-gate conditions hold: core schemas versioned (`0.1.0`), roundtrip stable (including rejection of illegal payloads), third-party parser schemas cannot leak (EvidenceBundle `additionalProperties: false` locked by tests), layer-responsibility tests complete, mapping many-to-many verified (N→1 / 1→N / N→N and cross-page fixtures + tests). Phase 1.2 in M1 validates JSON deserialization stability; parsing the same PDF bytes twice is M2.1.
 - `just schema` validates the six schemas and all fixtures; `just generate-check` locks generated-file freshness; `just test-integration` requires `node` on PATH (already mandatory since M0).
 - `SemanticNode.attributes` is the only `additionalProperties: true` location (open attribute bag); the layer boundary is enforced at document level by `document_model.validators.validate_layer_separation` (bbox/page/column keys in the semantic layer are flagged).
 - M2 Walking Skeleton can now build the minimal PDF backend, layout/semantic recovery, and rendering directly on these five Pydantic/TS models.

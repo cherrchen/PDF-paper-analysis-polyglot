@@ -5,8 +5,8 @@
   "candidates": [
     {
       "evidenceType": "REGION",
-      "id": "01J5M1FXTRESEVM10000000000",
-      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTREVM100000000001D",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "geometry": {
         "kind": "rect",
         "x": 72,
@@ -18,12 +18,12 @@
       "providerLabel": "text_block",
       "textPreview": "Left column paragraph part one.",
       "confidence": 0.9,
-      "provenanceIds": ["01J5M1FXTRESPR0VM000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001H"]
     },
     {
       "evidenceType": "REGION",
-      "id": "01J5M1FXTRESEVM20000000000",
-      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTREVM200000000001E",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "geometry": {
         "kind": "rect",
         "x": 72,
@@ -34,12 +34,12 @@
       "normalizedLabel": "FIGURE",
       "providerLabel": "image",
       "confidence": 0.85,
-      "provenanceIds": ["01J5M1FXTRESPR0VM000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001H"]
     },
     {
       "evidenceType": "FORMULA",
-      "id": "01J5M1FXTRESEVF10000000000",
-      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "id": "01J5M1FXTREVF100000000001F",
+      "pageId": "01J5M1FXTRPAGE000000000002",
       "geometry": {
         "kind": "rect",
         "x": 72,
@@ -49,24 +49,33 @@
       },
       "rawText": "E = m c^2",
       "confidence": 0.7,
-      "provenanceIds": ["01J5M1FXTRESPR0VF000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001J"]
+    },
+    {
+      "evidenceType": "STRUCTURE",
+      "id": "01J5M1FXTREVS100000000001G",
+      "role": "SECTION",
+      "textPreview": "1. Introduction",
+      "pageId": "01J5M1FXTRPAGE000000000002",
+      "confidence": 0.8,
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001H"]
     }
   ],
   "provenance": {
     "records": [
       {
-        "id": "01J5M1FXTRESPR0VM000000000",
+        "id": "01J5M1FXTRPR0V00000000001H",
         "producer": "mock-mineru",
         "producerVersion": "0.1.0",
         "operation": "fixture-region-detection",
-        "inputRefs": ["01J5M1FXTRESPHYSD000000000"]
+        "inputRefs": ["01J5M1FXTRPHYS000000000012"]
       },
       {
-        "id": "01J5M1FXTRESPR0VM000000000",
+        "id": "01J5M1FXTRPR0V00000000001J",
         "producer": "mock-docling",
         "producerVersion": "0.1.0",
         "operation": "fixture-formula-recognition",
-        "inputRefs": ["01J5M1FXTRESPHYSD000000000"]
+        "inputRefs": ["01J5M1FXTRPHYS000000000012"]
       }
     ]
   }

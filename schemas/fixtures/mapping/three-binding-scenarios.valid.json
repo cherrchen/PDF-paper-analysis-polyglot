@@ -1,129 +1,169 @@
 {
   "schemaVersion": "0.1.0",
-  "id": "01J5M1FXTRESMAPD0000000000",
+  "id": "01J5M1FXTRMAPD00000000001M",
   "physicalLayoutBindings": [
     {
-      "id": "01J5M1FXTRESP0B10000000000",
-      "layoutRegionId": "01J5M1FXTRESS0100000000000",
-      "physicalObjectIds": ["01J5M1FXTRES0BJT0000000000"]
+      "id": "01J5M1FXTRP1B100000000001N",
+      "layoutRegionId": "01J5M1FXTRS110000000000004",
+      "physicalObjectIds": ["01J5M1FXTR0BJT000000000013"]
     },
     {
-      "id": "01J5M1FXTRESP0B20000000000",
-      "layoutRegionId": "01J5M1FXTRESSR100000000000",
-      "physicalObjectIds": ["01J5M1FXTRES0BJTR000000000"]
+      "id": "01J5M1FXTRP1B200000000001P",
+      "layoutRegionId": "01J5M1FXTRSR10000000000006",
+      "physicalObjectIds": ["01J5M1FXTR0BJT000000000015"]
     },
     {
-      "id": "01J5M1FXTRESP0B30000000000",
-      "layoutRegionId": "01J5M1FXTRESS0200000000000",
-      "physicalObjectIds": ["01J5M1FXTRES0BJT0000000000"]
+      "id": "01J5M1FXTRP1B300000000001Q",
+      "layoutRegionId": "01J5M1FXTRS120000000000005",
+      "physicalObjectIds": ["01J5M1FXTR0BJT000000000014"]
     },
     {
-      "id": "01J5M1FXTRESP0B40000000000",
-      "layoutRegionId": "01J5M1FXTRESSR200000000000",
-      "physicalObjectIds": ["01J5M1FXTRES0BJTR000000000"]
+      "id": "01J5M1FXTRP1B400000000001R",
+      "layoutRegionId": "01J5M1FXTRSR20000000000007",
+      "physicalObjectIds": ["01J5M1FXTR0BJT000000000016"]
     },
     {
-      "id": "01J5M1FXTRESP0B50000000000",
-      "layoutRegionId": "01J5M1FXTRESSP200000000000",
-      "physicalObjectIds": ["01J5M1FXTRES0BJP2000000000", "01J5M1FXTRES0BJP2000000000"]
+      "id": "01J5M1FXTRP1B500000000001S",
+      "layoutRegionId": "01J5M1FXTRSP1X000000000009",
+      "physicalObjectIds": ["01J5M1FXTR0BJP00000000001A"]
     },
     {
-      "id": "01J5M1FXTRESP0B60000000000",
-      "layoutRegionId": "01J5M1FXTRESF00T0000000000",
-      "physicalObjectIds": ["01J5M1FXTRES0BJF0000000000"]
+      "id": "01J5M1FXTRP1B600000000001T",
+      "layoutRegionId": "01J5M1FXTRSP20000000000008",
+      "physicalObjectIds": ["01J5M1FXTR0BJP00000000001B"]
+    },
+    {
+      "id": "01J5M1FXTRP1B700000000001V",
+      "layoutRegionId": "01J5M1FXTRF00T00000000000C",
+      "physicalObjectIds": ["01J5M1FXTR0BJF000000000019"]
+    },
+    {
+      "id": "01J5M1FXTRP1B800000000001W",
+      "layoutRegionId": "01J5M1FXTRF1G000000000000A",
+      "physicalObjectIds": ["01J5M1FXTR0BJF000000000017"]
+    },
+    {
+      "id": "01J5M1FXTRP1B900000000001X",
+      "layoutRegionId": "01J5M1FXTRCAPT00000000000B",
+      "physicalObjectIds": ["01J5M1FXTR0BJC000000000018"]
     }
   ],
   "sourceAnchors": [
     {
-      "id": "01J5M1FXTRESANCA0000000000",
+      "id": "01J5M1FXTRANCA00000000001Y",
       "fragments": [
         {
           "fragmentType": "layoutRegion",
-          "layoutRegionId": "01J5M1FXTRESS0100000000000"
+          "layoutRegionId": "01J5M1FXTRS110000000000004"
         },
         {
           "fragmentType": "layoutRegion",
-          "layoutRegionId": "01J5M1FXTRESSR100000000000"
+          "layoutRegionId": "01J5M1FXTRSR10000000000006"
         }
       ],
       "confidence": 0.93,
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },
     {
-      "id": "01J5M1FXTRESANCB0000000000",
+      "id": "01J5M1FXTRANCB00000000001Z",
       "fragments": [
         {
           "fragmentType": "layoutRegion",
-          "layoutRegionId": "01J5M1FXTRESS0200000000000"
+          "layoutRegionId": "01J5M1FXTRS120000000000005"
         }
       ],
       "confidence": 0.9,
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },
     {
-      "id": "01J5M1FXTRESANCC0000000000",
+      "id": "01J5M1FXTRANCC000000000020",
       "fragments": [
         {
           "fragmentType": "layoutRegion",
-          "layoutRegionId": "01J5M1FXTRESS0200000000000"
+          "layoutRegionId": "01J5M1FXTRS120000000000005"
         }
       ],
       "confidence": 0.9,
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },
     {
-      "id": "01J5M1FXTRESANCD0000000000",
+      "id": "01J5M1FXTRANCD000000000021",
       "fragments": [
         {
           "fragmentType": "layoutRegion",
-          "layoutRegionId": "01J5M1FXTRESSP200000000000"
+          "layoutRegionId": "01J5M1FXTRSP1X000000000009"
         }
       ],
       "confidence": 0.9,
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },
     {
-      "id": "01J5M1FXTRESANCE0000000000",
+      "id": "01J5M1FXTRANCE000000000022",
       "fragments": [
         {
           "fragmentType": "layoutRegion",
-          "layoutRegionId": "01J5M1FXTRESSP200000000000"
+          "layoutRegionId": "01J5M1FXTRSP20000000000008"
         }
       ],
       "confidence": 0.9,
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTRANCF000000000023",
+      "fragments": [
+        {
+          "fragmentType": "layoutRegion",
+          "layoutRegionId": "01J5M1FXTRF1G000000000000A"
+        },
+        {
+          "fragmentType": "layoutRegion",
+          "layoutRegionId": "01J5M1FXTRCAPT00000000000B"
+        }
+      ],
+      "confidence": 0.92,
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     }
   ],
   "sourceSemanticBindings": [
     {
-      "id": "01J5M1FXTRESSSB10000000000",
-      "semanticNodeId": "01J5M1FXTRESPARAA000000000",
-      "sourceAnchorIds": ["01J5M1FXTRESANCA0000000000"]
+      "id": "01J5M1FXTRSSB1000000000024",
+      "semanticNodeId": "01J5M1FXTRPARA00000000000P",
+      "sourceAnchorIds": ["01J5M1FXTRANCA00000000001Y"]
     },
     {
-      "id": "01J5M1FXTRESSSB20000000000",
-      "semanticNodeId": "01J5M1FXTRESHEAD2000000000",
-      "sourceAnchorIds": ["01J5M1FXTRESANCB0000000000"]
+      "id": "01J5M1FXTRSSB2000000000025",
+      "semanticNodeId": "01J5M1FXTRHEAD00000000000Y",
+      "sourceAnchorIds": ["01J5M1FXTRANCB00000000001Z"]
     },
     {
-      "id": "01J5M1FXTRESSSB30000000000",
-      "semanticNodeId": "01J5M1FXTRESPARAA000000000",
-      "sourceAnchorIds": ["01J5M1FXTRESANCC0000000000"]
+      "id": "01J5M1FXTRSSB3000000000026",
+      "semanticNodeId": "01J5M1FXTRSP1T00000000000R",
+      "sourceAnchorIds": ["01J5M1FXTRANCC000000000020"]
     },
     {
-      "id": "01J5M1FXTRESSSB40000000000",
-      "semanticNodeId": "01J5M1FXTRESPARAB000000000",
-      "sourceAnchorIds": ["01J5M1FXTRESANCD0000000000", "01J5M1FXTRESANCE0000000000"]
+      "id": "01J5M1FXTRSSB4000000000027",
+      "semanticNodeId": "01J5M1FXTRPARA00000000000Q",
+      "sourceAnchorIds": ["01J5M1FXTRANCD000000000021", "01J5M1FXTRANCE000000000022"]
+    },
+    {
+      "id": "01J5M1FXTRSSB5000000000028",
+      "semanticNodeId": "01J5M1FXTRSF1G00000000000S",
+      "sourceAnchorIds": ["01J5M1FXTRANCF000000000023"]
+    },
+    {
+      "id": "01J5M1FXTRSSB6000000000029",
+      "semanticNodeId": "01J5M1FXTRF1GC00000000000T",
+      "sourceAnchorIds": ["01J5M1FXTRANCF000000000023"]
     }
   ],
   "provenance": {
     "records": [
       {
-        "id": "01J5M1FXTRESPR0VM000000000",
+        "id": "01J5M1FXTRPR0V00000000001K",
         "producer": "internal",
         "producerVersion": "0.1.0",
         "operation": "fixture-source-mapping",
-        "inputRefs": ["01J5M1FXTRESPHYSD000000000"]
+        "inputRefs": ["01J5M1FXTRPHYS000000000012"]
       }
     ]
   }

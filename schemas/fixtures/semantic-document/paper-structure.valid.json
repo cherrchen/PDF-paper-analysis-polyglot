@@ -1,19 +1,22 @@
 {
   "schemaVersion": "0.1.0",
-  "id": "01J5M1FXTRESSEMD0000000000",
-  "rootId": "01J5M1FXTRESR00T0000000000",
+  "id": "01J5M1FXTRSEMD00000000000K",
+  "rootId": "01J5M1FXTRR00T00000000000M",
   "nodes": [
     {
-      "id": "01J5M1FXTRESR00T0000000000",
+      "id": "01J5M1FXTRR00T00000000000M",
       "kind": "DOCUMENT",
       "parentId": null,
       "children": [
-        "01J5M1FXTRESHEAD0000000000",
-        "01J5M1FXTRESPARAA000000000",
-        "01J5M1FXTRESPARAB000000000",
-        "01J5M1FXTRESF0GCA000000000",
-        "01J5M1FXTRESFN000000000000",
-        "01J5M1FXTRESB0B00000000000"
+        "01J5M1FXTRHEAD00000000000N",
+        "01J5M1FXTRPARA00000000000P",
+        "01J5M1FXTRHEAD00000000000Y",
+        "01J5M1FXTRSP1T00000000000R",
+        "01J5M1FXTRPARA00000000000Q",
+        "01J5M1FXTRSF1G00000000000S",
+        "01J5M1FXTRF1GC00000000000T",
+        "01J5M1FXTRFN0000000000000V",
+        "01J5M1FXTRB1B000000000000W"
       ],
       "content": {
         "text": "",
@@ -23,12 +26,12 @@
       "confidence": {
         "score": 0.95
       },
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },
     {
-      "id": "01J5M1FXTRESHEAD0000000000",
+      "id": "01J5M1FXTRHEAD00000000000N",
       "kind": "HEADING",
-      "parentId": "01J5M1FXTRESR00T0000000000",
+      "parentId": "01J5M1FXTRR00T00000000000M",
       "children": [],
       "content": {
         "text": "1. Introduction",
@@ -38,12 +41,12 @@
       "confidence": {
         "score": 0.95
       },
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },
     {
-      "id": "01J5M1FXTRESPARAA000000000",
+      "id": "01J5M1FXTRPARA00000000000P",
       "kind": "PARAGRAPH",
-      "parentId": "01J5M1FXTRESR00T0000000000",
+      "parentId": "01J5M1FXTRR00T00000000000M",
       "children": [],
       "content": {
         "text": "Spanning paragraph across both columns.",
@@ -52,7 +55,7 @@
             "type": "CITATION",
             "start": 30,
             "end": 34,
-            "targetNodeId": "01J5M1FXTRESB0BE0000000000",
+            "targetNodeId": "01J5M1FXTRB1BE00000000000X",
             "label": "[1]"
           }
         ]
@@ -61,87 +64,12 @@
       "confidence": {
         "score": 0.95
       },
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },
     {
-      "id": "01J5M1FXTRESPARAB000000000",
-      "kind": "PARAGRAPH",
-      "parentId": "01J5M1FXTRESR00T0000000000",
-      "children": [],
-      "content": {
-        "text": "Cross-page paragraph.",
-        "marks": []
-      },
-      "attributes": {},
-      "confidence": {
-        "score": 0.95
-      },
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
-    },
-    {
-      "id": "01J5M1FXTRESF0GCA000000000",
-      "kind": "FIGURE_CAPTION",
-      "parentId": "01J5M1FXTRESR00T0000000000",
-      "children": [],
-      "content": {
-        "text": "Figure 1: A spanning figure.",
-        "marks": []
-      },
-      "attributes": {},
-      "confidence": {
-        "score": 0.95
-      },
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
-    },
-    {
-      "id": "01J5M1FXTRESFN000000000000",
-      "kind": "FOOTNOTE",
-      "parentId": "01J5M1FXTRESR00T0000000000",
-      "children": [],
-      "content": {
-        "text": "1. A footnote body.",
-        "marks": []
-      },
-      "attributes": {},
-      "confidence": {
-        "score": 0.95
-      },
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
-    },
-    {
-      "id": "01J5M1FXTRESB0B00000000000",
-      "kind": "BIBLIOGRAPHY",
-      "parentId": "01J5M1FXTRESR00T0000000000",
-      "children": ["01J5M1FXTRESB0BE0000000000"],
-      "content": {
-        "text": "",
-        "marks": []
-      },
-      "attributes": {},
-      "confidence": {
-        "score": 0.95
-      },
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
-    },
-    {
-      "id": "01J5M1FXTRESB0BE0000000000",
-      "kind": "BIBLIOGRAPHY_ENTRY",
-      "parentId": "01J5M1FXTRESB0B00000000000",
-      "children": [],
-      "content": {
-        "text": "Author, Title, 2026.",
-        "marks": []
-      },
-      "attributes": {},
-      "confidence": {
-        "score": 0.95
-      },
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
-    },
-    {
-      "id": "01J5M1FXTRESHEAD2000000000",
+      "id": "01J5M1FXTRHEAD00000000000Y",
       "kind": "HEADING",
-      "parentId": "01J5M1FXTRESR00T0000000000",
+      "parentId": "01J5M1FXTRR00T00000000000M",
       "children": [],
       "content": {
         "text": "2. A block split into heading and paragraph",
@@ -151,44 +79,150 @@
       "confidence": {
         "score": 0.95
       },
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTRSP1T00000000000R",
+      "kind": "PARAGRAPH",
+      "parentId": "01J5M1FXTRR00T00000000000M",
+      "children": [],
+      "content": {
+        "text": "The paragraph that continues the split block.",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTRPARA00000000000Q",
+      "kind": "PARAGRAPH",
+      "parentId": "01J5M1FXTRR00T00000000000M",
+      "children": [],
+      "content": {
+        "text": "Cross-page paragraph.",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTRSF1G00000000000S",
+      "kind": "FIGURE",
+      "parentId": "01J5M1FXTRR00T00000000000M",
+      "children": [],
+      "content": {
+        "resources": {
+          "embeddedImageIds": []
+        }
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.9
+      },
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTRF1GC00000000000T",
+      "kind": "FIGURE_CAPTION",
+      "parentId": "01J5M1FXTRR00T00000000000M",
+      "children": [],
+      "content": {
+        "text": "Figure 1: A spanning figure.",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTRFN0000000000000V",
+      "kind": "FOOTNOTE",
+      "parentId": "01J5M1FXTRR00T00000000000M",
+      "children": [],
+      "content": {
+        "text": "1. A footnote body.",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTRB1B000000000000W",
+      "kind": "BIBLIOGRAPHY",
+      "parentId": "01J5M1FXTRR00T00000000000M",
+      "children": ["01J5M1FXTRB1BE00000000000X"],
+      "content": {
+        "text": "",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTRB1BE00000000000X",
+      "kind": "BIBLIOGRAPHY_ENTRY",
+      "parentId": "01J5M1FXTRB1B000000000000W",
+      "children": [],
+      "content": {
+        "text": "Author, Title, 2026.",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     }
   ],
   "relations": [
     {
-      "id": "01J5M1FXTRESRE0CA000000000",
+      "id": "01J5M1FXTRRE1C00000000000Z",
       "type": "CAPTION_OF",
-      "source": "01J5M1FXTRESF0GCA000000000",
-      "target": "01J5M1FXTRESPARAB000000000",
+      "source": "01J5M1FXTRF1GC00000000000T",
+      "target": "01J5M1FXTRSF1G00000000000S",
       "confidence": 0.9,
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },
     {
-      "id": "01J5M1FXTRESRE0F0000000000",
+      "id": "01J5M1FXTRRE1F000000000010",
       "type": "FOOTNOTE_OF",
-      "source": "01J5M1FXTRESFN000000000000",
-      "target": "01J5M1FXTRESPARAA000000000",
+      "source": "01J5M1FXTRFN0000000000000V",
+      "target": "01J5M1FXTRPARA00000000000P",
       "confidence": 0.95,
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },
     {
-      "id": "01J5M1FXTRESRE0C0000000000",
+      "id": "01J5M1FXTRRE1C000000000011",
       "type": "CITES",
-      "source": "01J5M1FXTRESPARAA000000000",
-      "target": "01J5M1FXTRESB0BE0000000000",
+      "source": "01J5M1FXTRPARA00000000000P",
+      "target": "01J5M1FXTRB1BE00000000000X",
       "confidence": 0.9,
-      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     }
   ],
-  "provenanceIds": ["01J5M1FXTRESPR0V0000000000"],
+  "provenanceIds": ["01J5M1FXTRPR0V00000000001K"],
   "provenance": {
     "records": [
       {
-        "id": "01J5M1FXTRESPR0VM000000000",
+        "id": "01J5M1FXTRPR0V00000000001K",
         "producer": "internal",
         "producerVersion": "0.1.0",
         "operation": "fixture-semantic-recovery",
-        "inputRefs": ["01J5M1FXTRESPHYSD000000000"]
+        "inputRefs": ["01J5M1FXTRPHYS000000000012"]
       }
     ]
   }

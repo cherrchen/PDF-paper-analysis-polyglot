@@ -246,6 +246,13 @@ class RegionCandidate(Evidence):
     provider_label: str
 ```
 
+```python
+class StructureCandidate(Evidence):
+    role: StructureRole
+    text_preview: str | None
+    page_id: PageID | None
+```
+
 MinerU:
 
 ```text
@@ -378,6 +385,24 @@ class PageBand:
         SPANNING
 
     column_ids: list[ColumnID]
+```
+
+LayoutGroup clusters visual regions that should stay together without assigning paper semantics:
+
+```python
+class LayoutGroup:
+    id: LayoutGroupID
+
+    kind:
+        FIGURE_BLOCK
+        TABLE_BLOCK
+        LIST_BLOCK
+        FOOTNOTE_BLOCK
+        OTHER
+
+    member_ids: list[LayoutRegionID]
+
+    page_id: PageID | None
 ```
 
 This is more reliable than defining `page.columns = 2` for the whole page.

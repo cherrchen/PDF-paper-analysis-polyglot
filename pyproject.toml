@@ -114,7 +114,13 @@ pythonVersion = "3.13"
 venvPath = "."
 venv = ".venv"
 include = ["apps", "packages/python", "scripts"]
-exclude = ["**/node_modules", "**/__pycache__", ".venv", "target"]
+exclude = [
+  "**/node_modules",
+  "**/__pycache__",
+  ".venv",
+  "target",
+  "packages/python/document-model/src/document_model/generated/schema_models.py",
+]
 reportMissingTypeStubs = false
 reportUnknownMemberType = true
 reportUnknownVariableType = true

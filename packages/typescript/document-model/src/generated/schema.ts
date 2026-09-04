@@ -41,6 +41,8 @@ export declare namespace Common {
   export interface IssueStore {
     issues: Common.Issue[];
   }
+  /** Opaque persistent identifier for a visual layout group. */
+  export type LayoutGroupID = string;
   /** Opaque persistent identifier for a layout region. */
   export type LayoutRegionID = string;
   /** 2D affine matrix in PDF order (a b c d e f). */
@@ -195,9 +197,11 @@ export declare namespace PhysicalDocument {
 
 export declare namespace Evidence {
   /** Unified evidence types. Providers map their native labels into these, e.g. MinerU display_formula -> FORMULA. */
-  export type EvidenceType = "REGION" | "TABLE_STRUCTURE" | "FORMULA" | "METADATA";
+  export type EvidenceType = "REGION" | "TABLE_STRUCTURE" | "FORMULA" | "STRUCTURE" | "METADATA";
+  /** Visual/document-structure role hypothesized by a specialist such as GROBID. Not paper semantics: recovery still owns SemanticNode kinds. */
+  export type StructureRole = "TITLE" | "ABSTRACT" | "SECTION" | "SUBSECTION" | "ACKNOWLEDGEMENT" | "REFERENCES" | "UNKNOWN";
   /** Any unified evidence candidate. */
-  export type Evidence = Evidence.RegionCandidate | Evidence.TableCandidate | Evidence.FormulaCandidate | Evidence.MetadataCandidate;
+  export type Evidence = Evidence.RegionCandidate | Evidence.TableCandidate | Evidence.FormulaCandidate | Evidence.StructureCandidate | Evidence.MetadataCandidate;
   /** A formula candidate. Recognition may fail without losing content: LaTeX is optional and fallbacks (raw text, preview resource) must be preserved. */
   export interface FormulaCandidate {
     evidenceType: "FORMULA";
@@ -240,6 +244,18 @@ export declare namespace Evidence {
     confidence: Common.Confidence;
     provenanceIds: Common.ProvenanceID[];
   }
+  /** A hierarchical document-structure candidate (title, sections) from a specialist such as GROBID. Distinct from MetadataCandidate, which holds flat key-value scholarly fields. */
+  export interface StructureCandidate {
+    evidenceType: "STRUCTURE";
+    id: Common.EvidenceID;
+    role: Evidence.StructureRole;
+    textPreview?: string;
+    pageId?: Common.PageID;
+    geometry?: Common.Geometry;
+    parentId?: Common.EvidenceID;
+    confidence: Common.Confidence;
+    provenanceIds: Common.ProvenanceID[];
+  }
   /** A structured table candidate with rows, columns, and cells. */
   export interface TableCandidate {
     evidenceType: "TABLE_STRUCTURE";
@@ -264,6 +280,8 @@ export declare namespace Evidence {
 
 export declare namespace LayoutDocument {
   export type BandLayoutMode = "FULL_WIDTH" | "SINGLE_COLUMN" | "MULTI_COLUMN" | "SPANNING";
+  /** Visual grouping kinds. FIGURE_BLOCK means a figure-like cluster, not a semantic figure. */
+  export type LayoutGroupKind = "FIGURE_BLOCK" | "TABLE_BLOCK" | "LIST_BLOCK" | "FOOTNOTE_BLOCK" | "OTHER";
   /** Visual region kinds. FIGURE means visually figure-like, not a semantic figure. */
   export type LayoutRegionKind = "TEXT" | "IMAGE" | "FIGURE" | "TABLE" | "FORMULA" | "FOOTNOTE" | "HEADER" | "FOOTER" | "UNKNOWN";
   export type ReadingOrderReason = "SAME_COLUMN" | "NEXT_COLUMN" | "AFTER_SPANNING_BLOCK" | "BEFORE_SPANNING_BLOCK" | "CAPTION_ASSOCIATION" | "CONTINUATION" | "FOOTNOTE_FLOW";
@@ -278,6 +296,14 @@ export declare namespace LayoutDocument {
   export interface LayoutConfidence {
     score: Common.Confidence;
     reason?: string;
+  }
+  /** A visual grouping of layout regions that should be kept together without assigning paper semantics. */
+  export interface LayoutGroup {
+    id: Common.LayoutGroupID;
+    kind: LayoutDocument.LayoutGroupKind;
+    memberIds: Common.LayoutRegionID[];
+    pageId?: Common.PageID;
+    confidence?: LayoutDocument.LayoutConfidence;
   }
   /** A label hypothesis for a region with its supporting evidence. */
   export interface LayoutLabelCandidate {
@@ -365,7 +391,12 @@ export declare namespace SemanticDocument {
     reason?: string;
   }
   /** Content payload by node kind: rich text, figure, table, or equation. */
-  export type NodeContent = SemanticDocument.TextNodeContent | SemanticDocument.FigureContent | SemanticDocument.TableContent | SemanticDocument.EquationContent;
+  export type NodeContent = SemanticDocument.RichText | SemanticDocument.FigureContent | SemanticDocument.TableContent | SemanticDocument.EquationContent;
+  /** Rich text content for text-bearing nodes. Block semantics live on SemanticNode; inline semantics live in marks. */
+  export interface RichText {
+    text: string;
+    marks: SemanticDocument.InlineMark[];
+  }
   export interface SemanticNode {
     id: Common.NodeID;
     kind: SemanticDocument.NodeKind;
@@ -392,7 +423,7 @@ export declare namespace SemanticDocument {
     column: number;
     rowSpan: number;
     colSpan: number;
-    content: SemanticDocument.TextNodeContent;
+    content: SemanticDocument.RichText;
   }
   /** Structured table representation kept alongside the visual fallback. */
   export interface TableContent {
@@ -401,11 +432,8 @@ export declare namespace SemanticDocument {
     cells: SemanticDocument.TableCell[];
     visualResourceId?: Common.ResourceID;
   }
-  /** Rich text content for text-bearing nodes. Block semantics live on SemanticNode; inline semantics live in marks. */
-  export interface TextNodeContent {
-    text: string;
-    marks: SemanticDocument.InlineMark[];
-  }
+  /** Alias of RichText. Kept so generated bindings remain discoverable under the implementation name used during M1 drafting. */
+  export type TextNodeContent = SemanticDocument.RichText;
 }
 
 export declare namespace Mapping {

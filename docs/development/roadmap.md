@@ -46,12 +46,12 @@ README 状态：工程脚手架 + 核心文档契约。产品流水线尚未实�
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
 | 1.1 Identity / Provenance / Resource | 已完成 | `schemas/common/schema.json`；Pydantic/TS 生成模型；ID 唯一性与 provenance 测试 |
-| 1.2 PhysicalDocument Schema | 已完成 | `schemas/physical-document/schema.json`；坐标稳定 / ID reconciliation 测试 |
-| 1.3 Evidence Schema | 已完成 | `schemas/evidence/schema.json`；FakeMinerU / FakeDocling adapter 测试 |
-| 1.4 LayoutDocument Schema | 已完成 | `schemas/layout-document/schema.json`；双栏 + 跨栏 Figure + Footnote fixture 与测试 |
-| 1.5 SemanticDocument Schema | 已完成 | `schemas/semantic-document/schema.json`（替换 placeholder）；结构独立性测试 |
-| 1.6 Mapping Schema | 已完成 | `schemas/mapping/schema.json`；N→1 / 1→N / N→N 三场景 fixture 与测试 |
-| 1.7 Schema Generation & Compatibility | 已完成 | `scripts/generate.py`；TS + Pydantic 生成物；`tests/integration/` 跨语言 roundtrip |
+| 1.2 PhysicalDocument Schema | 已完成 | `schemas/physical-document/schema.json`；JSON 反序列化后坐标稳定 / ID reconciliation 测试（PDF 重复解析见 M2.1） |
+| 1.3 Evidence Schema | 已完成 | `schemas/evidence/schema.json`（含 StructureCandidate）；FakeMinerU / FakeDocling adapter 测试 |
+| 1.4 LayoutDocument Schema | 已完成 | `schemas/layout-document/schema.json`（含 LayoutGroup）；双栏 + 跨栏 Figure + Footnote fixture 与测试 |
+| 1.5 SemanticDocument Schema | 已完成 | `schemas/semantic-document/schema.json`（RichText + TextNodeContent 别名）；结构独立性测试 |
+| 1.6 Mapping Schema | 已完成 | `schemas/mapping/schema.json`；N→1 / 1→N / N→N 与跨页 paragraph fixture 与测试 |
+| 1.7 Schema Generation & Compatibility | 已完成 | `scripts/generate.py`；TS + Pydantic 生成物与 JSON Schema 等价约束；`tests/integration/` 跨语言 roundtrip |
 
 **M1 Exit Gate：** 已达成（见 [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md)）
 
@@ -695,13 +695,15 @@ Canonical Page Space
 
 #### Validation
 
-同一 PDF 多次解析：
+M1 验证同一 PhysicalDocument JSON 多次反序列化：
 
 ```text
 Page geometry stable
 Text coordinates stable
 IDs reconcilable
 ```
+
+同一 PDF 字节多次解析属于 M2 Phase 2.1（Physical backend）。
 
 ---
 
