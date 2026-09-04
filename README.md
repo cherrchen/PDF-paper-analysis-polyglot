@@ -67,6 +67,7 @@ just check
 ## 文档
 
 - 架构：[`docs/architecture/overview.md`](docs/architecture/overview.md)
+- 开发总路线：[`docs/development/roadmap.md`](docs/development/roadmap.md)
 - 环境：[`docs/development/setup.md`](docs/development/setup.md)
 - 双语文档：[`docs/development/bilingual.md`](docs/development/bilingual.md)
 - 测试：[`docs/testing/overview.md`](docs/testing/overview.md)

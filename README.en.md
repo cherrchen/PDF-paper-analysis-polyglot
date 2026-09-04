@@ -67,6 +67,7 @@ Run `just --list` for the full interface.
 ## Documentation
 
 - Architecture: [`docs/architecture/overview.md`](docs/architecture/overview.en.md)
+- Development roadmap: [`docs/development/roadmap.md`](docs/development/roadmap.en.md)
 - Setup: [`docs/development/setup.md`](docs/development/setup.en.md)
 - Bilingual docs: [`docs/development/bilingual.md`](docs/development/bilingual.en.md)
 - Testing: [`docs/testing/overview.md`](docs/testing/overview.en.md)
