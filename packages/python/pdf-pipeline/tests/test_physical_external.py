@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import urllib.request
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import pytest
+from document_model.generated import schema_models as generated
 from pdf_pipeline.physical import extract_physical_document
 
 if TYPE_CHECKING:
@@ -24,8 +25,15 @@ if TYPE_CHECKING:
 
 CACHE_DIR = Path(__file__).resolve().parents[4] / "tests/fixtures/external/papers"
 
+
 # arXiv IDs with published page counts for the arXiv version referenced here.
-PAPERS: dict[str, dict[str, object]] = {
+class PaperSpec(TypedDict):
+    url: str
+    pages: int
+    expect_text: list[str]
+
+
+PAPERS: dict[str, PaperSpec] = {
     "arxiv-1706.03762": {
         "url": "https://arxiv.org/pdf/1706.03762v7",
         "pages": 15,
@@ -53,7 +61,6 @@ def paper_bytes() -> Callable[[str], bytes]:
         if not path.exists():
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
             url = PAPERS[name]["url"]
-            assert isinstance(url, str)
             assert url.startswith("https://"), url
             with urllib.request.urlopen(url, timeout=120) as response:  # noqa: S310
                 path.write_bytes(response.read())
@@ -85,6 +92,7 @@ def test_real_paper_pages_text_geometry(paper_bytes: Callable[[str], bytes], nam
         if obj.objectType != "textSpan":
             continue
         page = page_by_id[obj.pageId]
+        assert isinstance(obj.geometry, generated.Rect)
         rect = obj.geometry
         assert 0 <= rect.x <= page.geometry.widthPt
         assert 0 <= rect.y <= page.geometry.heightPt

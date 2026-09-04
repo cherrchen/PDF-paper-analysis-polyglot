@@ -19,6 +19,8 @@ _ROOT_MODELS: dict[str, type[BaseModel]] = {
     "evidence": generated.EvidenceBundle,
     "layout-document": generated.LayoutDocument,
     "semantic-document": generated.SemanticDocument,
+    "translation-layer": generated.TranslationLayer,
+    "render-document": generated.RenderDocument,
     "mapping": generated.MappingBundle,
 }
 

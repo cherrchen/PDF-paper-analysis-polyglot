@@ -1,3 +1,4 @@
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportAttributeAccessIssue=false
 """Phase 2.6 render-anchor recovery: target PDF named dests -> MappingBundle.
 
 The projection embeds ``\\renderanchor{<nodeId>}`` (a hyperref hypertarget)
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _UUID_SHAPE = "-"
+ANCHOR_HIT_SIZE_PT = 12.0
 
 
 def _decode_names() -> str:
@@ -96,8 +98,8 @@ def recover_render_anchors(
                                 kind="rect",
                                 x=round(x.value, 2),
                                 y=round(point_y, 2),
-                                width=0.0,
-                                height=0.0,
+                                width=ANCHOR_HIT_SIZE_PT,
+                                height=ANCHOR_HIT_SIZE_PT,
                             ),
                         )
                     ],

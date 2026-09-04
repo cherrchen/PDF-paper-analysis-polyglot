@@ -38,7 +38,7 @@ CONFIDENCE_COLUMNS = 0.5
 def _font_size(span: generated.TextSpan) -> float:
     if span.fontSize is not None:
         return span.fontSize
-    return span.geometry.height
+    return _rect(span.geometry).height
 
 
 def _median_font_size(objects: list[generated.TextSpan]) -> float:
@@ -58,18 +58,21 @@ def _is_heading_like(span: generated.TextSpan, body_font: float) -> bool:
     return font_ratio >= HEADING_MIN_FONT_RATIO and len(span.text) <= HEADING_MAX_TEXT_LEN
 
 
-def _union_rect(
-    rects: list[generated.Rect],
-) -> generated.Rect:
-    x0 = min(r.x for r in rects)
-    y0 = min(r.y for r in rects)
-    x1 = max(r.x + r.width for r in rects)
-    y1 = max(r.y + r.height for r in rects)
-    return generated.Rect(kind="rect", x=x0, y=y0, width=x1 - x0, height=y1 - y0)
+def _rect(geometry: generated.Geometry) -> generated.Rect:
+    """Narrow M2 geometry to the rectangular subset produced by PDFium."""
+    if not isinstance(geometry, generated.Rect):
+        raise TypeError("M2 layout recovery requires rectangular geometry")
+    return geometry
 
 
 def _layout_confidence(score: float, reason: str) -> generated.LayoutConfidence:
     return generated.LayoutConfidence(score=score, reason=reason)
+
+
+def _region_order_key(region: generated.LayoutRegion) -> tuple[float, float, str]:
+    """Stable top-to-bottom, then left-to-right order within a column."""
+    geometry = _rect(region.geometry)
+    return (geometry.y, geometry.x, region.id)
 
 
 def split_columns(spans: list[generated.TextSpan], page_width: float) -> tuple[bool, float]:
@@ -84,13 +87,13 @@ def split_columns(spans: list[generated.TextSpan], page_width: float) -> tuple[b
     if page_width <= 0 or len(spans) < 6:
         return False, page_width / 2
     mid = page_width / 2
-    left = [s for s in spans if s.geometry.x + s.geometry.width <= mid]
-    right = [s for s in spans if s.geometry.x >= mid]
+    left = [s for s in spans if _rect(s.geometry).x + _rect(s.geometry).width <= mid]
+    right = [s for s in spans if _rect(s.geometry).x >= mid]
     min_side = len(spans) * COLUMN_MIN_SIDE_RATIO
     if len(left) < min_side or len(right) < min_side:
         return False, mid
-    left_max = max(s.geometry.x + s.geometry.width for s in left)
-    right_min = min(s.geometry.x for s in right)
+    left_max = max(_rect(s.geometry).x + _rect(s.geometry).width for s in left)
+    right_min = min(_rect(s.geometry).x for s in right)
     gap = right_min - left_max
     two_column = gap > 0 and gap / page_width >= COLUMN_GAP_RATIO
     return two_column, (left_max + right_min) / 2 if two_column else mid
@@ -128,7 +131,7 @@ def recover_layout_document(physical: generated.PhysicalDocument) -> generated.L
         two_column, split_x = split_columns(spans, page.geometry.widthPt)
         layout_mode = "MULTI_COLUMN" if two_column else "SINGLE_COLUMN"
 
-        page_region_ids: list[str] = []
+        page_regions: list[generated.LayoutRegion] = []
         band_column_ids: list[str] = []
 
         # Figure regions from image objects (one region per image; clustering
@@ -137,60 +140,65 @@ def recover_layout_document(physical: generated.PhysicalDocument) -> generated.L
             region_id = stable_uuid(
                 physical.sourceFingerprint or physical.id, "fig", page.index, len(regions)
             )
-            regions.append(
-                generated.LayoutRegion(
-                    id=region_id,
-                    pageId=page.id,
-                    geometry=image.geometry,
-                    kind="FIGURE",
-                    childIds=[],
-                    physicalObjectIds=[image.id],
-                    labels=[
-                        generated.LayoutLabelCandidate(
-                            label="FIGURE",
-                            confidence=CONFIDENCE_FIGURE,
-                            evidenceIds=[],
-                        )
-                    ],
-                    confidence=_layout_confidence(CONFIDENCE_FIGURE, "image object"),
-                    provenanceIds=[],
-                )
+            region = generated.LayoutRegion(
+                id=region_id,
+                pageId=page.id,
+                geometry=image.geometry,
+                kind="FIGURE",
+                childIds=[],
+                physicalObjectIds=[image.id],
+                labels=[
+                    generated.LayoutLabelCandidate(
+                        label="FIGURE",
+                        confidence=CONFIDENCE_FIGURE,
+                        evidenceIds=[],
+                    )
+                ],
+                confidence=_layout_confidence(CONFIDENCE_FIGURE, "image object"),
+                provenanceIds=[],
             )
-            page_region_ids.append(region_id)
+            regions.append(region)
+            page_regions.append(region)
 
         # Text regions: one region per text span, labeled heading-like when
         # the font-size heuristic fires.
-        column_spans: dict[str, list[str]] = {"left": [], "right": []}
         for span in spans:
             is_heading = _is_heading_like(span, body_font)
             region_id = stable_uuid(
                 physical.sourceFingerprint or physical.id, "txt", page.index, len(regions)
             )
-            regions.append(
-                generated.LayoutRegion(
-                    id=region_id,
-                    pageId=page.id,
-                    geometry=span.geometry,
-                    kind="TEXT",
-                    childIds=[],
-                    physicalObjectIds=[span.id],
-                    labels=[
-                        generated.LayoutLabelCandidate(
-                            label="HEADING_LIKE" if is_heading else "PARAGRAPH_LIKE",
-                            confidence=(CONFIDENCE_HEADING if is_heading else CONFIDENCE_TEXT),
-                            evidenceIds=[],
-                        )
-                    ],
-                    confidence=_layout_confidence(
-                        CONFIDENCE_HEADING if is_heading else CONFIDENCE_TEXT,
-                        "font-size heuristic" if is_heading else "text span",
-                    ),
-                    provenanceIds=[],
-                )
+            region = generated.LayoutRegion(
+                id=region_id,
+                pageId=page.id,
+                geometry=span.geometry,
+                kind="TEXT",
+                childIds=[],
+                physicalObjectIds=[span.id],
+                labels=[
+                    generated.LayoutLabelCandidate(
+                        label="HEADING_LIKE" if is_heading else "PARAGRAPH_LIKE",
+                        confidence=(CONFIDENCE_HEADING if is_heading else CONFIDENCE_TEXT),
+                        evidenceIds=[],
+                    )
+                ],
+                confidence=_layout_confidence(
+                    CONFIDENCE_HEADING if is_heading else CONFIDENCE_TEXT,
+                    "font-size heuristic" if is_heading else "text span",
+                ),
+                provenanceIds=[],
             )
-            page_region_ids.append(region_id)
-            side = "right" if two_column and span.geometry.x >= split_x else "left"
-            column_spans[side].append(region_id)
+            regions.append(region)
+            page_regions.append(region)
+
+        # Figures and text participate in the same reading-order source. A
+        # spanning figure is assigned to the left flow in this M2 one-band
+        # model, but is never dropped; M3 will split full-width bands properly.
+        column_regions: dict[str, list[generated.LayoutRegion]] = {"left": [], "right": []}
+        for region in page_regions:
+            side = "right" if two_column and _rect(region.geometry).x >= split_x else "left"
+            column_regions[side].append(region)
+        for members in column_regions.values():
+            members.sort(key=_region_order_key)
 
         # Columns hold their regions in reading order.
         if two_column:
@@ -199,7 +207,7 @@ def recover_layout_document(physical: generated.PhysicalDocument) -> generated.L
                     physical.sourceFingerprint or physical.id, "col", page.index, index
                 )
                 band_column_ids.append(column_id)
-                members = column_spans[side]
+                members = column_regions[side]
                 columns.append(
                     generated.Column(
                         id=column_id,
@@ -212,11 +220,12 @@ def recover_layout_document(physical: generated.PhysicalDocument) -> generated.L
                             width=split_x if side == "left" else page.geometry.widthPt - split_x,
                             height=page.geometry.heightPt,
                         ),
-                        regionIds=members,
+                        regionIds=[region.id for region in members],
                     )
                 )
-            ordered_ids = column_spans["left"] + column_spans["right"]
+            ordered_regions = column_regions["left"] + column_regions["right"]
         else:
+            ordered_regions = sorted(page_regions, key=_region_order_key)
             column_id = stable_uuid(physical.sourceFingerprint or physical.id, "col", page.index, 0)
             band_column_ids.append(column_id)
             columns.append(
@@ -231,10 +240,11 @@ def recover_layout_document(physical: generated.PhysicalDocument) -> generated.L
                         width=page.geometry.widthPt,
                         height=page.geometry.heightPt,
                     ),
-                    regionIds=page_region_ids,
+                    regionIds=[region.id for region in ordered_regions],
                 )
             )
-            ordered_ids = page_region_ids
+
+        ordered_ids = [region.id for region in ordered_regions]
 
         bands.append(
             generated.PageBand(
@@ -246,9 +256,7 @@ def recover_layout_document(physical: generated.PhysicalDocument) -> generated.L
                 columnIds=band_column_ids,
             )
         )
-        pages.append(
-            generated.LayoutPage(pageId=page.id, regionIds=page_region_ids, bandIds=[band_id])
-        )
+        pages.append(generated.LayoutPage(pageId=page.id, regionIds=ordered_ids, bandIds=[band_id]))
         reading_nodes.extend(ordered_ids)
 
     # Linear reading flow across the whole document.

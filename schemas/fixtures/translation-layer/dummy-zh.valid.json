@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "0.1.0",
+  "id": "00000000-0000-0000-0000-000000000201",
+  "semanticDocumentId": "01J5M1FXTRSEMD00000000000K",
+  "sourceLocale": "en",
+  "targetLocale": "zh-CN-x-dummy",
+  "entries": [
+    {
+      "semanticNodeId": "01J5M1FXTRHEAD00000000000Y",
+      "content": {
+        "text": "[TRANSLATED] Introduction",
+        "marks": []
+      },
+      "confidence": 1.0,
+      "provenanceIds": []
+    }
+  ],
+  "provenanceIds": []
+}

@@ -875,9 +875,11 @@ USER
 class TranslationLayer:
     id: TranslationLayerID
 
-    locale: str
+    semantic_document_id: SemanticDocumentID
+    source_locale: str | None
+    target_locale: str
 
-    entries: dict[NodeID, TranslationEntry]
+    entries: list[TranslationEntry]
 
 class TranslationEntry:
     semantic_node_id: NodeID
@@ -900,6 +902,8 @@ P18
 ```
 
 共享稳定 semantic identity。
+
+`entries` 使用列表承载，但 `semantic_node_id` 在同一 TranslationLayer 内必须唯一；消费者按该字段索引，不能靠数组位置与语义节点对齐。规范契约见 [`schemas/translation-layer/schema.json`](../../schemas/translation-layer/schema.json)。
 
 ## 25. Render Architecture
 
@@ -986,12 +990,16 @@ RenderProfile 与 RenderPolicy 不混合。
 class RenderDocument:
     id: RenderDocumentID
 
-    profile_id: RenderProfileID
+    semantic_document_id: SemanticDocumentID
+    translation_layer_id: TranslationLayerID | None
+
+    profile: RenderProfile
+    policy: RenderPolicy
 
     blocks: list[RenderBlock]
-
-    anchors: dict[NodeID, RenderAnchor]
 ```
+
+每个 RenderBlock 用 `semantic_node_ids` 保留语义身份；实际目标页坐标由编译后的 RenderAnchor / MappingBundle 记录，而不是内嵌在 RenderDocument。规范契约见 [`schemas/render-document/schema.json`](../../schemas/render-document/schema.json)。
 
 RenderBlock：
 

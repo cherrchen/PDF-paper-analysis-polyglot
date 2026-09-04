@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 import threading
 import time
@@ -47,3 +48,11 @@ def new_id() -> str:
             value = _STATE.last + 1
         _STATE.last = value
     return _encode(value)
+
+
+def stable_uuid(namespace: str, kind: str, *parts: object) -> str:
+    """Derive a deterministic UUID-shaped opaque id from stable inputs."""
+    digest = hashlib.sha256(
+        "\x1f".join((namespace, kind, *(str(part) for part in parts))).encode()
+    ).hexdigest()
+    return f"{digest[0:8]}-{digest[8:12]}-{digest[12:16]}-{digest[16:20]}-{digest[20:32]}"

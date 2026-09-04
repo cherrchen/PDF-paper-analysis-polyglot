@@ -1,10 +1,11 @@
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 """End-to-end Walking Skeleton pipeline orchestration (M2 Exit Gate).
 
-PDF -> Physical -> Layout -> Semantic -> Dummy Translation -> LaTeX ->
-Target PDF -> RenderAnchor MappingBundle.
+PDF -> Physical -> Layout -> Semantic + Translation -> RenderDocument ->
+LaTeX -> Target PDF -> RenderAnchor MappingBundle.
 
 Run as a module: ``python -m pdf_pipeline run <input.pdf> <outdir>``.
-Outputs five canonical JSON documents plus the compiled target PDF and
+Outputs six canonical JSON documents plus the compiled target PDF and
 page previews for the viewer.
 """
 
@@ -28,6 +29,7 @@ from pdf_pipeline.render_anchor import (
     build_mapping_bundle,
     recover_render_anchors,
 )
+from pdf_pipeline.render_composer import compose_render_document
 from pdf_pipeline.render_latex import (
     compile_latex,
     project_to_latex,
@@ -36,7 +38,7 @@ from pdf_pipeline.render_latex import (
 from pdf_pipeline.semantic import recover_semantic_document
 
 if TYPE_CHECKING:
-    from document_model.generated import (
+    from document_model.generated.schema_models import (
         LayoutDocument,
         PhysicalDocument,
         SemanticDocument,
@@ -62,7 +64,11 @@ def build_source_anchors(
     physical: PhysicalDocument,
     layout: LayoutDocument,
     semantic: SemanticDocument,
-) -> tuple[list, list, list]:
+) -> tuple[
+    list[generated.PhysicalLayoutBinding],
+    list[generated.SourceAnchor],
+    list[generated.SourceSemanticBinding],
+]:
     """PhysicalLayoutBindings + SourceAnchors + SourceSemanticBindings.
 
     Layout regions carry the physical object ids; each semantic node records
@@ -114,16 +120,35 @@ def _write_viewer_assets(
     source_pdf: bytes,
     target_pdf: Path,
     mapping: generated.MappingBundle,
-    render_anchors: list,
+    render_anchors: list[generated.RenderAnchor],
     physical: PhysicalDocument,
+    layout: LayoutDocument,
+    semantic: SemanticDocument,
 ) -> None:
     """Emit the static fetch targets for the web viewer (Phase 2.7)."""
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "source.pdf").write_bytes(source_pdf)
     (data_dir / "target.pdf").write_bytes(target_pdf.read_bytes())
+    page_index_by_id = {page.id: page.index for page in physical.pages}
+    source_regions = [
+        {
+            "id": region.id,
+            "pageIndex": page_index_by_id[region.pageId],
+            "geometry": dump_document(region.geometry),
+        }
+        for region in layout.regions
+    ]
     (data_dir / "mapping.json").write_text(
         json.dumps(
-            {**dump_document(mapping), "renderAnchors": [dump_document(a) for a in render_anchors]},
+            {
+                "viewerDataVersion": 1,
+                **dump_document(mapping),
+                "semanticNodes": [
+                    {"id": node.id, "kind": node.kind} for node in semantic.nodes[1:]
+                ],
+                "sourceRegions": source_regions,
+                "renderAnchors": [dump_document(a) for a in render_anchors],
+            },
             indent=2,
             ensure_ascii=False,
         )
@@ -133,19 +158,25 @@ def _write_viewer_assets(
     source_page = physical.pages[0].geometry
     target_doc = pdfium.PdfDocument(str(target_pdf))
     try:
+        target_page_count = len(target_doc)
         target_width, target_height = target_doc[0].get_size()
     finally:
         target_doc.close()
     meta = {
         "sourcePageCount": len(physical.pages),
-        "targetPageCount": len(physical.pages),
+        "targetPageCount": target_page_count,
         "sourcePageSize": {"widthPt": source_page.widthPt, "heightPt": source_page.heightPt},
         "targetPageSize": {"widthPt": target_width, "heightPt": target_height},
     }
     (data_dir / "viewer-meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
 
 
-def run_pipeline(source_pdf: Path, out_dir: Path) -> dict[str, Path]:
+def run_pipeline(
+    source_pdf: Path,
+    out_dir: Path,
+    *,
+    viewer_data_dir: Path | None = None,
+) -> dict[str, Path]:
     """Run the full Walking Skeleton pipeline; return produced artifact paths."""
     data = source_pdf.read_bytes()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -153,9 +184,10 @@ def run_pipeline(source_pdf: Path, out_dir: Path) -> dict[str, Path]:
     physical = extract_physical_document(data)
     layout = recover_layout_document(physical)
     semantic = recover_semantic_document(layout, region_texts_from(physical, layout))
-    translated = translate_document(semantic)
+    translation = translate_document(semantic)
+    render = compose_render_document(semantic, translation)
 
-    tex = project_to_latex(translated)
+    tex = project_to_latex(render)
     target_pdf = compile_latex(tex, out_dir / "build")
 
     render_anchors = recover_render_anchors(target_pdf, semantic)
@@ -166,14 +198,15 @@ def run_pipeline(source_pdf: Path, out_dir: Path) -> dict[str, Path]:
         source_semantic_bindings=ssb,
         physical_layout_bindings=plb,
         render_anchors=render_anchors,
-        render_document_id=render_target_document_id(semantic),
+        render_document_id=render_target_document_id(render),
     )
 
     outputs = {
         "physical.json": physical,
         "layout.json": layout,
         "semantic.json": semantic,
-        "translated.json": translated,
+        "translation.json": translation,
+        "render.json": render,
         "mapping.json": mapping,
     }
     paths: dict[str, Path] = {}
@@ -187,6 +220,8 @@ def run_pipeline(source_pdf: Path, out_dir: Path) -> dict[str, Path]:
         "physical": dump_document(physical),
         "layout": dump_document(layout),
         "semantic": dump_document(semantic),
+        "translation": dump_document(translation),
+        "render": dump_document(render),
         "mappings": dump_document(mapping),
     }
     issues = validate_bundle_references(bundle)
@@ -195,7 +230,7 @@ def run_pipeline(source_pdf: Path, out_dir: Path) -> dict[str, Path]:
 
     paths["target.pdf"] = target_pdf
 
-    data_dir = out_dir / "viewer" / "data"
+    data_dir = viewer_data_dir or out_dir / "viewer" / "data"
     _write_viewer_assets(
         data_dir=data_dir,
         source_pdf=data,
@@ -203,6 +238,8 @@ def run_pipeline(source_pdf: Path, out_dir: Path) -> dict[str, Path]:
         mapping=mapping,
         render_anchors=render_anchors,
         physical=physical,
+        layout=layout,
+        semantic=semantic,
     )
     paths["viewer-data"] = data_dir
     return paths
@@ -212,8 +249,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="M2 Walking Skeleton pipeline")
     parser.add_argument("input", type=Path, help="source PDF")
     parser.add_argument("outdir", type=Path, help="output directory")
+    parser.add_argument(
+        "--viewer-data-dir",
+        type=Path,
+        help="optional Vite public/data output directory for viewer assets",
+    )
     args = parser.parse_args(argv)
-    paths = run_pipeline(args.input, args.outdir)
+    paths = run_pipeline(args.input, args.outdir, viewer_data_dir=args.viewer_data_dir)
     sys.stdout.write(json.dumps({name: str(path) for name, path in paths.items()}, indent=2) + "\n")
     return 0
 

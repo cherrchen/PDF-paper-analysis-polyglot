@@ -36,3 +36,9 @@ jobs:
         run: |
           just latex-check
           just latex-smoke
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Viewer end-to-end
+        run: just test-e2e

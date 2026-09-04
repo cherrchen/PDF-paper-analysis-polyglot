@@ -38,7 +38,7 @@
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] Smoke Fixture",
+        "text": "Smoke Fixture",
         "marks": []
       },
       "attributes": {
@@ -56,7 +56,7 @@
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] Repository fixture",
+        "text": "Repository fixture",
         "marks": []
       },
       "attributes": {
@@ -74,7 +74,7 @@
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] 2026-09-03",
+        "text": "2026-09-03",
         "marks": []
       },
       "attributes": {},
@@ -90,7 +90,7 @@
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] This fixture is the minimum LuaLaTeX regression document.",
+        "text": "This fixture is the minimum LuaLaTeX regression document.",
         "marks": []
       },
       "attributes": {
@@ -108,7 +108,7 @@
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] Unicode: Café, naïve, Zürich.",
+        "text": "Unicode: Café, naïve, Zürich.",
         "marks": []
       },
       "attributes": {
@@ -122,27 +122,11 @@
     },
     {
       "id": "ac286ac3-8cfd-8ce7-ca2f-65060ea1402e",
-      "kind": "PARAGRAPH",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
-      "children": [],
-      "content": {
-        "text": "[TRANSLATED] Math: ",
-        "marks": []
-      },
-      "attributes": {},
-      "confidence": {
-        "score": 0.8,
-        "reason": "layout text region"
-      },
-      "provenanceIds": []
-    },
-    {
-      "id": "98614979-0e2a-8cb3-7728-2cf1a8115b69",
       "kind": "HEADING",
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] E  =  mc2  and  R \r\n0 1",
+        "text": "E  =  mc2  and  R \r\n0 1",
         "marks": []
       },
       "attributes": {
@@ -155,12 +139,28 @@
       "provenanceIds": []
     },
     {
+      "id": "98614979-0e2a-8cb3-7728-2cf1a8115b69",
+      "kind": "PARAGRAPH",
+      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "children": [],
+      "content": {
+        "text": "2  dx .",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.8,
+        "reason": "layout text region"
+      },
+      "provenanceIds": []
+    },
+    {
       "id": "23c08a89-9a97-bfcb-4831-82602cf7881c",
       "kind": "PARAGRAPH",
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] R \r\n0",
+        "text": "Math: ",
         "marks": []
       },
       "attributes": {},
@@ -176,7 +176,7 @@
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] x",
+        "text": "x",
         "marks": []
       },
       "attributes": {},
@@ -192,7 +192,7 @@
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] 2  dx .",
+        "text": "R \r\n0",
         "marks": []
       },
       "attributes": {},
@@ -208,7 +208,7 @@
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "[TRANSLATED] 1",
+        "text": "1",
         "marks": []
       },
       "attributes": {},

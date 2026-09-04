@@ -885,6 +885,95 @@ NodeContent = RichText | FigureContent | TableContent | EquationContent
 # Alias of RichText. Kept so generated bindings remain discoverable under the implementation name used during M1 drafting.
 TextNodeContent = RichText
 
+# --- translation-layer ---------------------------------------
+
+
+class TranslationEntry(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset({"confidence"})
+    semanticNodeId: NodeID
+    content: NodeContent
+    confidence: Confidence | None = Field(default=None)
+    provenanceIds: list[ProvenanceID]
+
+
+class TranslationLayer(_CanonicalModel):
+    # Locale-specific generated content keyed by stable SemanticNode identity. Source SemanticDocument content remains unchanged.
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset(
+        {"issues", "provenance", "sourceLocale"}
+    )
+    schemaVersion: Literal["0.1.0"]
+    id: DocumentID
+    semanticDocumentId: DocumentID
+    sourceLocale: str | None = Field(default=None)
+    targetLocale: str = Field(min_length=1)
+    entries: list[TranslationEntry]
+    provenanceIds: list[ProvenanceID]
+    provenance: ProvenanceStore | None = Field(default=None)
+    issues: IssueStore | None = Field(default=None)
+
+
+# --- render-document -----------------------------------------
+
+
+class RenderFigureBlock(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset({"caption"})
+    renderKind: Literal["FIGURE"]
+    id: DocumentID
+    semanticNodeIds: list[NodeID] = Field(min_length=1)
+    figure: FigureContent
+    caption: RichText | None = Field(default=None)
+
+
+class RenderHeadingBlock(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    renderKind: Literal["HEADING"]
+    id: DocumentID
+    semanticNodeIds: list[NodeID] = Field(min_length=1)
+    content: RichText
+    level: JsonInteger = Field(ge=1, le=3)
+
+
+class RenderParagraphBlock(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    renderKind: Literal["PARAGRAPH"]
+    id: DocumentID
+    semanticNodeIds: list[NodeID] = Field(min_length=1)
+    content: RichText
+
+
+class RenderPolicy(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    floatFigures: bool
+
+
+class RenderProfile(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    name: str = Field(min_length=1)
+
+
+class RenderDocument(_CanonicalModel):
+    # Generated layout IR consumed by rendering backends. It combines semantic identity, a translation layer, profile, and policy without becoming semantic truth.
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset(
+        {"issues", "provenance", "translationLayerId"}
+    )
+    schemaVersion: Literal["0.1.0"]
+    id: DocumentID
+    semanticDocumentId: DocumentID
+    translationLayerId: DocumentID | None = Field(default=None)
+    profile: RenderProfile
+    policy: RenderPolicy
+    blocks: list[RenderBlock]
+    provenanceIds: list[ProvenanceID]
+    provenance: ProvenanceStore | None = Field(default=None)
+    issues: IssueStore | None = Field(default=None)
+
+
+RenderBlock = RenderHeadingBlock | RenderParagraphBlock | RenderFigureBlock
+
 # --- mapping -------------------------------------------------
 
 

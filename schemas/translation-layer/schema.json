@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-paper-analysis.local/schemas/translation-layer/v0.json",
+  "title": "TranslationLayer",
+  "description": "Locale-specific generated content keyed by stable SemanticNode identity. Source SemanticDocument content remains unchanged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "semanticDocumentId",
+    "targetLocale",
+    "entries",
+    "provenanceIds"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.1.0" },
+    "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+    "semanticDocumentId": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+    "sourceLocale": { "type": "string" },
+    "targetLocale": { "type": "string", "minLength": 1 },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/TranslationEntry" }
+    },
+    "provenanceIds": {
+      "type": "array",
+      "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
+    },
+    "provenance": { "$ref": "../common/schema.json#/$defs/ProvenanceStore" },
+    "issues": { "$ref": "../common/schema.json#/$defs/IssueStore" }
+  },
+  "$defs": {
+    "TranslationEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semanticNodeId", "content", "provenanceIds"],
+      "properties": {
+        "semanticNodeId": { "$ref": "../common/schema.json#/$defs/NodeID" },
+        "content": { "$ref": "../semantic-document/schema.json#/$defs/NodeContent" },
+        "confidence": { "$ref": "../common/schema.json#/$defs/Confidence" },
+        "provenanceIds": {
+          "type": "array",
+          "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
+        }
+      }
+    }
+  }
+}

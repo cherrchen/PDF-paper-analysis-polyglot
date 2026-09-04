@@ -12,8 +12,8 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 
 ## Current Progress
 
-**Last updated:** 2026-09-04
-**Current position:** M2 complete; entering M3 (Layout Recovery Engine)
+**Last updated:** 2026-09-05
+**Current position:** M2 review repairs are complete and the exit gate has passed again; M3 (Layout Recovery Engine) is next.
 
 README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline.
 
@@ -23,7 +23,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | --- | --- | --- |
 | M0 Engineering Foundation | Done | Phases 0.1–0.3 complete; Tier 1 corpus established |
 | M1 Core Document Contracts | Done | Six schemas at `0.1.0`; generated bindings + cross-language roundtrip |
-| M2 Walking Skeleton | Done | PDFium→Physical→Layout→Semantic→Translation→LaTeX→Target PDF→bidirectional navigation holds end to end |
+| M2 Walking Skeleton | Done | All 11 Tier-1 fixtures pass end to end; independent Translation/Render IR, rotated coordinates, and the bidirectional viewer passed renewed acceptance |
 | M3 Layout Recovery Engine | Not started | — |
 | M4 Semantic Recovery Engine | Not started | — |
 | M5 Translation & Rendering | Not started | — |
@@ -59,19 +59,19 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| 2.1 Minimal PDF Backend | Done | `pdf_pipeline.physical` (pypdfium2); 3 real-paper validation + determinism tests |
-| 2.2 Minimal Layout | Done | `pdf_pipeline.layout`; two-column/single-column detection on real papers + region/flow tests |
-| 2.3 Minimal Semantic Recovery | Done | `pdf_pipeline.semantic`; four node kinds + CAPTION_OF; layer separation and bundle checks clean |
-| 2.4 Dummy Translation | Done | `paper_llm.translation`; identity preservation tests |
-| 2.5 Minimal LaTeX Renderer | Done | `templates/latex/generic-academic.tex` + `pdf_pipeline.render_latex`; compile tests |
-| 2.6 Minimal RenderAnchor | Done | `pdf_pipeline.render_anchor`; hypertarget recovery + MappingBundle validation |
-| 2.7 Minimal Viewer | Done | `apps/web` + pdfjs-dist dual canvases; Playwright mapping/loading e2e |
+| 2.1 Minimal PDF Backend | Done | PDFium extraction, determinism, and 0/90/180/270° page-space forward/inverse tests pass |
+| 2.2 Minimal Layout | Done | Two/single-column detection; reading flow covers every text/figure region in geometry order |
+| 2.3 Minimal Semantic Recovery | Done | Four node kinds and CAPTION_OF; complete-flow, layer-separation, and bundle checks pass |
+| 2.4 Dummy Translation | Done | Independent TranslationLayer preserves SemanticNode identity without rewriting SemanticDocument |
+| 2.5 Minimal LaTeX Renderer | Done | RenderComposer/RenderDocument, control cleanup, and one-float figure-caption projection pass |
+| 2.6 Minimal RenderAnchor | Done | Named destinations recover to hittable target regions; cross-layer references validate |
+| 2.7 Minimal Viewer | Done | Source↔target click, highlight, and page switching; four Playwright E2E tests pass and run in CI |
 
-**M2 exit gate:** Met (see [`.agents/notes/implemented/architecture/2026-09-04-m2-walking-skeleton.en.md`](../../.agents/notes/implemented/architecture/2026-09-04-m2-walking-skeleton.en.md))
+**M2 exit gate:** Met again. See the [M2 review repair note](../../.agents/notes/implemented/bug-fix/2026-09-05-m2-review-repairs.en.md) for the decision and validation results.
 
 ### Recommended next steps
 
-1. Enter M3: Layout Recovery Engine — real band/column segmentation, MinerU evidence ingestion, caption/heading heuristic upgrades
+1. Enter M3: Layout Recovery Engine—real band/column segmentation, MinerU evidence ingestion, and caption/heading heuristic upgrades.
 
 ### Maintenance
 

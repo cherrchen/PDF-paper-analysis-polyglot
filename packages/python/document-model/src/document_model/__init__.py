@@ -8,7 +8,7 @@ opaque ID generation, serialization helpers, and cross-layer validators.
 
 from __future__ import annotations
 
-from document_model.ids import SCHEMA_VERSION, new_id
+from document_model.ids import SCHEMA_VERSION, new_id, stable_uuid
 from document_model.serialize import dump_document, load_document
 from document_model.validators import (
     validate_bundle_references,
@@ -20,6 +20,7 @@ __all__ = [
     "dump_document",
     "load_document",
     "new_id",
+    "stable_uuid",
     "validate_bundle_references",
     "validate_layer_separation",
 ]

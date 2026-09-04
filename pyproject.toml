@@ -126,28 +126,6 @@ reportUnknownMemberType = false
 reportUnknownVariableType = false
 reportUnknownArgumentType = false
 
-# pypdfium2 ships no type stubs; strict-Unknown rules would flood every
-# pipeline module that touches it. Relax to basic-mode Unknown rules there.
-[[tool.pyright.executionEnvironments]]
-root = "packages/python/pdf-pipeline"
-reportUnknownMemberType = false
-reportUnknownVariableType = false
-reportUnknownArgumentType = false
-reportUnknownParameterType = false
-reportMissingTypeArgument = false
-reportUnknownLambdaType = false
-reportGeneralTypeIssues = false
-reportAttributeAccessIssue = false
-reportUnusedFunction = false
-
-[[tool.pyright.executionEnvironments]]
-root = "packages/python/llm"
-reportUnknownMemberType = false
-reportUnknownVariableType = false
-reportUnknownArgumentType = false
-reportUnknownParameterType = false
-reportMissingTypeArgument = false
-reportUnknownLambdaType = false
 
 [tool.pytest.ini_options]
 minversion = "8.0"

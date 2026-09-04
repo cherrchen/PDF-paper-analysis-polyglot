@@ -7,7 +7,7 @@ node recovery with layer separation and bundle reference integrity.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from document_model import (
@@ -15,12 +15,17 @@ from document_model import (
     validate_bundle_references,
     validate_layer_separation,
 )
+from document_model.generated import schema_models as generated
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
 from pdf_pipeline.semantic import recover_semantic_document
 
 if TYPE_CHECKING:
-    from document_model.generated import LayoutDocument, PhysicalDocument
+    from document_model.generated.schema_models import (
+        LayoutDocument,
+        PhysicalDocument,
+        SemanticDocument,
+    )
 
 FIXTURE_DIR = Path(__file__).resolve().parents[4] / "tests/fixtures/source/latex/build"
 
@@ -45,7 +50,7 @@ def _region_texts(physical: PhysicalDocument, layout: LayoutDocument) -> dict[st
     return texts
 
 
-def _recover(name: str) -> tuple:
+def _recover(name: str) -> tuple[PhysicalDocument, LayoutDocument, SemanticDocument]:
     physical = extract_physical_document(_fixture(name))
     layout = recover_layout_document(physical)
     semantic = recover_semantic_document(layout, _region_texts(physical, layout))
@@ -66,6 +71,7 @@ def test_figure_caption_detected_and_related() -> None:
     assert kinds.count("FIGURE") == 1
     assert kinds.count("FIGURE_CAPTION") == 1
     caption = next(node for node in semantic.nodes if node.kind == "FIGURE_CAPTION")
+    assert isinstance(caption.content, generated.RichText)
     assert "Synthetic raster figure" in caption.content.text
     relation_types = {relation.type for relation in semantic.relations}
     assert "CAPTION_OF" in relation_types
@@ -83,7 +89,7 @@ def test_semantic_carries_no_geometry() -> None:
 
 def test_bundle_references_resolve() -> None:
     physical, layout, semantic = _recover("smoke")
-    bundle = {
+    bundle: dict[str, Any] = {
         "physical": dump_document(physical),
         "layout": dump_document(layout),
         "semantic": dump_document(semantic),

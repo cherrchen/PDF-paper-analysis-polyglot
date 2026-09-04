@@ -4,7 +4,7 @@
 
 面向 PDF 论文分析、文档理解、翻译、结构重建与 PDF 渲染的多语言单仓。
 
-**状态：** 工程脚手架 + 核心文档契约（M1：六套 schema、生成绑定、跨语言 roundtrip）。产品流水线尚未实现。
+**状态：** M1 核心契约与 M2 Walking Skeleton 已完成，端到端管线及双向 Viewer 已通过重新验收。当前进度以[开发路线图](docs/development/roadmap.md)为准。
 
 ## 渲染
 
@@ -12,15 +12,21 @@
 
 ```text
 SemanticDocument
+      +
+TranslationLayer
       ↓
-LaTeX projection
+RenderComposer
+      ↓
+RenderDocument
+      ↓
+LaTeX Backend
       ↓
 LuaLaTeX
       ↓
 PDF
 ```
 
-LaTeX 是渲染表示。SemanticDocument 仍是语义真源。
+LaTeX 是渲染表示。SemanticDocument 仍是语义真源，翻译内容和排版决策分别属于 TranslationLayer 与 RenderDocument。
 
 ## 仓库地图
 

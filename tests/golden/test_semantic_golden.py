@@ -2,8 +2,8 @@
 
 Expected canonical SemanticDocument for the ``smoke`` fixture lives at
 ``tests/golden/smoke/semantic.json``. Comparison normalizes nothing that is
-not already deterministic: extraction, recovery, and translation all derive
-IDs and content from source bytes, so byte equality after JSON parsing is
+not already deterministic: extraction and recovery derive IDs and content
+from source bytes, so byte equality after JSON parsing is
 the contract. Never regenerate golden output merely to make this pass
 (docs/testing/golden.md).
 """
@@ -16,14 +16,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 from document_model import dump_document
-from paper_llm import translate_document
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
 from pdf_pipeline.pipeline import region_texts_from
 from pdf_pipeline.semantic import recover_semantic_document
 
 if TYPE_CHECKING:
-    from document_model.generated import SemanticDocument
+    from document_model.generated.schema_models import SemanticDocument
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "tests/fixtures/source/latex/build"
@@ -33,8 +32,7 @@ GOLDEN = ROOT / "tests/golden"
 def _expected_semantic(fixture: str) -> SemanticDocument:
     physical = extract_physical_document((FIXTURES / f"{fixture}.pdf").read_bytes())
     layout = recover_layout_document(physical)
-    semantic = recover_semantic_document(layout, region_texts_from(physical, layout))
-    return translate_document(semantic)
+    return recover_semantic_document(layout, region_texts_from(physical, layout))
 
 
 @pytest.mark.golden

@@ -4,7 +4,7 @@
 
 Polyglot monorepo for PDF paper analysis, document understanding, translation, structure reconstruction, and PDF rendering.
 
-**Status:** engineering bootstrap plus core document contracts (M1: six schemas, generated bindings, cross-language roundtrip). Product pipelines are not implemented yet.
+**Status:** M1 core contracts and the M2 Walking Skeleton are complete. The end-to-end pipeline and bidirectional viewer have passed renewed acceptance. See the [development roadmap](docs/development/roadmap.en.md) for current progress.
 
 ## Rendering
 
@@ -12,15 +12,21 @@ The current rendering backend is **LaTeX / LuaLaTeX**:
 
 ```text
 SemanticDocument
+      +
+TranslationLayer
       ↓
-LaTeX projection
+RenderComposer
+      ↓
+RenderDocument
+      ↓
+LaTeX Backend
       ↓
 LuaLaTeX
       ↓
 PDF
 ```
 
-LaTeX is a rendering representation. SemanticDocument remains the canonical semantic model.
+LaTeX is a rendering representation. SemanticDocument remains the canonical semantic model; translated content and layout decisions belong to TranslationLayer and RenderDocument respectively.
 
 ## Repository map
 

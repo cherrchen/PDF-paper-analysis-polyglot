@@ -24,6 +24,8 @@ CASES = [
     ("evidence", "mock-providers.valid.json"),
     ("layout-document", "two-column-spanning-figure.valid.json"),
     ("semantic-document", "paper-structure.valid.json"),
+    ("translation-layer", "dummy-zh.valid.json"),
+    ("render-document", "generic-academic.valid.json"),
     ("mapping", "three-binding-scenarios.valid.json"),
 ]
 

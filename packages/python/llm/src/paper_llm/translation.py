@@ -1,16 +1,15 @@
 """Phase 2.4 dummy translation layer.
 
-Minimal TranslationLayer implementation: prefixes every text node with
-``[TRANSLATED]``. Verifies that SemanticNode identity is preserved —
-translation rewrites content, never IDs.
+Minimal TranslationLayer implementation: prefixes every translatable entry
+with ``[TRANSLATED]`` while leaving SemanticDocument untouched.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol
 
-if TYPE_CHECKING:
-    from document_model.generated import schema_models as generated
+from document_model import stable_uuid
+from document_model.generated import schema_models as generated
 
 TRANSLATION_MARKER = "[TRANSLATED]"
 
@@ -34,19 +33,32 @@ class DummyTranslationProvider:
 def translate_document(
     semantic: generated.SemanticDocument,
     provider: TranslationProvider | None = None,
-) -> generated.SemanticDocument:
-    """Return a translated copy of the semantic document.
+) -> generated.TranslationLayer:
+    """Build an independent dummy TranslationLayer for ``semantic``.
 
-    Identity guarantee: node IDs, relations, and tree shape are untouched;
-    only the ``text`` of text-bearing nodes changes.
+    SemanticDocument remains untouched. Entries reference stable node IDs and
+    contain only locale-specific generated content.
     """
     provider = provider or DummyTranslationProvider()
-    nodes: list[generated.SemanticNode] = []
+    entries: list[generated.TranslationEntry] = []
     for node in semantic.nodes:
         text = getattr(node.content, "text", None)
         if node.kind in TEXT_NODE_KINDS and isinstance(text, str):
             content = node.content.model_copy(update={"text": provider.translate(text)})
-            nodes.append(node.model_copy(update={"content": content}))
-        else:
-            nodes.append(node)
-    return semantic.model_copy(update={"nodes": nodes})
+            entries.append(
+                generated.TranslationEntry(
+                    semanticNodeId=node.id,
+                    content=content,
+                    confidence=1.0,
+                    provenanceIds=[],
+                )
+            )
+    target_locale = "und-x-dummy"
+    return generated.TranslationLayer(
+        schemaVersion="0.1.0",
+        id=stable_uuid(semantic.id, "translation-layer", target_locale),
+        semanticDocumentId=semantic.id,
+        targetLocale=target_locale,
+        entries=entries,
+        provenanceIds=[],
+    )

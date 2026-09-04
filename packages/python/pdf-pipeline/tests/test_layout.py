@@ -6,10 +6,13 @@ regions, basic two-column detection, and a valid reading flow graph.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import cast
 
 import pytest
 from document_model import dump_document, load_document, validate_layer_separation
+from document_model.generated import schema_models as generated
 from pdf_pipeline.layout import recover_layout_document, split_columns
 from pdf_pipeline.physical import extract_physical_document
 
@@ -48,7 +51,7 @@ def test_heading_like_detected_on_smoke_title() -> None:
 
 def test_two_column_detection_real_paper() -> None:
     physical = extract_physical_document(_fixture("arxiv-1810.04805", EXTERNAL_DIR))
-    spans_by_page: dict[str, list] = {}
+    spans_by_page: dict[str, list[generated.TextSpan]] = {}
     for obj in physical.objects:
         if obj.objectType == "textSpan":
             spans_by_page.setdefault(obj.pageId, []).append(obj)
@@ -60,7 +63,7 @@ def test_two_column_detection_real_paper() -> None:
 
 def test_single_column_detection_real_paper() -> None:
     physical = extract_physical_document(_fixture("arxiv-1706.03762", EXTERNAL_DIR))
-    spans_by_page: dict[str, list] = {}
+    spans_by_page: dict[str, list[generated.TextSpan]] = {}
     for obj in physical.objects:
         if obj.objectType == "textSpan":
             spans_by_page.setdefault(obj.pageId, []).append(obj)
@@ -72,7 +75,8 @@ def test_single_column_detection_real_paper() -> None:
 def test_reading_flow_is_linear_and_covers_all_regions() -> None:
     physical = extract_physical_document(_fixture("smoke"))
     layout = recover_layout_document(physical)
-    assert layout.primaryFlow == [region.id for region in layout.regions]
+    assert set(layout.primaryFlow) == {region.id for region in layout.regions}
+    assert layout.readingFlow.nodes == layout.primaryFlow
     assert len(layout.readingFlow.edges) == len(layout.regions) - 1
 
 
@@ -83,3 +87,27 @@ def test_regions_reference_physical_objects() -> None:
     for region in layout.regions:
         assert region.physicalObjectIds
         assert set(region.physicalObjectIds) <= physical_ids
+
+
+def test_reading_flow_includes_figures_in_geometry_order() -> None:
+    fixture = Path(__file__).resolve().parents[4] / (
+        "schemas/fixtures/physical-document/two-page-two-column.valid.json"
+    )
+    physical = cast(
+        "generated.PhysicalDocument",
+        load_document("physical-document", json.loads(fixture.read_text())),
+    )
+    layout = recover_layout_document(physical)
+
+    assert set(layout.primaryFlow) == {region.id for region in layout.regions}
+    first_page = layout.pages[0]
+    first_page_regions = {
+        region.id: region for region in layout.regions if region.pageId == first_page.pageId
+    }
+    assert any(first_page_regions[region_id].kind == "FIGURE" for region_id in first_page.regionIds)
+
+    def region_key(region: generated.LayoutRegion) -> tuple[float, float, str]:
+        assert isinstance(region.geometry, generated.Rect)
+        return (region.geometry.y, region.geometry.x, region.id)
+
+    assert first_page.regionIds[0] == min(first_page_regions.values(), key=region_key).id

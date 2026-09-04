@@ -12,8 +12,8 @@
 
 ## 当前进度追踪
 
-**最后更新：** 2026-09-04
-**当前位置：** M2 已完成；进入 M3（Layout Recovery Engine）
+**最后更新：** 2026-09-05
+**当前位置：** M2 Review 修复完成并重新通过 Exit Gate；下一阶段为 M3（Layout Recovery Engine）。
 
 README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线。
 
@@ -23,7 +23,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | --- | --- | --- |
 | M0 Engineering Foundation | 已完成 | 0.1–0.3 全部完成；Tier 1 语料已建立 |
 | M1 Core Document Contracts | 已完成 | 六套 schema `0.1.0`；生成绑定 + 跨语言 roundtrip |
-| M2 Walking Skeleton | 已完成 | PDFium→Physical→Layout→Semantic→Translation→LaTeX→Target PDF→双向导航全链成立 |
+| M2 Walking Skeleton | 已完成 | 11 个 Tier-1 fixture 全链通过；独立 Translation/Render IR、旋转坐标与双向 Viewer 已重新验收 |
 | M3 Layout Recovery Engine | 未开始 | — |
 | M4 Semantic Recovery Engine | 未开始 | — |
 | M5 Translation & Rendering | 未开始 | — |
@@ -59,19 +59,19 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
-| 2.1 Minimal PDF Backend | 已完成 | `pdf_pipeline.physical`（pypdfium2）；3 篇真实论文验证 + 确定性测试 |
-| 2.2 Minimal Layout | 已完成 | `pdf_pipeline.layout`；双栏/单栏真实论文检测 + region/flow 测试 |
-| 2.3 Minimal Semantic Recovery | 已完成 | `pdf_pipeline.semantic`；四类节点 + CAPTION_OF；层分离与 bundle 校验全绿 |
-| 2.4 Dummy Translation | 已完成 | `paper_llm.translation`；身份保持测试 |
-| 2.5 Minimal LaTeX Renderer | 已完成 | `templates/latex/generic-academic.tex` + `pdf_pipeline.render_latex`；编译测试 |
-| 2.6 Minimal RenderAnchor | 已完成 | `pdf_pipeline.render_anchor`；hypertarget 恢复 + MappingBundle 校验 |
-| 2.7 Minimal Viewer | 已完成 | `apps/web` + pdfjs-dist 双画布；Playwright 映射/加载 e2e |
+| 2.1 Minimal PDF Backend | 已完成 | PDFium 提取、确定性以及 0/90/180/270° page-space 正反变换测试通过 |
+| 2.2 Minimal Layout | 已完成 | 双栏/单栏检测；reading flow 覆盖全部 text/figure region 并按几何顺序组织 |
+| 2.3 Minimal Semantic Recovery | 已完成 | 四类节点与 CAPTION_OF；完整 layout flow、层分离与 bundle 校验通过 |
+| 2.4 Dummy Translation | 已完成 | 独立 TranslationLayer 保留 SemanticNode 身份且不改写 SemanticDocument |
+| 2.5 Minimal LaTeX Renderer | 已完成 | RenderComposer/RenderDocument、控制字符清洗及 figure-caption 单 float 投影通过 |
+| 2.6 Minimal RenderAnchor | 已完成 | named destination 恢复为可命中 target region；跨层引用校验通过 |
+| 2.7 Minimal Viewer | 已完成 | source↔target 点击、高亮、跨页切换；4 个 Playwright E2E 通过并进入 CI |
 
-**M2 Exit Gate：** 已达成（见 [`.agents/notes/implemented/architecture/2026-09-04-m2-walking-skeleton.md`](../../.agents/notes/implemented/architecture/2026-09-04-m2-walking-skeleton.md)）
+**M2 Exit Gate：** 已重新达成；修复决策与验证结果见 [M2 Review 修复 Note](../../.agents/notes/implemented/bug-fix/2026-09-05-m2-review-repairs.md)。
 
 ### 建议下一步
 
-1. 进入 M3：Layout Recovery Engine——真实 band/column 分割、MinerU Evidence 接入、caption/heading 启发式升级
+1. 进入 M3：Layout Recovery Engine——真实 band/column 分割、MinerU Evidence 接入、caption/heading 启发式升级。
 
 ### 维护说明
 

@@ -4,6 +4,8 @@ Status: implemented
 
 [中文](./2026-09-04-m2-walking-skeleton.md) | [English](./2026-09-04-m2-walking-skeleton.en.md)
 
+> 2026-09-05 Review 曾重新打开 M2 Exit Gate，修复后已再次通过。本文保留最初落地内容与理由；修正后的契约与验证结果见 [M2 Review 修复 Note](../bug-fix/2026-09-05-m2-review-repairs.md)。
+
 ## 问题
 
 M1 冻结了五层 canonical schema，但全部功能代码仍是 stub：没有 PDF 摄入、没有恢复管线、没有渲染、没有查看器。M2（Walking Skeleton）要求建立第一条真正的端到端闭环——故意不追求解析质量，验证架构真实成立。

@@ -32,6 +32,8 @@ DOCUMENT_SCHEMAS = (
     "evidence",
     "layout-document",
     "semantic-document",
+    "translation-layer",
+    "render-document",
     "mapping",
 )
 
@@ -379,7 +381,7 @@ def generate_ts(schema_set: SchemaSet) -> str:
 class PydanticGenerator:
     """Generates a flat Pydantic module from the canonical schemas.
 
-    All ``$defs`` names are globally unique across the six schemas, so defs
+    All ``$defs`` names are globally unique across the canonical schemas, so defs
     are emitted at module level. oneOf unions become plain union aliases;
     tagged variants keep their Literal discriminator fields.
     """

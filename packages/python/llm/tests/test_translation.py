@@ -1,4 +1,4 @@
-"""Phase 2.4 dummy translation tests: identity preservation is the goal."""
+"""Phase 2.4 dummy TranslationLayer tests."""
 
 from __future__ import annotations
 
@@ -45,36 +45,42 @@ def test_dummy_prefixes_text() -> None:
 
 def test_translation_preserves_identity() -> None:
     semantic = _smoke_semantic()
-    translated = translate_document(semantic)
+    before = semantic.model_dump()
+    translation = translate_document(semantic)
 
-    original_ids = [node.id for node in semantic.nodes]
-    translated_ids = [node.id for node in translated.nodes]
-    assert original_ids == translated_ids
-    assert translated.rootId == semantic.rootId
-    assert translated.relations == semantic.relations
+    assert semantic.model_dump() == before
+    assert translation.semanticDocumentId == semantic.id
+    assert {entry.semanticNodeId for entry in translation.entries} <= {
+        node.id for node in semantic.nodes
+    }
+    assert translation == translate_document(semantic)
 
 
 def test_translation_rewrites_only_text_nodes() -> None:
     semantic = _smoke_semantic()
-    translated = translate_document(semantic)
+    translation = translate_document(semantic)
 
     original_by_id = {node.id: node for node in semantic.nodes}
-    for node in translated.nodes:
-        text = getattr(node.content, "text", None)
-        source_text = getattr(original_by_id[node.id].content, "text", None)
-        if node.kind in {"HEADING", "PARAGRAPH", "FIGURE_CAPTION"} and text and source_text:
-            assert text.startswith(TRANSLATION_MARKER)
-            # Source text is preserved after the marker.
-            assert text.endswith(source_text)
-        else:
-            assert node.content == original_by_id[node.id].content
+    expected_ids = {
+        node.id
+        for node in semantic.nodes
+        if node.kind in {"HEADING", "PARAGRAPH", "FIGURE_CAPTION"}
+        and isinstance(getattr(node.content, "text", None), str)
+    }
+    assert {entry.semanticNodeId for entry in translation.entries} == expected_ids
+    for entry in translation.entries:
+        text = getattr(entry.content, "text", None)
+        source_text = getattr(original_by_id[entry.semanticNodeId].content, "text", None)
+        assert isinstance(text, str)
+        assert isinstance(source_text, str)
+        assert text == f"{TRANSLATION_MARKER} {source_text}"
 
 
-def test_translated_document_still_validates() -> None:
+def test_translation_layer_validates() -> None:
     pytest.importorskip("document_model")
     from document_model import dump_document, load_document
 
     semantic = _smoke_semantic()
-    translated = translate_document(semantic)
-    data = load_document("semantic-document", dump_document(translated))
-    assert data.rootId == translated.rootId  # type: ignore[attr-defined]
+    translation = translate_document(semantic)
+    data = load_document("translation-layer", dump_document(translation))
+    assert data == translation

@@ -485,6 +485,8 @@ class _BundleDocuments:
     semantic: dict[str, Any]
     mappings: dict[str, Any]
     evidence: dict[str, Any] | None
+    translation: dict[str, Any] | None
+    render: dict[str, Any] | None
 
 
 @dataclass(frozen=True)
@@ -505,12 +507,20 @@ def _document(bundle: dict[str, Any], key: str) -> dict[str, Any]:
 def _bundle_documents(bundle: dict[str, Any]) -> _BundleDocuments:
     evidence_value = bundle.get("evidence")
     evidence = cast("dict[str, Any]", evidence_value) if isinstance(evidence_value, dict) else None
+    translation_value = bundle.get("translation")
+    translation = (
+        cast("dict[str, Any]", translation_value) if isinstance(translation_value, dict) else None
+    )
+    render_value = bundle.get("render")
+    render = cast("dict[str, Any]", render_value) if isinstance(render_value, dict) else None
     return _BundleDocuments(
         physical=_document(bundle, "physical"),
         layout=_document(bundle, "layout"),
         semantic=_document(bundle, "semantic"),
         mappings=_document(bundle, "mappings"),
         evidence=evidence,
+        translation=translation,
+        render=render,
     )
 
 
@@ -573,6 +583,55 @@ def _check_cross_document_references(documents: _BundleDocuments) -> list[str]:
         issues.append(
             f"semantic document: layoutDocumentId {semantic_layout_id} does not match {layout_id}"
         )
+    semantic_id = documents.semantic.get("id")
+    node_ids = set(_collect_ids(documents.semantic, "nodes"))
+    if documents.translation is not None:
+        translation_semantic_id = documents.translation.get("semanticDocumentId")
+        if semantic_id is not None and translation_semantic_id != semantic_id:
+            issues.append(
+                "translation layer: semanticDocumentId "
+                f"{translation_semantic_id} does not match {semantic_id}"
+            )
+        entry_node_ids = [
+            node_id
+            for entry in documents.translation.get("entries", [])
+            if isinstance(node_id := entry.get("semanticNodeId"), str)
+        ]
+        issues.extend(_duplicate_issues(entry_node_ids, "translation entries"))
+        issues.extend(
+            f"translation entry: unknown semantic node {node_id}"
+            for node_id in entry_node_ids
+            if node_id not in node_ids
+        )
+    if documents.render is not None:
+        render_semantic_id = documents.render.get("semanticDocumentId")
+        if semantic_id is not None and render_semantic_id != semantic_id:
+            issues.append(
+                "render document: semanticDocumentId "
+                f"{render_semantic_id} does not match {semantic_id}"
+            )
+        if documents.translation is not None:
+            translation_id = documents.translation.get("id")
+            render_translation_id = documents.render.get("translationLayerId")
+            if render_translation_id is not None and render_translation_id != translation_id:
+                issues.append(
+                    "render document: translationLayerId "
+                    f"{render_translation_id} does not match {translation_id}"
+                )
+        for block in documents.render.get("blocks", []):
+            issues.extend(
+                f"render block {block.get('id')}: unknown semantic node {node_id}"
+                for node_id in block.get("semanticNodeIds", [])
+                if node_id not in node_ids
+            )
+        render_id = documents.render.get("id")
+        for binding in documents.mappings.get("renderBindings", []):
+            binding_render_id = binding.get("renderDocumentId")
+            if render_id is not None and binding_render_id != render_id:
+                issues.append(
+                    f"render binding {binding.get('id')}: renderDocumentId "
+                    f"{binding_render_id} does not match {render_id}"
+                )
     return issues
 
 
@@ -587,6 +646,10 @@ def _check_bundle_stores(documents: _BundleDocuments) -> list[str]:
         issues.extend(_check_local_stores(document, label))
     if documents.evidence is not None:
         issues.extend(_check_local_stores(documents.evidence, "evidence bundle"))
+    if documents.translation is not None:
+        issues.extend(_check_local_stores(documents.translation, "translation layer"))
+    if documents.render is not None:
+        issues.extend(_check_local_stores(documents.render, "render document"))
     return issues
 
 
@@ -624,9 +687,9 @@ def validate_bundle_references(bundle: dict[str, Any]) -> list[str]:
     """Validate ID references across a DocumentBundle-shaped dict.
 
     ``bundle`` maps layer names to documents: ``physical``, ``layout``,
-    ``semantic``, ``mappings``, and optionally ``evidence``. References to
-    resources and render anchors are external to these M1 bundle documents
-    and therefore cannot be resolved here.
+    ``semantic``, ``mappings``, and optionally ``evidence``, ``translation``,
+    and ``render``. References to resources and render anchors are external
+    to these bundle documents and therefore cannot be resolved here.
     """
     documents = _bundle_documents(bundle)
     ids, issues = _build_bundle_ids(documents)

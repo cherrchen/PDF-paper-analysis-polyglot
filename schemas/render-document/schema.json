@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-paper-analysis.local/schemas/render-document/v0.json",
+  "title": "RenderDocument",
+  "description": "Generated layout IR consumed by rendering backends. It combines semantic identity, a translation layer, profile, and policy without becoming semantic truth.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "semanticDocumentId",
+    "profile",
+    "policy",
+    "blocks",
+    "provenanceIds"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.1.0" },
+    "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+    "semanticDocumentId": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+    "translationLayerId": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+    "profile": { "$ref": "#/$defs/RenderProfile" },
+    "policy": { "$ref": "#/$defs/RenderPolicy" },
+    "blocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/RenderBlock" }
+    },
+    "provenanceIds": {
+      "type": "array",
+      "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
+    },
+    "provenance": { "$ref": "../common/schema.json#/$defs/ProvenanceStore" },
+    "issues": { "$ref": "../common/schema.json#/$defs/IssueStore" }
+  },
+  "$defs": {
+    "RenderProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "RenderPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["floatFigures"],
+      "properties": {
+        "floatFigures": { "type": "boolean" }
+      }
+    },
+    "RenderHeadingBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["renderKind", "id", "semanticNodeIds", "content", "level"],
+      "properties": {
+        "renderKind": { "const": "HEADING" },
+        "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+        "semanticNodeIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../common/schema.json#/$defs/NodeID" }
+        },
+        "content": { "$ref": "../semantic-document/schema.json#/$defs/RichText" },
+        "level": { "type": "integer", "minimum": 1, "maximum": 3 }
+      }
+    },
+    "RenderParagraphBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["renderKind", "id", "semanticNodeIds", "content"],
+      "properties": {
+        "renderKind": { "const": "PARAGRAPH" },
+        "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+        "semanticNodeIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../common/schema.json#/$defs/NodeID" }
+        },
+        "content": { "$ref": "../semantic-document/schema.json#/$defs/RichText" }
+      }
+    },
+    "RenderFigureBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["renderKind", "id", "semanticNodeIds", "figure"],
+      "properties": {
+        "renderKind": { "const": "FIGURE" },
+        "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+        "semanticNodeIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../common/schema.json#/$defs/NodeID" }
+        },
+        "figure": { "$ref": "../semantic-document/schema.json#/$defs/FigureContent" },
+        "caption": { "$ref": "../semantic-document/schema.json#/$defs/RichText" }
+      }
+    },
+    "RenderBlock": {
+      "oneOf": [
+        { "$ref": "#/$defs/RenderHeadingBlock" },
+        { "$ref": "#/$defs/RenderParagraphBlock" },
+        { "$ref": "#/$defs/RenderFigureBlock" }
+      ]
+    }
+  }
+}

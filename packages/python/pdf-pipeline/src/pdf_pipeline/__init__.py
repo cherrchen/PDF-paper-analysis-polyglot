@@ -1,4 +1,4 @@
-"""PDF pipeline package. Product extraction logic is not implemented yet."""
+"""Reusable PDF ingestion, recovery, composition, rendering, and mapping pipeline."""
 
 from __future__ import annotations
 

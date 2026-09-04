@@ -103,7 +103,12 @@ test-integration:
 test-golden:
     {{ python }} scripts/pytest_category.py golden uv run pytest -m golden
 
-test-e2e:
+viewer-fixture:
+    {{ python }} scripts/latex_run.py compile smoke
+    {{ python }} -m pdf_pipeline tests/fixtures/source/latex/build/figure-caption.pdf apps/web/.viewer-fixture --viewer-data-dir apps/web/public/data
+
+test-e2e: viewer-fixture
+    pnpm --filter @paper/web build
     pnpm exec playwright test
 
 test-update-golden:

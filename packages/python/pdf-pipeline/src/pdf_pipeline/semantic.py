@@ -8,14 +8,14 @@ source positions live in the mapping layer (Phase 2.6).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.ids import stable_uuid
 
 if TYPE_CHECKING:
-    from document_model.generated import LayoutRegion
+    from document_model.generated.schema_models import LayoutRegion
 
 SEMANTIC_PRODUCER = "pdf-pipeline.semantic"
 
@@ -46,6 +46,8 @@ def _is_caption_below(text_region: LayoutRegion, figure_region: LayoutRegion) ->
     """Naive caption heuristic: short text region just below a figure."""
     caption = text_region.geometry
     figure = figure_region.geometry
+    if not isinstance(caption, generated.Rect) or not isinstance(figure, generated.Rect):
+        return False
     vertical_gap = caption.y - (figure.y + figure.height)
     if vertical_gap < 0 or vertical_gap > CAPTION_MAX_Y_DISTANCE_PT:
         return False
@@ -124,7 +126,7 @@ def recover_semantic_document(
         content: generated.RichText | generated.FigureContent,
         score: float,
         reason: str,
-        attributes: dict | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> str:
         node_id = stable_uuid(layout.id, "node", len(nodes))
         nodes.append(
@@ -146,7 +148,7 @@ def recover_semantic_document(
         region_id: str,
         score: float,
         reason: str,
-        attributes: dict | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> str:
         text = region_texts.get(region_id, "")
         return _make_node(

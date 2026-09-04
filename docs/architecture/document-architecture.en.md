@@ -875,9 +875,11 @@ Translation is not a new SemanticDocument.
 class TranslationLayer:
     id: TranslationLayerID
 
-    locale: str
+    semantic_document_id: SemanticDocumentID
+    source_locale: str | None
+    target_locale: str
 
-    entries: dict[NodeID, TranslationEntry]
+    entries: list[TranslationEntry]
 
 class TranslationEntry:
     semantic_node_id: NodeID
@@ -900,6 +902,8 @@ P18
 ```
 
 share stable semantic identity.
+
+`entries` is an array, but `semantic_node_id` must be unique within a TranslationLayer. Consumers index by that field and must not align entries with semantic nodes by array position. The canonical contract is [`schemas/translation-layer/schema.json`](../../schemas/translation-layer/schema.json).
 
 ## 25. Render Architecture
 
@@ -984,12 +988,16 @@ RenderProfile and RenderPolicy are not mixed.
 class RenderDocument:
     id: RenderDocumentID
 
-    profile_id: RenderProfileID
+    semantic_document_id: SemanticDocumentID
+    translation_layer_id: TranslationLayerID | None
+
+    profile: RenderProfile
+    policy: RenderPolicy
 
     blocks: list[RenderBlock]
-
-    anchors: dict[NodeID, RenderAnchor]
 ```
+
+Each RenderBlock preserves semantic identity through `semantic_node_ids`. Actual target-page geometry belongs to the post-compile RenderAnchor / MappingBundle, not inside RenderDocument. The canonical contract is [`schemas/render-document/schema.json`](../../schemas/render-document/schema.json).
 
 RenderBlock:
 

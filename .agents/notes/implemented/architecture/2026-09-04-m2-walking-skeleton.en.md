@@ -4,6 +4,8 @@ Status: implemented
 
 [中文](./2026-09-04-m2-walking-skeleton.md) | [English](./2026-09-04-m2-walking-skeleton.en.md)
 
+> The 2026-09-05 review reopened the M2 exit gate, which passed again after repairs. This note preserves the original implementation and rationale; see the [M2 review repair note](../bug-fix/2026-09-05-m2-review-repairs.en.md) for the corrected contracts and validation results.
+
 ## Problem
 
 M1 froze the five canonical schemas, but all product code was still stubs: no PDF ingestion, no recovery pipeline, no rendering, no viewer. M2 (Walking Skeleton) demanded the first true end-to-end loop — deliberately low parsing quality, real architecture validation.

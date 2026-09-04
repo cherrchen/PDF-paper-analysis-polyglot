@@ -60,6 +60,8 @@ const SCHEMA_NAMES = [
   "evidence",
   "layout-document",
   "semantic-document",
+  "translation-layer",
+  "render-document",
   "mapping",
 ] as const;
 

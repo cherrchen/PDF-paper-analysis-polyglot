@@ -112,3 +112,4 @@ id_rsa.pub
 # Tier-4 external validation corpus (downloaded at test time, never committed)
 tests/fixtures/external/
 apps/web/public/data/
+apps/web/.viewer-fixture/

@@ -1,3 +1,4 @@
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportAttributeAccessIssue=false
 """Phase 2.1 minimal PDF backend: PDFium bytes -> PhysicalDocument.
 
 Only what the Walking Skeleton needs: pages, text spans, basic images,
@@ -15,7 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
@@ -29,12 +30,6 @@ if TYPE_CHECKING:
 
 PRODUCER = "pdf-pipeline.physical"
 PRODUCER_VERSION = "0.1.0"
-
-# pypdfium2 reports PDF device coordinates with origin bottom-left. The
-# canonical page space is origin top-left, y down, so canonical geometry is
-# derived per page with: canonical_y = page_height - raw_bottom - raw_height.
-RAW_TO_CANONICAL = generated.Matrix(a=1.0, b=0.0, c=0.0, d=-1.0, e=0.0, f=0.0)
-CANONICAL_TO_RAW = generated.Matrix(a=1.0, b=0.0, c=0.0, d=-1.0, e=0.0, f=0.0)
 
 
 @dataclass(frozen=True)
@@ -58,19 +53,39 @@ def _deterministic_id(fingerprint: str, kind: str, *parts: object) -> str:
 
 
 def _rotation_degrees(page: pdfium.PdfPage) -> generated.PageRotation:
-    rotation = page.get_rotation()
-    value = {0: 0, 1: 90, 2: 180, 3: 270}[rotation]
-    return cast("generated.PageRotation", value)
+    # pypdfium2 exposes degrees, not PDFium's raw 0..3 rotation constants.
+    return cast("generated.PageRotation", page.get_rotation())
 
 
 def _canonical_rect(
-    left: float, bottom: float, right: float, top: float, page_height: float
+    left: float,
+    bottom: float,
+    right: float,
+    top: float,
+    transform: generated.Matrix,
 ) -> generated.Rect:
-    x = min(left, right)
-    width = abs(right - left)
-    height = abs(top - bottom)
-    y = page_height - max(top, bottom)
-    return generated.Rect(kind="rect", x=x, y=y, width=width, height=height)
+    corners = [
+        _transform_point(transform, x, y)
+        for x, y in ((left, bottom), (left, top), (right, bottom), (right, top))
+    ]
+    x_values = [point[0] for point in corners]
+    y_values = [point[1] for point in corners]
+    x = min(x_values)
+    y = min(y_values)
+    return generated.Rect(
+        kind="rect",
+        x=x,
+        y=y,
+        width=max(x_values) - x,
+        height=max(y_values) - y,
+    )
+
+
+def _transform_point(matrix: generated.Matrix, x: float, y: float) -> tuple[float, float]:
+    return (
+        matrix.a * x + matrix.c * y + matrix.e,
+        matrix.b * x + matrix.d * y + matrix.f,
+    )
 
 
 def _merge_line_fragments(
@@ -112,7 +127,7 @@ def _extract_text_spans(
     page: pdfium.PdfPage,
     *,
     page_id: str,
-    page_height: float,
+    raw_to_canonical: generated.Matrix,
     fingerprint: str,
     page_index: int,
     options: ExtractOptions,
@@ -143,7 +158,7 @@ def _extract_text_spans(
                     id=span_id,
                     pageId=page_id,
                     text=text,
-                    geometry=_canonical_rect(left, bottom, right, top, page_height),
+                    geometry=_canonical_rect(left, bottom, right, top, raw_to_canonical),
                     font=generated.FontRef(name=""),
                     fontSize=round(font_size, 2) or None,
                 )
@@ -157,7 +172,7 @@ def _extract_images(
     page: pdfium.PdfPage,
     *,
     page_id: str,
-    page_height: float,
+    raw_to_canonical: generated.Matrix,
     fingerprint: str,
     page_index: int,
 ) -> list[generated.ImageObject]:
@@ -175,7 +190,7 @@ def _extract_images(
                 objectType="imageObject",
                 id=_deterministic_id(fingerprint, "image", page_index, image_counter),
                 pageId=page_id,
-                geometry=_canonical_rect(left, bottom, right, top, page_height),
+                geometry=_canonical_rect(left, bottom, right, top, raw_to_canonical),
             )
         )
         image_counter += 1
@@ -185,12 +200,33 @@ def _extract_images(
 def _page_geometry(
     width: float, height: float, rotation: generated.PageRotation
 ) -> generated.PageGeometry:
+    # get_size() reports displayed dimensions, while text/object bounds stay
+    # in unrotated PDF user space. Build the exact raw↔canonical affine pair.
+    raw_width, raw_height = (height, width) if rotation in {90, 270} else (width, height)
+    if rotation == 0:
+        forward = (1.0, 0.0, 0.0, -1.0, 0.0, raw_height)
+        inverse = forward
+    elif rotation == 90:
+        forward = (0.0, 1.0, 1.0, 0.0, 0.0, 0.0)
+        inverse = forward
+    elif rotation == 180:
+        forward = (-1.0, 0.0, 0.0, 1.0, raw_width, 0.0)
+        inverse = forward
+    else:
+        forward = (0.0, -1.0, -1.0, 0.0, raw_height, raw_width)
+        inverse = (0.0, -1.0, -1.0, 0.0, raw_width, raw_height)
+    raw_to_canonical = generated.Matrix(
+        a=forward[0], b=forward[1], c=forward[2], d=forward[3], e=forward[4], f=forward[5]
+    )
+    canonical_to_raw = generated.Matrix(
+        a=inverse[0], b=inverse[1], c=inverse[2], d=inverse[3], e=inverse[4], f=inverse[5]
+    )
     return generated.PageGeometry(
         widthPt=width,
         heightPt=height,
         rotation=rotation,
-        rawToCanonical=RAW_TO_CANONICAL,
-        canonicalToRaw=CANONICAL_TO_RAW,
+        rawToCanonical=raw_to_canonical,
+        canonicalToRaw=canonical_to_raw,
     )
 
 
@@ -216,11 +252,12 @@ def extract_physical_document(
         for page_index in range(len(pdf)):
             page = pdf[page_index]
             width, height = page.get_size()
+            page_geometry = _page_geometry(width, height, _rotation_degrees(page))
             page_id = _deterministic_id(fingerprint, "page", page_index)
             spans = _extract_text_spans(
                 page,
                 page_id=page_id,
-                page_height=height,
+                raw_to_canonical=page_geometry.rawToCanonical,
                 fingerprint=fingerprint,
                 page_index=page_index,
                 options=options,
@@ -228,7 +265,7 @@ def extract_physical_document(
             images = _extract_images(
                 page,
                 page_id=page_id,
-                page_height=height,
+                raw_to_canonical=page_geometry.rawToCanonical,
                 fingerprint=fingerprint,
                 page_index=page_index,
             )
@@ -238,7 +275,7 @@ def extract_physical_document(
                 generated.PhysicalPage(
                     id=page_id,
                     index=page_index,
-                    geometry=_page_geometry(width, height, _rotation_degrees(page)),
+                    geometry=page_geometry,
                     objectIds=[obj.id for obj in (*spans, *images)],
                 )
             )
@@ -257,7 +294,7 @@ def extract_physical_document(
         pdf.close()
 
 
-def write_physical_document(document: generated.PhysicalDocument, path: Path) -> dict:
+def write_physical_document(document: generated.PhysicalDocument, path: Path) -> dict[str, Any]:
     """Serialize for pipeline consumers and re-validate on load."""
     data = dump_document(document, path=path)
     load_document("physical-document", data)

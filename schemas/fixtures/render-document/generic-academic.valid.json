@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "0.1.0",
+  "id": "00000000-0000-0000-0000-000000000202",
+  "semanticDocumentId": "01J5M1FXTRSEMD00000000000K",
+  "translationLayerId": "00000000-0000-0000-0000-000000000201",
+  "profile": {
+    "name": "generic-academic"
+  },
+  "policy": {
+    "floatFigures": true
+  },
+  "blocks": [
+    {
+      "renderKind": "HEADING",
+      "id": "00000000-0000-0000-0000-000000000203",
+      "semanticNodeIds": ["01J5M1FXTRHEAD00000000000Y"],
+      "content": {
+        "text": "[TRANSLATED] Introduction",
+        "marks": []
+      },
+      "level": 1
+    },
+    {
+      "renderKind": "PARAGRAPH",
+      "id": "00000000-0000-0000-0000-000000000204",
+      "semanticNodeIds": ["01J5M1FXTRPARA00000000000P"],
+      "content": {
+        "text": "[TRANSLATED] First paragraph.",
+        "marks": []
+      }
+    }
+  ],
+  "provenanceIds": []
+}

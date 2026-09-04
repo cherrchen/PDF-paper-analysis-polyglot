@@ -448,6 +448,45 @@ export declare namespace SemanticDocument {
   export type TextNodeContent = SemanticDocument.RichText;
 }
 
+export declare namespace TranslationLayer {
+  export interface TranslationEntry {
+    semanticNodeId: Common.NodeID;
+    content: SemanticDocument.NodeContent;
+    confidence?: Common.Confidence;
+    provenanceIds: Common.ProvenanceID[];
+  }
+}
+
+export declare namespace RenderDocument {
+  export type RenderBlock = RenderDocument.RenderHeadingBlock | RenderDocument.RenderParagraphBlock | RenderDocument.RenderFigureBlock;
+  export interface RenderFigureBlock {
+    renderKind: "FIGURE";
+    id: Common.DocumentID;
+    semanticNodeIds: Common.NodeID[];
+    figure: SemanticDocument.FigureContent;
+    caption?: SemanticDocument.RichText;
+  }
+  export interface RenderHeadingBlock {
+    renderKind: "HEADING";
+    id: Common.DocumentID;
+    semanticNodeIds: Common.NodeID[];
+    content: SemanticDocument.RichText;
+    level: number;
+  }
+  export interface RenderParagraphBlock {
+    renderKind: "PARAGRAPH";
+    id: Common.DocumentID;
+    semanticNodeIds: Common.NodeID[];
+    content: SemanticDocument.RichText;
+  }
+  export interface RenderPolicy {
+    floatFigures: boolean;
+  }
+  export interface RenderProfile {
+    name: string;
+  }
+}
+
 export declare namespace Mapping {
   /** The only v0.1 source fragment kind. Character-level mapping is a non-goal for v0.1. */
   export interface LayoutRegionRef {
