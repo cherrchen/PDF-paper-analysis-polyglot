@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "0.1.0",
+  "id": "01J5M1FXTRESMAPD0000000000",
+  "physicalLayoutBindings": [
+    {
+      "id": "01J5M1FXTRESP0B10000000000",
+      "layoutRegionId": "01J5M1FXTRESS0100000000000",
+      "physicalObjectIds": ["01J5M1FXTRES0BJT0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESP0B20000000000",
+      "layoutRegionId": "01J5M1FXTRESSR100000000000",
+      "physicalObjectIds": ["01J5M1FXTRES0BJTR000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESP0B30000000000",
+      "layoutRegionId": "01J5M1FXTRESS0200000000000",
+      "physicalObjectIds": ["01J5M1FXTRES0BJT0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESP0B40000000000",
+      "layoutRegionId": "01J5M1FXTRESSR200000000000",
+      "physicalObjectIds": ["01J5M1FXTRES0BJTR000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESP0B50000000000",
+      "layoutRegionId": "01J5M1FXTRESSP200000000000",
+      "physicalObjectIds": ["01J5M1FXTRES0BJP2000000000", "01J5M1FXTRES0BJP2000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESP0B60000000000",
+      "layoutRegionId": "01J5M1FXTRESF00T0000000000",
+      "physicalObjectIds": ["01J5M1FXTRES0BJF0000000000"]
+    }
+  ],
+  "sourceAnchors": [
+    {
+      "id": "01J5M1FXTRESANCA0000000000",
+      "fragments": [
+        {
+          "fragmentType": "layoutRegion",
+          "layoutRegionId": "01J5M1FXTRESS0100000000000"
+        },
+        {
+          "fragmentType": "layoutRegion",
+          "layoutRegionId": "01J5M1FXTRESSR100000000000"
+        }
+      ],
+      "confidence": 0.93,
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESANCB0000000000",
+      "fragments": [
+        {
+          "fragmentType": "layoutRegion",
+          "layoutRegionId": "01J5M1FXTRESS0200000000000"
+        }
+      ],
+      "confidence": 0.9,
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESANCC0000000000",
+      "fragments": [
+        {
+          "fragmentType": "layoutRegion",
+          "layoutRegionId": "01J5M1FXTRESS0200000000000"
+        }
+      ],
+      "confidence": 0.9,
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESANCD0000000000",
+      "fragments": [
+        {
+          "fragmentType": "layoutRegion",
+          "layoutRegionId": "01J5M1FXTRESSP200000000000"
+        }
+      ],
+      "confidence": 0.9,
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESANCE0000000000",
+      "fragments": [
+        {
+          "fragmentType": "layoutRegion",
+          "layoutRegionId": "01J5M1FXTRESSP200000000000"
+        }
+      ],
+      "confidence": 0.9,
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    }
+  ],
+  "sourceSemanticBindings": [
+    {
+      "id": "01J5M1FXTRESSSB10000000000",
+      "semanticNodeId": "01J5M1FXTRESPARAA000000000",
+      "sourceAnchorIds": ["01J5M1FXTRESANCA0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESSSB20000000000",
+      "semanticNodeId": "01J5M1FXTRESHEAD2000000000",
+      "sourceAnchorIds": ["01J5M1FXTRESANCB0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESSSB30000000000",
+      "semanticNodeId": "01J5M1FXTRESPARAA000000000",
+      "sourceAnchorIds": ["01J5M1FXTRESANCC0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESSSB40000000000",
+      "semanticNodeId": "01J5M1FXTRESPARAB000000000",
+      "sourceAnchorIds": ["01J5M1FXTRESANCD0000000000", "01J5M1FXTRESANCE0000000000"]
+    }
+  ],
+  "provenance": {
+    "records": [
+      {
+        "id": "01J5M1FXTRESPR0VM000000000",
+        "producer": "internal",
+        "producerVersion": "0.1.0",
+        "operation": "fixture-source-mapping",
+        "inputRefs": ["01J5M1FXTRESPHYSD000000000"]
+      }
+    ]
+  }
+}

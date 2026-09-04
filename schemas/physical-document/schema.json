@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-paper-analysis.local/schemas/physical-document/v0.json",
+  "title": "PhysicalDocument",
+  "description": "What the PDF objectively contains: pages, text spans, image objects, vector objects, and links in canonical page space. Must not contain reading order, paragraph/section semantics, captions, or citations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "pages", "objects", "metadata"],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0"
+    },
+    "id": {
+      "$ref": "../common/schema.json#/$defs/DocumentID"
+    },
+    "sourceFingerprint": {
+      "type": "string",
+      "description": "Fingerprint of the source PDF used for reconciliation when re-parsing. IDs themselves do not perform semantic matching."
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PhysicalPage"
+      }
+    },
+    "objects": {
+      "type": "array",
+      "description": "All physical objects; each references its page by pageId.",
+      "items": {
+        "$ref": "#/$defs/PhysicalObject"
+      }
+    },
+    "metadata": {
+      "$ref": "#/$defs/PhysicalMetadata"
+    },
+    "provenance": {
+      "$ref": "../common/schema.json#/$defs/ProvenanceStore"
+    },
+    "issues": {
+      "$ref": "../common/schema.json#/$defs/IssueStore"
+    }
+  },
+  "$defs": {
+    "PageRotation": {
+      "type": "integer",
+      "description": "Page rotation in degrees. One of 0, 90, 180, 270.",
+      "enum": [0, 90, 180, 270]
+    },
+    "PageGeometry": {
+      "type": "object",
+      "description": "Page size in PDF points plus the transforms between raw PDF space and canonical page space (origin top-left, y down, unit PDF point).",
+      "additionalProperties": false,
+      "required": ["widthPt", "heightPt", "rotation", "rawToCanonical", "canonicalToRaw"],
+      "properties": {
+        "widthPt": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "heightPt": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "rotation": {
+          "$ref": "#/$defs/PageRotation"
+        },
+        "rawToCanonical": {
+          "$ref": "../common/schema.json#/$defs/Matrix"
+        },
+        "canonicalToRaw": {
+          "$ref": "../common/schema.json#/$defs/Matrix"
+        }
+      }
+    },
+    "PhysicalPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "index", "geometry", "objectIds"],
+      "properties": {
+        "id": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "geometry": {
+          "$ref": "#/$defs/PageGeometry"
+        },
+        "objectIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/PhysicalObjectID"
+          }
+        }
+      }
+    },
+    "FontRef": {
+      "type": "object",
+      "description": "Reference to a font resource in the source PDF.",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "resourceId": {
+          "$ref": "../common/schema.json#/$defs/ResourceID"
+        }
+      }
+    },
+    "TextSpan": {
+      "type": "object",
+      "description": "A run of text with its geometry in canonical page space.",
+      "additionalProperties": false,
+      "required": ["objectType", "id", "pageId", "text", "geometry"],
+      "properties": {
+        "objectType": {
+          "const": "textSpan"
+        },
+        "id": {
+          "$ref": "../common/schema.json#/$defs/PhysicalObjectID"
+        },
+        "pageId": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "text": {
+          "type": "string"
+        },
+        "geometry": {
+          "$ref": "../common/schema.json#/$defs/Geometry"
+        },
+        "font": {
+          "$ref": "#/$defs/FontRef"
+        },
+        "fontSize": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "transform": {
+          "$ref": "../common/schema.json#/$defs/Matrix"
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "ImageObject": {
+      "type": "object",
+      "description": "An embedded raster image object.",
+      "additionalProperties": false,
+      "required": ["objectType", "id", "pageId", "geometry"],
+      "properties": {
+        "objectType": {
+          "const": "imageObject"
+        },
+        "id": {
+          "$ref": "../common/schema.json#/$defs/PhysicalObjectID"
+        },
+        "pageId": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "geometry": {
+          "$ref": "../common/schema.json#/$defs/Geometry"
+        },
+        "resourceId": {
+          "$ref": "../common/schema.json#/$defs/ResourceID"
+        },
+        "transform": {
+          "$ref": "../common/schema.json#/$defs/Matrix"
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "VectorObject": {
+      "type": "object",
+      "description": "A vector path or drawing object.",
+      "additionalProperties": false,
+      "required": ["objectType", "id", "pageId", "geometry"],
+      "properties": {
+        "objectType": {
+          "const": "vectorObject"
+        },
+        "id": {
+          "$ref": "../common/schema.json#/$defs/PhysicalObjectID"
+        },
+        "pageId": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "geometry": {
+          "$ref": "../common/schema.json#/$defs/Geometry"
+        },
+        "resourceId": {
+          "$ref": "../common/schema.json#/$defs/ResourceID"
+        },
+        "transform": {
+          "$ref": "../common/schema.json#/$defs/Matrix"
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "LinkObject": {
+      "type": "object",
+      "description": "A link annotation with an optional destination URI.",
+      "additionalProperties": false,
+      "required": ["objectType", "id", "pageId", "geometry"],
+      "properties": {
+        "objectType": {
+          "const": "linkObject"
+        },
+        "id": {
+          "$ref": "../common/schema.json#/$defs/PhysicalObjectID"
+        },
+        "pageId": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "geometry": {
+          "$ref": "../common/schema.json#/$defs/Geometry"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "PhysicalObject": {
+      "description": "One of the v0.1 physical object kinds.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TextSpan"
+        },
+        {
+          "$ref": "#/$defs/ImageObject"
+        },
+        {
+          "$ref": "#/$defs/VectorObject"
+        },
+        {
+          "$ref": "#/$defs/LinkObject"
+        }
+      ]
+    },
+    "PhysicalMetadata": {
+      "type": "object",
+      "description": "Document-level metadata observed from the PDF.",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "producer": {
+          "type": "string"
+        },
+        "pageCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

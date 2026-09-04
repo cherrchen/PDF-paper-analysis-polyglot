@@ -1,0 +1,331 @@
+{
+  "schemaVersion": "0.1.0",
+  "id": "01J5M1FXTRESD0C00000000000",
+  "physicalDocumentId": "01J5M1FXTRESPHYSD000000000",
+  "pages": [
+    {
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "regionIds": [
+        "01J5M1FXTRESS0100000000000",
+        "01J5M1FXTRESS0200000000000",
+        "01J5M1FXTRESSR100000000000",
+        "01J5M1FXTRESSR200000000000",
+        "01J5M1FXTRESF0G00000000000",
+        "01J5M1FXTRESF00T0000000000"
+      ],
+      "bandIds": [
+        "01J5M1FXTRESBANDA000000000",
+        "01J5M1FXTRESBANDB000000000",
+        "01J5M1FXTRESBANDC000000000"
+      ]
+    },
+    {
+      "pageId": "01J5M1FXTRESPAGEB000000000",
+      "regionIds": ["01J5M1FXTRESSP200000000000"],
+      "bandIds": []
+    }
+  ],
+  "regions": [
+    {
+      "id": "01J5M1FXTRESS0100000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 300,
+        "width": 230,
+        "height": 80
+      },
+      "kind": "TEXT",
+      "childIds": [],
+      "physicalObjectIds": ["01J5M1FXTRES0BJT0000000000"],
+      "labels": [
+        {
+          "label": "PARAGRAPH_LIKE",
+          "confidence": 0.9,
+          "evidenceIds": ["01J5M1FXTRESEVM10000000000"]
+        }
+      ],
+      "confidence": {
+        "score": 0.92,
+        "reason": "fixture"
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESS0200000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 380,
+        "width": 230,
+        "height": 80
+      },
+      "kind": "TEXT",
+      "childIds": [],
+      "physicalObjectIds": ["01J5M1FXTRES0BJT0000000000"],
+      "labels": [
+        {
+          "label": "PARAGRAPH_LIKE",
+          "confidence": 0.9,
+          "evidenceIds": ["01J5M1FXTRESEVM10000000000"]
+        }
+      ],
+      "confidence": {
+        "score": 0.92,
+        "reason": "fixture"
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESSR100000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 340,
+        "y": 300,
+        "width": 230,
+        "height": 80
+      },
+      "kind": "TEXT",
+      "childIds": [],
+      "physicalObjectIds": ["01J5M1FXTRES0BJTR000000000"],
+      "labels": [
+        {
+          "label": "PARAGRAPH_LIKE",
+          "confidence": 0.9,
+          "evidenceIds": ["01J5M1FXTRESEVM10000000000"]
+        }
+      ],
+      "confidence": {
+        "score": 0.92,
+        "reason": "fixture"
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESSR200000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 340,
+        "y": 380,
+        "width": 230,
+        "height": 80
+      },
+      "kind": "TEXT",
+      "childIds": [],
+      "physicalObjectIds": ["01J5M1FXTRES0BJTR000000000"],
+      "labels": [
+        {
+          "label": "PARAGRAPH_LIKE",
+          "confidence": 0.9,
+          "evidenceIds": ["01J5M1FXTRESEVM10000000000"]
+        }
+      ],
+      "confidence": {
+        "score": 0.92,
+        "reason": "fixture"
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESF0G00000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 90,
+        "width": 468,
+        "height": 180
+      },
+      "kind": "FIGURE",
+      "childIds": [],
+      "physicalObjectIds": ["01J5M1FXTRES0BJF0000000000"],
+      "labels": [
+        {
+          "label": "FIGURE",
+          "confidence": 0.9,
+          "evidenceIds": ["01J5M1FXTRESEVM10000000000"]
+        }
+      ],
+      "confidence": {
+        "score": 0.92,
+        "reason": "fixture"
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESF00T0000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 700,
+        "width": 230,
+        "height": 40
+      },
+      "kind": "FOOTNOTE",
+      "childIds": [],
+      "physicalObjectIds": ["01J5M1FXTRES0BJF0000000000"],
+      "labels": [
+        {
+          "label": "FOOTNOTE",
+          "confidence": 0.8,
+          "evidenceIds": ["01J5M1FXTRESEVM10000000000"]
+        }
+      ],
+      "confidence": {
+        "score": 0.92,
+        "reason": "fixture"
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESSP200000000000",
+      "pageId": "01J5M1FXTRESPAGEB000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 300,
+        "width": 230,
+        "height": 120
+      },
+      "kind": "TEXT",
+      "childIds": [],
+      "physicalObjectIds": ["01J5M1FXTRES0BJP2000000000", "01J5M1FXTRES0BJP2000000000"],
+      "labels": [
+        {
+          "label": "PARAGRAPH_LIKE",
+          "confidence": 0.9,
+          "evidenceIds": ["01J5M1FXTRESEVM10000000000"]
+        }
+      ],
+      "confidence": {
+        "score": 0.92,
+        "reason": "fixture"
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    }
+  ],
+  "bands": [
+    {
+      "id": "01J5M1FXTRESBANDA000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "yStart": 0,
+      "yEnd": 80,
+      "layoutMode": "FULL_WIDTH",
+      "columnIds": []
+    },
+    {
+      "id": "01J5M1FXTRESBANDB000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "yStart": 80,
+      "yEnd": 640,
+      "layoutMode": "MULTI_COLUMN",
+      "columnIds": ["01J5M1FXTRESC0000000000000", "01J5M1FXTRESC00R0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESBANDC000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "yStart": 640,
+      "yEnd": 792,
+      "layoutMode": "FULL_WIDTH",
+      "columnIds": []
+    }
+  ],
+  "columns": [
+    {
+      "id": "01J5M1FXTRESC0000000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "bandId": "01J5M1FXTRESBANDB000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 80,
+        "width": 230,
+        "height": 560
+      },
+      "regionIds": [
+        "01J5M1FXTRESS0100000000000",
+        "01J5M1FXTRESS0200000000000",
+        "01J5M1FXTRESF00T0000000000"
+      ]
+    },
+    {
+      "id": "01J5M1FXTRESC00R0000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "bandId": "01J5M1FXTRESBANDB000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 340,
+        "y": 80,
+        "width": 230,
+        "height": 560
+      },
+      "regionIds": ["01J5M1FXTRESSR100000000000", "01J5M1FXTRESSR200000000000"]
+    }
+  ],
+  "readingFlow": {
+    "nodes": [
+      "01J5M1FXTRESS0100000000000",
+      "01J5M1FXTRESS0200000000000",
+      "01J5M1FXTRESSR100000000000",
+      "01J5M1FXTRESSR200000000000",
+      "01J5M1FXTRESF0G00000000000",
+      "01J5M1FXTRESSP200000000000",
+      "01J5M1FXTRESF00T0000000000"
+    ],
+    "edges": [
+      {
+        "source": "01J5M1FXTRESS0100000000000",
+        "target": "01J5M1FXTRESS0200000000000",
+        "confidence": 0.98,
+        "reason": "SAME_COLUMN"
+      },
+      {
+        "source": "01J5M1FXTRESS0200000000000",
+        "target": "01J5M1FXTRESSR100000000000",
+        "confidence": 0.95,
+        "reason": "NEXT_COLUMN"
+      },
+      {
+        "source": "01J5M1FXTRESSR100000000000",
+        "target": "01J5M1FXTRESSR200000000000",
+        "confidence": 0.98,
+        "reason": "SAME_COLUMN"
+      },
+      {
+        "source": "01J5M1FXTRESSR200000000000",
+        "target": "01J5M1FXTRESSP200000000000",
+        "confidence": 0.9,
+        "reason": "NEXT_COLUMN"
+      },
+      {
+        "source": "01J5M1FXTRESF00T0000000000",
+        "target": "01J5M1FXTRESF00T0000000000",
+        "confidence": 1.0,
+        "reason": "FOOTNOTE_FLOW"
+      }
+    ]
+  },
+  "primaryFlow": [
+    "01J5M1FXTRESS0100000000000",
+    "01J5M1FXTRESS0200000000000",
+    "01J5M1FXTRESSR100000000000",
+    "01J5M1FXTRESSR200000000000",
+    "01J5M1FXTRESSP200000000000"
+  ],
+  "provenance": {
+    "records": [
+      {
+        "id": "01J5M1FXTRESPR0VM000000000",
+        "producer": "internal",
+        "producerVersion": "0.1.0",
+        "operation": "fixture-layout-recovery",
+        "inputRefs": ["01J5M1FXTRESPHYSD000000000"]
+      }
+    ]
+  }
+}

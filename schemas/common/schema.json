@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-paper-analysis.local/schemas/common/v0.json",
+  "title": "Common document model definitions",
+  "description": "Shared definitions for the canonical document contracts: identity, provenance, origin, resources, issues, and geometry. Referenced by the physical-document, evidence, layout-document, semantic-document, and mapping schemas.",
+  "type": "object",
+  "$defs": {
+    "DocumentID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a document (ULID or UUID).",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "PageID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a page.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "PhysicalObjectID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a physical object.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "LayoutRegionID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a layout region.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "BandID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a page band.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "ColumnID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a column.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "NodeID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a semantic node. This is the stable identity across source, translation, analysis, annotation, and rendered output.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "RelationID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a semantic relation.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "SourceAnchorID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a source anchor.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "RenderAnchorID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a render anchor.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "EvidenceID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for an evidence entry.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "ResourceID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a stored resource.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "ProvenanceID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for a provenance record.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "IssueID": {
+      "type": "string",
+      "description": "Opaque persistent identifier for an issue record.",
+      "pattern": "^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$|^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "Confidence": {
+      "type": "number",
+      "description": "Confidence score in the closed interval [0, 1].",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "OriginKind": {
+      "type": "string",
+      "description": "Origin semantics for any inferred, extracted, or generated result. LLM generated content must never be labeled as source content.",
+      "enum": ["SOURCE", "EXTRACTED", "INFERRED", "GENERATED", "USER"]
+    },
+    "LayoutLabel": {
+      "type": "string",
+      "description": "Normalized visual label vocabulary shared by evidence providers and layout regions. Labels are visual hints only; paper semantics live in the semantic layer.",
+      "enum": [
+        "TEXT",
+        "HEADING_LIKE",
+        "PARAGRAPH_LIKE",
+        "CAPTION_LIKE",
+        "FIGURE",
+        "TABLE",
+        "FORMULA",
+        "FOOTNOTE",
+        "HEADER",
+        "FOOTER",
+        "LIST",
+        "UNKNOWN"
+      ]
+    },
+    "Point": {
+      "type": "object",
+      "description": "A point in canonical page space (origin top-left, x right, y down, unit PDF point).",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    },
+    "Rect": {
+      "type": "object",
+      "description": "Axis-aligned rectangle in canonical page space. The primary geometry for v0.1.",
+      "additionalProperties": false,
+      "required": ["kind", "x", "y", "width", "height"],
+      "properties": {
+        "kind": { "const": "rect" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" }
+      }
+    },
+    "Quad": {
+      "type": "object",
+      "description": "Quadrilateral geometry for rotated or skewed content, in canonical page space.",
+      "additionalProperties": false,
+      "required": ["kind", "points"],
+      "properties": {
+        "kind": { "const": "quad" },
+        "points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Point" },
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    },
+    "Polygon": {
+      "type": "object",
+      "description": "Arbitrary polygon geometry in canonical page space.",
+      "additionalProperties": false,
+      "required": ["kind", "points"],
+      "properties": {
+        "kind": { "const": "polygon" },
+        "points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Point" },
+          "minItems": 3
+        }
+      }
+    },
+    "Geometry": {
+      "description": "Geometry union. v0.1 primarily uses Rect; the schema does not restrict future higher precision.",
+      "oneOf": [
+        { "$ref": "#/$defs/Rect" },
+        { "$ref": "#/$defs/Quad" },
+        { "$ref": "#/$defs/Polygon" }
+      ]
+    },
+    "Matrix": {
+      "type": "object",
+      "description": "2D affine matrix in PDF order (a b c d e f).",
+      "additionalProperties": false,
+      "required": ["a", "b", "c", "d", "e", "f"],
+      "properties": {
+        "a": { "type": "number" },
+        "b": { "type": "number" },
+        "c": { "type": "number" },
+        "d": { "type": "number" },
+        "e": { "type": "number" },
+        "f": { "type": "number" }
+      }
+    },
+    "ResourceKind": {
+      "type": "string",
+      "description": "Kind of a stored source resource.",
+      "enum": ["PDF_FRAGMENT", "SVG", "RASTER_PREVIEW", "EMBEDDED_IMAGE", "OTHER"]
+    },
+    "ResourceRecord": {
+      "type": "object",
+      "description": "A stored source resource such as an image, PDF fragment, or SVG. Vector and PDF fragments are preferred; rasters are previews or fallbacks.",
+      "additionalProperties": false,
+      "required": ["id", "kind", "mediaType", "origin"],
+      "properties": {
+        "id": { "$ref": "#/$defs/ResourceID" },
+        "kind": { "$ref": "#/$defs/ResourceKind" },
+        "mediaType": { "type": "string" },
+        "byteLength": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string" },
+        "origin": { "$ref": "#/$defs/OriginKind" }
+      }
+    },
+    "ResourceStore": {
+      "type": "object",
+      "description": "Collection of stored resources for a document.",
+      "additionalProperties": false,
+      "required": ["resources"],
+      "properties": {
+        "resources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ResourceRecord" }
+        }
+      }
+    },
+    "IssueCategory": {
+      "type": "string",
+      "description": "Long-lived issue taxonomy for the pipeline.",
+      "enum": [
+        "PHYSICAL_EXTRACTION",
+        "LAYOUT_REGION",
+        "READING_ORDER",
+        "PARAGRAPH_BOUNDARY",
+        "SECTION_STRUCTURE",
+        "FIGURE_RECOVERY",
+        "TABLE_RECOVERY",
+        "FORMULA_RECOVERY",
+        "CITATION_RESOLUTION",
+        "SOURCE_MAPPING",
+        "TRANSLATION",
+        "RENDERING",
+        "RENDER_MAPPING"
+      ]
+    },
+    "IssueSeverity": {
+      "type": "string",
+      "enum": ["INFO", "WARNING", "ERROR", "FATAL"]
+    },
+    "Issue": {
+      "type": "object",
+      "description": "A reportable pipeline issue with severity, affected identifiers, producer, and recoverability.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "category",
+        "severity",
+        "producer",
+        "message",
+        "affectedIds",
+        "recoverable"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/IssueID" },
+        "category": { "$ref": "#/$defs/IssueCategory" },
+        "severity": { "$ref": "#/$defs/IssueSeverity" },
+        "producer": { "type": "string" },
+        "message": { "type": "string" },
+        "affectedIds": { "type": "array", "items": { "type": "string" } },
+        "recoverable": { "type": "boolean" },
+        "fallback": { "type": "string" }
+      }
+    },
+    "IssueStore": {
+      "type": "object",
+      "description": "Collection of issues reported during processing.",
+      "additionalProperties": false,
+      "required": ["issues"],
+      "properties": {
+        "issues": { "type": "array", "items": { "$ref": "#/$defs/Issue" } }
+      }
+    },
+    "ProvenanceRecord": {
+      "type": "object",
+      "description": "Provenance for one extraction, inference, or generation step. Provenance is a first-class citizen.",
+      "additionalProperties": false,
+      "required": ["id", "producer", "producerVersion", "operation", "inputRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/ProvenanceID" },
+        "producer": { "type": "string" },
+        "producerVersion": { "type": "string" },
+        "operation": { "type": "string" },
+        "inputRefs": { "type": "array", "items": { "type": "string" } },
+        "parametersHash": { "type": "string" }
+      }
+    },
+    "ProvenanceStore": {
+      "type": "object",
+      "description": "Collection of provenance records for a document.",
+      "additionalProperties": false,
+      "required": ["records"],
+      "properties": {
+        "records": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ProvenanceRecord" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "schemaVersion": "0.1.0",
+  "id": "01J5M1FXTRESSEMD0000000000",
+  "rootId": "01J5M1FXTRESR00T0000000000",
+  "nodes": [
+    {
+      "id": "01J5M1FXTRESR00T0000000000",
+      "kind": "DOCUMENT",
+      "parentId": null,
+      "children": [
+        "01J5M1FXTRESHEAD0000000000",
+        "01J5M1FXTRESPARAA000000000",
+        "01J5M1FXTRESPARAB000000000",
+        "01J5M1FXTRESF0GCA000000000",
+        "01J5M1FXTRESFN000000000000",
+        "01J5M1FXTRESB0B00000000000"
+      ],
+      "content": {
+        "text": "",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESHEAD0000000000",
+      "kind": "HEADING",
+      "parentId": "01J5M1FXTRESR00T0000000000",
+      "children": [],
+      "content": {
+        "text": "1. Introduction",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESPARAA000000000",
+      "kind": "PARAGRAPH",
+      "parentId": "01J5M1FXTRESR00T0000000000",
+      "children": [],
+      "content": {
+        "text": "Spanning paragraph across both columns.",
+        "marks": [
+          {
+            "type": "CITATION",
+            "start": 30,
+            "end": 34,
+            "targetNodeId": "01J5M1FXTRESB0BE0000000000",
+            "label": "[1]"
+          }
+        ]
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESPARAB000000000",
+      "kind": "PARAGRAPH",
+      "parentId": "01J5M1FXTRESR00T0000000000",
+      "children": [],
+      "content": {
+        "text": "Cross-page paragraph.",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESF0GCA000000000",
+      "kind": "FIGURE_CAPTION",
+      "parentId": "01J5M1FXTRESR00T0000000000",
+      "children": [],
+      "content": {
+        "text": "Figure 1: A spanning figure.",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESFN000000000000",
+      "kind": "FOOTNOTE",
+      "parentId": "01J5M1FXTRESR00T0000000000",
+      "children": [],
+      "content": {
+        "text": "1. A footnote body.",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESB0B00000000000",
+      "kind": "BIBLIOGRAPHY",
+      "parentId": "01J5M1FXTRESR00T0000000000",
+      "children": ["01J5M1FXTRESB0BE0000000000"],
+      "content": {
+        "text": "",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESB0BE0000000000",
+      "kind": "BIBLIOGRAPHY_ENTRY",
+      "parentId": "01J5M1FXTRESB0B00000000000",
+      "children": [],
+      "content": {
+        "text": "Author, Title, 2026.",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESHEAD2000000000",
+      "kind": "HEADING",
+      "parentId": "01J5M1FXTRESR00T0000000000",
+      "children": [],
+      "content": {
+        "text": "2. A block split into heading and paragraph",
+        "marks": []
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    }
+  ],
+  "relations": [
+    {
+      "id": "01J5M1FXTRESRE0CA000000000",
+      "type": "CAPTION_OF",
+      "source": "01J5M1FXTRESF0GCA000000000",
+      "target": "01J5M1FXTRESPARAB000000000",
+      "confidence": 0.9,
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESRE0F0000000000",
+      "type": "FOOTNOTE_OF",
+      "source": "01J5M1FXTRESFN000000000000",
+      "target": "01J5M1FXTRESPARAA000000000",
+      "confidence": 0.95,
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    },
+    {
+      "id": "01J5M1FXTRESRE0C0000000000",
+      "type": "CITES",
+      "source": "01J5M1FXTRESPARAA000000000",
+      "target": "01J5M1FXTRESB0BE0000000000",
+      "confidence": 0.9,
+      "provenanceIds": ["01J5M1FXTRESPR0V0000000000"]
+    }
+  ],
+  "provenanceIds": ["01J5M1FXTRESPR0V0000000000"],
+  "provenance": {
+    "records": [
+      {
+        "id": "01J5M1FXTRESPR0VM000000000",
+        "producer": "internal",
+        "producerVersion": "0.1.0",
+        "operation": "fixture-semantic-recovery",
+        "inputRefs": ["01J5M1FXTRESPHYSD000000000"]
+      }
+    ]
+  }
+}

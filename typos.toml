@@ -8,6 +8,8 @@ extend-exclude = [
 ]
 
 [default.extend-words]
+anc = "anc"
+ANC = "ANC"
 lualatex = "lualatex"
 latexmk = "latexmk"
 ChkTeX = "ChkTeX"

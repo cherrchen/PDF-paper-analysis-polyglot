@@ -1,0 +1,181 @@
+{
+  "schemaVersion": "0.1.0",
+  "id": "01J5M1FXTRESPHYSD000000000",
+  "sourceFingerprint": "sha256:fixture",
+  "pages": [
+    {
+      "id": "01J5M1FXTRESPAGEA000000000",
+      "index": 0,
+      "geometry": {
+        "widthPt": 612,
+        "heightPt": 792,
+        "rotation": 0,
+        "rawToCanonical": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "e": 0,
+          "f": 0
+        },
+        "canonicalToRaw": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "e": 0,
+          "f": 0
+        }
+      },
+      "objectIds": [
+        "01J5M1FXTRES0BJT0000000000",
+        "01J5M1FXTRES0BJT0000000000",
+        "01J5M1FXTRES0BJTR000000000",
+        "01J5M1FXTRES0BJTR000000000",
+        "01J5M1FXTRES0BJF0000000000",
+        "01J5M1FXTRES0BJF0000000000"
+      ]
+    },
+    {
+      "id": "01J5M1FXTRESPAGEB000000000",
+      "index": 1,
+      "geometry": {
+        "widthPt": 612,
+        "heightPt": 792,
+        "rotation": 0,
+        "rawToCanonical": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "e": 0,
+          "f": 0
+        },
+        "canonicalToRaw": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "e": 0,
+          "f": 0
+        }
+      },
+      "objectIds": ["01J5M1FXTRES0BJP2000000000", "01J5M1FXTRES0BJP2000000000"]
+    }
+  ],
+  "objects": [
+    {
+      "objectType": "textSpan",
+      "id": "01J5M1FXTRES0BJT0000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "text": "Left column paragraph part one.",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 300,
+        "width": 200,
+        "height": 40
+      },
+      "fontSize": 10
+    },
+    {
+      "objectType": "textSpan",
+      "id": "01J5M1FXTRES0BJT0000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "text": "Left column paragraph part two.",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 340,
+        "width": 200,
+        "height": 40
+      },
+      "fontSize": 10
+    },
+    {
+      "objectType": "textSpan",
+      "id": "01J5M1FXTRES0BJTR000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "text": "Right column paragraph part one.",
+      "geometry": {
+        "kind": "rect",
+        "x": 340,
+        "y": 300,
+        "width": 200,
+        "height": 40
+      },
+      "fontSize": 10
+    },
+    {
+      "objectType": "textSpan",
+      "id": "01J5M1FXTRES0BJTR000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "text": "Right column paragraph part two.",
+      "geometry": {
+        "kind": "rect",
+        "x": 340,
+        "y": 340,
+        "width": 200,
+        "height": 40
+      },
+      "fontSize": 10
+    },
+    {
+      "objectType": "imageObject",
+      "id": "01J5M1FXTRES0BJF0000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 90,
+        "width": 468,
+        "height": 180
+      }
+    },
+    {
+      "objectType": "textSpan",
+      "id": "01J5M1FXTRES0BJF0000000000",
+      "pageId": "01J5M1FXTRESPAGEA000000000",
+      "text": "1. A footnote body.",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 700,
+        "width": 200,
+        "height": 40
+      },
+      "fontSize": 10
+    },
+    {
+      "objectType": "textSpan",
+      "id": "01J5M1FXTRES0BJP2000000000",
+      "pageId": "01J5M1FXTRESPAGEB000000000",
+      "text": "Cross-page paragraph first page part.",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 300,
+        "width": 200,
+        "height": 40
+      },
+      "fontSize": 10
+    },
+    {
+      "objectType": "textSpan",
+      "id": "01J5M1FXTRES0BJP2000000000",
+      "pageId": "01J5M1FXTRESPAGEB000000000",
+      "text": "Cross-page paragraph second page part.",
+      "geometry": {
+        "kind": "rect",
+        "x": 72,
+        "y": 360,
+        "width": 200,
+        "height": 40
+      },
+      "fontSize": 10
+    }
+  ],
+  "metadata": {
+    "pageCount": 2
+  }
+}

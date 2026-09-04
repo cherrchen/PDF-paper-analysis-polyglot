@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-paper-analysis.local/schemas/mapping/v0.json",
+  "title": "MappingBundle",
+  "description": "Bindings between layers. Layers never share geometry; mappings connect them. The SourceSemanticBinding naturally supports N-layout-to-1-semantic, 1-to-N, and N-to-N.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "physicalLayoutBindings",
+    "sourceAnchors",
+    "sourceSemanticBindings"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0"
+    },
+    "id": {
+      "$ref": "../common/schema.json#/$defs/DocumentID"
+    },
+    "physicalLayoutBindings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PhysicalLayoutBinding"
+      }
+    },
+    "sourceAnchors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SourceAnchor"
+      }
+    },
+    "sourceSemanticBindings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SourceSemanticBinding"
+      }
+    },
+    "renderBindings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/RenderBinding"
+      }
+    },
+    "provenance": {
+      "$ref": "../common/schema.json#/$defs/ProvenanceStore"
+    },
+    "issues": {
+      "$ref": "../common/schema.json#/$defs/IssueStore"
+    }
+  },
+  "$defs": {
+    "PhysicalLayoutBinding": {
+      "type": "object",
+      "description": "Authoritative physical-to-layout mapping. LayoutRegion may cache physical refs, but this mapping store is authoritative.",
+      "additionalProperties": false,
+      "required": ["id", "layoutRegionId", "physicalObjectIds"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "layoutRegionId": {
+          "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+        },
+        "physicalObjectIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/PhysicalObjectID"
+          }
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "LayoutRegionRef": {
+      "type": "object",
+      "description": "The only v0.1 source fragment kind. Character-level mapping is a non-goal for v0.1.",
+      "additionalProperties": false,
+      "required": ["fragmentType", "layoutRegionId"],
+      "properties": {
+        "fragmentType": {
+          "const": "layoutRegion"
+        },
+        "layoutRegionId": {
+          "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+        }
+      }
+    },
+    "SourceFragment": {
+      "description": "Fragment union; v0.1 allows LayoutRegionRef only.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/LayoutRegionRef"
+        }
+      ]
+    },
+    "SourceAnchor": {
+      "type": "object",
+      "description": "An independent anchor object into the source document, possibly multi-fragment (e.g. a paragraph spanning columns or pages).",
+      "additionalProperties": false,
+      "required": ["id", "fragments"],
+      "properties": {
+        "id": {
+          "$ref": "../common/schema.json#/$defs/SourceAnchorID"
+        },
+        "fragments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceFragment"
+          }
+        },
+        "confidence": {
+          "$ref": "../common/schema.json#/$defs/Confidence"
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "SourceSemanticBinding": {
+      "type": "object",
+      "description": "N anchors to one semantic node. One semantic node may appear in several bindings, giving 1-to-N and N-to-N.",
+      "additionalProperties": false,
+      "required": ["id", "semanticNodeId", "sourceAnchorIds"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "semanticNodeId": {
+          "$ref": "../common/schema.json#/$defs/NodeID"
+        },
+        "sourceAnchorIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/SourceAnchorID"
+          }
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "PDFRenderFragment": {
+      "type": "object",
+      "description": "A rendered fragment located in the target PDF. A semantic node may map to several fragments (e.g. a paragraph split across pages).",
+      "additionalProperties": false,
+      "required": ["pageIndex", "geometry"],
+      "properties": {
+        "pageIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "geometry": {
+          "$ref": "../common/schema.json#/$defs/Geometry"
+        }
+      }
+    },
+    "RenderFragment": {
+      "description": "Fragment union; v0.1 supports PDF fragments.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PDFRenderFragment"
+        }
+      ]
+    },
+    "RenderAnchor": {
+      "type": "object",
+      "description": "Extracted from the rendered target PDF after natural reflow.",
+      "additionalProperties": false,
+      "required": ["id", "semanticNodeId", "fragments"],
+      "properties": {
+        "id": {
+          "$ref": "../common/schema.json#/$defs/RenderAnchorID"
+        },
+        "semanticNodeId": {
+          "$ref": "../common/schema.json#/$defs/NodeID"
+        },
+        "fragments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RenderFragment"
+          }
+        },
+        "confidence": {
+          "$ref": "../common/schema.json#/$defs/Confidence"
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "RenderBinding": {
+      "type": "object",
+      "description": "Groups render anchors per render document.",
+      "additionalProperties": false,
+      "required": ["id", "renderDocumentId", "renderAnchorIds"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "renderDocumentId": {
+          "$ref": "../common/schema.json#/$defs/DocumentID"
+        },
+        "renderAnchorIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/RenderAnchorID"
+          }
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    }
+  }
+}

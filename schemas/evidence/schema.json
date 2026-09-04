@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-paper-analysis.local/schemas/evidence/v0.json",
+  "title": "EvidenceBundle",
+  "description": "Unified evidence produced by third-party parser adapters (MinerU, Docling, GROBID, ...). Provider-specific schemas must never leak past this boundary: adapters translate raw parser output into these candidates, and recovery engines consume only these types.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "provider", "providerVersion", "candidates"],
+  "properties": {
+    "schemaVersion": { "const": "0.1.0" },
+    "provider": {
+      "type": "string",
+      "description": "Evidence provider identifier, e.g. mineru, docling, grobid, mock."
+    },
+    "providerVersion": { "type": "string" },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Evidence" }
+    },
+    "provenance": { "$ref": "../common/schema.json#/$defs/ProvenanceStore" },
+    "issues": { "$ref": "../common/schema.json#/$defs/IssueStore" }
+  },
+  "$defs": {
+    "EvidenceType": {
+      "type": "string",
+      "description": "Unified evidence types. Providers map their native labels into these, e.g. MinerU display_formula -> FORMULA.",
+      "enum": ["REGION", "TABLE_STRUCTURE", "FORMULA", "METADATA"]
+    },
+    "RegionCandidate": {
+      "type": "object",
+      "description": "A visual region candidate on a page with a normalized label and the provider's original label.",
+      "additionalProperties": false,
+      "required": [
+        "evidenceType",
+        "id",
+        "pageId",
+        "geometry",
+        "normalizedLabel",
+        "providerLabel",
+        "confidence",
+        "provenanceIds"
+      ],
+      "properties": {
+        "evidenceType": { "const": "REGION" },
+        "id": { "$ref": "../common/schema.json#/$defs/EvidenceID" },
+        "pageId": { "$ref": "../common/schema.json#/$defs/PageID" },
+        "geometry": { "$ref": "../common/schema.json#/$defs/Geometry" },
+        "normalizedLabel": { "$ref": "../common/schema.json#/$defs/LayoutLabel" },
+        "providerLabel": {
+          "type": "string",
+          "description": "The label exactly as the provider emitted it, kept for provenance and debugging."
+        },
+        "textPreview": {
+          "type": "string",
+          "description": "Optional short text content of the region for cross-provider matching."
+        },
+        "confidence": { "$ref": "../common/schema.json#/$defs/Confidence" },
+        "provenanceIds": {
+          "type": "array",
+          "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
+        }
+      }
+    },
+    "TableCellCandidate": {
+      "type": "object",
+      "description": "A structured table cell candidate.",
+      "additionalProperties": false,
+      "required": ["row", "column", "rowSpan", "colSpan", "text"],
+      "properties": {
+        "row": { "type": "integer", "minimum": 0 },
+        "column": { "type": "integer", "minimum": 0 },
+        "rowSpan": { "type": "integer", "minimum": 1 },
+        "colSpan": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string" }
+      }
+    },
+    "TableCandidate": {
+      "type": "object",
+      "description": "A structured table candidate with rows, columns, and cells.",
+      "additionalProperties": false,
+      "required": [
+        "evidenceType",
+        "id",
+        "pageId",
+        "geometry",
+        "rowCount",
+        "columnCount",
+        "cells",
+        "confidence",
+        "provenanceIds"
+      ],
+      "properties": {
+        "evidenceType": { "const": "TABLE_STRUCTURE" },
+        "id": { "$ref": "../common/schema.json#/$defs/EvidenceID" },
+        "pageId": { "$ref": "../common/schema.json#/$defs/PageID" },
+        "geometry": { "$ref": "../common/schema.json#/$defs/Geometry" },
+        "rowCount": { "type": "integer", "minimum": 0 },
+        "columnCount": { "type": "integer", "minimum": 0 },
+        "cells": { "type": "array", "items": { "$ref": "#/$defs/TableCellCandidate" } },
+        "confidence": { "$ref": "../common/schema.json#/$defs/Confidence" },
+        "provenanceIds": {
+          "type": "array",
+          "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
+        }
+      }
+    },
+    "FormulaCandidate": {
+      "type": "object",
+      "description": "A formula candidate. Recognition may fail without losing content: LaTeX is optional and fallbacks (raw text, preview resource) must be preserved.",
+      "additionalProperties": false,
+      "required": ["evidenceType", "id", "pageId", "geometry", "confidence", "provenanceIds"],
+      "properties": {
+        "evidenceType": { "const": "FORMULA" },
+        "id": { "$ref": "../common/schema.json#/$defs/EvidenceID" },
+        "pageId": { "$ref": "../common/schema.json#/$defs/PageID" },
+        "geometry": { "$ref": "../common/schema.json#/$defs/Geometry" },
+        "latex": { "type": "string" },
+        "mathml": { "type": "string" },
+        "unicodeText": { "type": "string" },
+        "rawText": { "type": "string" },
+        "number": { "type": "string" },
+        "previewResourceId": { "$ref": "../common/schema.json#/$defs/ResourceID" },
+        "confidence": { "$ref": "../common/schema.json#/$defs/Confidence" },
+        "provenanceIds": {
+          "type": "array",
+          "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
+        }
+      }
+    },
+    "MetadataCandidate": {
+      "type": "object",
+      "description": "Document-level scholarly metadata (title, authors, abstract, section hints) from a specialist such as GROBID.",
+      "additionalProperties": false,
+      "required": ["evidenceType", "id", "fields", "confidence", "provenanceIds"],
+      "properties": {
+        "evidenceType": { "const": "METADATA" },
+        "id": { "$ref": "../common/schema.json#/$defs/EvidenceID" },
+        "fields": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MetadataField" }
+        },
+        "confidence": { "$ref": "../common/schema.json#/$defs/Confidence" },
+        "provenanceIds": {
+          "type": "array",
+          "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
+        }
+      }
+    },
+    "MetadataField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value"],
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" },
+        "language": { "type": "string" }
+      }
+    },
+    "Evidence": {
+      "description": "Any unified evidence candidate.",
+      "oneOf": [
+        { "$ref": "#/$defs/RegionCandidate" },
+        { "$ref": "#/$defs/TableCandidate" },
+        { "$ref": "#/$defs/FormulaCandidate" },
+        { "$ref": "#/$defs/MetadataCandidate" }
+      ]
+    }
+  }
+}

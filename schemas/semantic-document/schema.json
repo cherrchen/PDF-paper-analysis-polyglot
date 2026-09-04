@@ -2,35 +2,374 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pdf-paper-analysis.local/schemas/semantic-document/v0.json",
   "title": "SemanticDocument",
-  "description": "Placeholder canonical schema. The document model is intentionally unresolved. See .agents/notes/proposed/architecture/2026-09-03-semantic-document-canonical-model.md.",
+  "description": "The logical structure of the paper: what it would still mean if re-typeset. Must not contain page, bbox, column, font size, page breaks, or PDF object IDs. Stable identity across source, translation, analysis, annotation, and rendered output is SemanticNodeID.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "status"],
+  "required": ["schemaVersion", "id", "rootId", "nodes", "relations", "provenanceIds"],
   "properties": {
     "schemaVersion": {
-      "const": "0.0.0-unresolved"
+      "const": "0.1.0"
     },
-    "status": {
-      "const": "unresolved"
+    "id": {
+      "$ref": "../common/schema.json#/$defs/DocumentID"
     },
-    "intendedConcepts": {
+    "layoutDocumentId": {
+      "type": "string",
+      "description": "Optional reference to the LayoutDocument this was recovered from. The semantic layer itself stays geometry-free."
+    },
+    "rootId": {
+      "$ref": "../common/schema.json#/$defs/NodeID"
+    },
+    "nodes": {
       "type": "array",
       "items": {
-        "type": "string",
-        "enum": [
-          "SemanticDocument",
-          "Page",
-          "Block",
-          "TextSpan",
-          "BoundingBox",
-          "Figure",
-          "Table",
-          "Equation",
-          "Citation",
-          "SourceMapping"
-        ]
-      },
-      "uniqueItems": true
+        "$ref": "#/$defs/SemanticNode"
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SemanticRelation"
+      }
+    },
+    "provenanceIds": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/schema.json#/$defs/ProvenanceID"
+      }
+    },
+    "provenance": {
+      "$ref": "../common/schema.json#/$defs/ProvenanceStore"
+    },
+    "issues": {
+      "$ref": "../common/schema.json#/$defs/IssueStore"
+    }
+  },
+  "$defs": {
+    "NodeKind": {
+      "type": "string",
+      "description": "v0.1 node kinds covering the required academic paper structure.",
+      "enum": [
+        "DOCUMENT",
+        "FRONT_MATTER",
+        "SECTION",
+        "HEADING",
+        "PARAGRAPH",
+        "LIST",
+        "LIST_ITEM",
+        "FIGURE",
+        "FIGURE_CAPTION",
+        "TABLE",
+        "TABLE_CAPTION",
+        "EQUATION",
+        "FOOTNOTE",
+        "BIBLIOGRAPHY",
+        "BIBLIOGRAPHY_ENTRY",
+        "QUOTE",
+        "UNKNOWN"
+      ]
+    },
+    "NodeConfidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score"],
+      "properties": {
+        "score": {
+          "$ref": "../common/schema.json#/$defs/Confidence"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "TextNodeContent": {
+      "type": "object",
+      "description": "Rich text content for text-bearing nodes. Block semantics live on SemanticNode; inline semantics live in marks.",
+      "additionalProperties": false,
+      "required": ["text", "marks"],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InlineMark"
+          }
+        }
+      }
+    },
+    "FigureResource": {
+      "type": "object",
+      "description": "Source resources for a figure. Vector and PDF fragments are preferred; raster previews are fallbacks.",
+      "additionalProperties": false,
+      "required": ["embeddedImageIds"],
+      "properties": {
+        "pdfFragmentResourceId": {
+          "$ref": "../common/schema.json#/$defs/ResourceID"
+        },
+        "svgResourceId": {
+          "$ref": "../common/schema.json#/$defs/ResourceID"
+        },
+        "rasterPreviewResourceId": {
+          "$ref": "../common/schema.json#/$defs/ResourceID"
+        },
+        "embeddedImageIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ResourceID"
+          }
+        }
+      }
+    },
+    "FigureContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resources"],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "resources": {
+          "$ref": "#/$defs/FigureResource"
+        }
+      }
+    },
+    "TableCell": {
+      "type": "object",
+      "description": "A structured table cell with spans and rich text content.",
+      "additionalProperties": false,
+      "required": ["row", "column", "rowSpan", "colSpan", "content"],
+      "properties": {
+        "row": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rowSpan": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "colSpan": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "content": {
+          "$ref": "#/$defs/TextNodeContent"
+        }
+      }
+    },
+    "TableContent": {
+      "type": "object",
+      "description": "Structured table representation kept alongside the visual fallback.",
+      "additionalProperties": false,
+      "required": ["rows", "columns", "cells"],
+      "properties": {
+        "rows": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TableCell"
+          }
+        },
+        "visualResourceId": {
+          "$ref": "../common/schema.json#/$defs/ResourceID"
+        }
+      }
+    },
+    "EquationContent": {
+      "type": "object",
+      "description": "Equation representation with mandatory fallbacks: LaTeX unreliability must not lose content.",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "latex": {
+          "type": "string"
+        },
+        "mathml": {
+          "type": "string"
+        },
+        "unicodeText": {
+          "type": "string"
+        },
+        "rawText": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "previewResourceId": {
+          "$ref": "../common/schema.json#/$defs/ResourceID"
+        }
+      }
+    },
+    "NodeContent": {
+      "description": "Content payload by node kind: rich text, figure, table, or equation.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TextNodeContent"
+        },
+        {
+          "$ref": "#/$defs/FigureContent"
+        },
+        {
+          "$ref": "#/$defs/TableContent"
+        },
+        {
+          "$ref": "#/$defs/EquationContent"
+        }
+      ]
+    },
+    "InlineMarkType": {
+      "type": "string",
+      "description": "v0.1 inline mark types. Inline semantics are marks, not extra nodes.",
+      "enum": [
+        "BOLD",
+        "ITALIC",
+        "CITATION",
+        "FIGURE_REFERENCE",
+        "TABLE_REFERENCE",
+        "EQUATION_REFERENCE",
+        "SECTION_REFERENCE",
+        "INLINE_EQUATION",
+        "LINK",
+        "SUPERSCRIPT",
+        "SUBSCRIPT"
+      ]
+    },
+    "InlineMark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "start", "end"],
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/InlineMarkType"
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "targetNodeId": {
+          "type": "string",
+          "description": "Resolved SemanticNode target for reference marks (citation, figure/table/equation/section reference)."
+        },
+        "href": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "SemanticNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "children",
+        "content",
+        "attributes",
+        "confidence",
+        "provenanceIds"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "../common/schema.json#/$defs/NodeID"
+        },
+        "kind": {
+          "$ref": "#/$defs/NodeKind"
+        },
+        "parentId": {
+          "anyOf": [
+            {
+              "$ref": "../common/schema.json#/$defs/NodeID"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Parent node id; null or absent for the root node."
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/NodeID"
+          }
+        },
+        "content": {
+          "$ref": "#/$defs/NodeContent"
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Open attribute bag; must never carry layout geometry.",
+          "additionalProperties": true
+        },
+        "confidence": {
+          "$ref": "#/$defs/NodeConfidence"
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "RelationType": {
+      "type": "string",
+      "description": "v0.1 relation types for the non-tree graph.",
+      "enum": [
+        "CAPTION_OF",
+        "CITES",
+        "REFERENCES_FIGURE",
+        "REFERENCES_TABLE",
+        "REFERENCES_EQUATION",
+        "REFERENCES_SECTION",
+        "FOOTNOTE_OF"
+      ]
+    },
+    "SemanticRelation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "source", "target", "provenanceIds"],
+      "properties": {
+        "id": {
+          "$ref": "../common/schema.json#/$defs/RelationID"
+        },
+        "type": {
+          "$ref": "#/$defs/RelationType"
+        },
+        "source": {
+          "$ref": "../common/schema.json#/$defs/NodeID"
+        },
+        "target": {
+          "$ref": "../common/schema.json#/$defs/NodeID"
+        },
+        "confidence": {
+          "$ref": "../common/schema.json#/$defs/Confidence"
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
     }
   }
 }

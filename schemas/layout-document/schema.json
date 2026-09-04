@@ -1,0 +1,310 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-paper-analysis.local/schemas/layout-document/v0.json",
+  "title": "LayoutDocument",
+  "description": "How the page is visually organized: regions, bands, columns, and the reading flow graph. Visual inference only; paper semantics (methods section, citations, bibliography) must not appear here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "physicalDocumentId",
+    "pages",
+    "regions",
+    "bands",
+    "columns",
+    "readingFlow",
+    "primaryFlow"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1.0"
+    },
+    "id": {
+      "$ref": "../common/schema.json#/$defs/DocumentID"
+    },
+    "physicalDocumentId": {
+      "$ref": "../common/schema.json#/$defs/DocumentID"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LayoutPage"
+      }
+    },
+    "regions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LayoutRegion"
+      }
+    },
+    "bands": {
+      "type": "array",
+      "description": "Vertical page bands, e.g. full-width title, two-column text, spanning figure.",
+      "items": {
+        "$ref": "#/$defs/PageBand"
+      }
+    },
+    "columns": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Column"
+      }
+    },
+    "readingFlow": {
+      "$ref": "#/$defs/ReadingFlowGraph"
+    },
+    "primaryFlow": {
+      "type": "array",
+      "description": "Linearized primary reading order derived from the graph. The graph remains the source of truth; footnotes stay out of the primary flow.",
+      "items": {
+        "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+      }
+    },
+    "provenance": {
+      "$ref": "../common/schema.json#/$defs/ProvenanceStore"
+    },
+    "issues": {
+      "$ref": "../common/schema.json#/$defs/IssueStore"
+    }
+  },
+  "$defs": {
+    "LayoutPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pageId", "regionIds", "bandIds"],
+      "properties": {
+        "pageId": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "regionIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+          }
+        },
+        "bandIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/BandID"
+          }
+        }
+      }
+    },
+    "LayoutRegionKind": {
+      "type": "string",
+      "description": "Visual region kinds. FIGURE means visually figure-like, not a semantic figure.",
+      "enum": [
+        "TEXT",
+        "IMAGE",
+        "FIGURE",
+        "TABLE",
+        "FORMULA",
+        "FOOTNOTE",
+        "HEADER",
+        "FOOTER",
+        "UNKNOWN"
+      ]
+    },
+    "LayoutLabelCandidate": {
+      "type": "object",
+      "description": "A label hypothesis for a region with its supporting evidence.",
+      "additionalProperties": false,
+      "required": ["label", "confidence", "evidenceIds"],
+      "properties": {
+        "label": {
+          "$ref": "../common/schema.json#/$defs/LayoutLabel"
+        },
+        "confidence": {
+          "$ref": "../common/schema.json#/$defs/Confidence"
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/EvidenceID"
+          }
+        }
+      }
+    },
+    "LayoutConfidence": {
+      "type": "object",
+      "description": "Confidence of the region with the reason that produced it.",
+      "additionalProperties": false,
+      "required": ["score"],
+      "properties": {
+        "score": {
+          "$ref": "../common/schema.json#/$defs/Confidence"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "LayoutRegion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "pageId",
+        "geometry",
+        "kind",
+        "childIds",
+        "physicalObjectIds",
+        "labels",
+        "confidence",
+        "provenanceIds"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+        },
+        "pageId": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "geometry": {
+          "$ref": "../common/schema.json#/$defs/Geometry"
+        },
+        "kind": {
+          "$ref": "#/$defs/LayoutRegionKind"
+        },
+        "childIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+          }
+        },
+        "physicalObjectIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/PhysicalObjectID"
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LayoutLabelCandidate"
+          }
+        },
+        "confidence": {
+          "$ref": "#/$defs/LayoutConfidence"
+        },
+        "provenanceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ProvenanceID"
+          }
+        }
+      }
+    },
+    "BandLayoutMode": {
+      "type": "string",
+      "enum": ["FULL_WIDTH", "SINGLE_COLUMN", "MULTI_COLUMN", "SPANNING"]
+    },
+    "PageBand": {
+      "type": "object",
+      "description": "A horizontal band of a page with its column structure. More reliable than a single page-level column count.",
+      "additionalProperties": false,
+      "required": ["id", "pageId", "yStart", "yEnd", "layoutMode", "columnIds"],
+      "properties": {
+        "id": {
+          "$ref": "../common/schema.json#/$defs/BandID"
+        },
+        "pageId": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "yStart": {
+          "type": "number"
+        },
+        "yEnd": {
+          "type": "number"
+        },
+        "layoutMode": {
+          "$ref": "#/$defs/BandLayoutMode"
+        },
+        "columnIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/ColumnID"
+          }
+        }
+      }
+    },
+    "Column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "pageId", "bandId", "geometry", "regionIds"],
+      "properties": {
+        "id": {
+          "$ref": "../common/schema.json#/$defs/ColumnID"
+        },
+        "pageId": {
+          "$ref": "../common/schema.json#/$defs/PageID"
+        },
+        "bandId": {
+          "$ref": "../common/schema.json#/$defs/BandID"
+        },
+        "geometry": {
+          "$ref": "../common/schema.json#/$defs/Geometry"
+        },
+        "regionIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+          }
+        }
+      }
+    },
+    "ReadingOrderReason": {
+      "type": "string",
+      "enum": [
+        "SAME_COLUMN",
+        "NEXT_COLUMN",
+        "AFTER_SPANNING_BLOCK",
+        "BEFORE_SPANNING_BLOCK",
+        "CAPTION_ASSOCIATION",
+        "CONTINUATION",
+        "FOOTNOTE_FLOW"
+      ]
+    },
+    "ReadingEdge": {
+      "type": "object",
+      "description": "A directed reading-order edge with confidence and reason.",
+      "additionalProperties": false,
+      "required": ["source", "target", "confidence", "reason"],
+      "properties": {
+        "source": {
+          "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+        },
+        "target": {
+          "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+        },
+        "confidence": {
+          "$ref": "../common/schema.json#/$defs/Confidence"
+        },
+        "reason": {
+          "$ref": "#/$defs/ReadingOrderReason"
+        }
+      }
+    },
+    "ReadingFlowGraph": {
+      "type": "object",
+      "description": "Reading order as a graph. Source of truth; primaryFlow is derived.",
+      "additionalProperties": false,
+      "required": ["nodes", "edges"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/schema.json#/$defs/LayoutRegionID"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadingEdge"
+          }
+        }
+      }
+    }
+  }
+}
