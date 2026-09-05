@@ -1,11 +1,11 @@
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
-"""End-to-end Walking Skeleton pipeline orchestration (M2 Exit Gate).
+"""End-to-end pipeline orchestration (Physical through render + mapping).
 
-PDF -> Physical -> Layout -> Semantic + Translation -> RenderDocument ->
-LaTeX -> Target PDF -> RenderAnchor MappingBundle.
+PDF -> Physical -> Evidence -> Layout -> Semantic + Translation ->
+RenderDocument -> LaTeX -> Target PDF -> RenderAnchor MappingBundle.
 
 Run as a module: ``python -m pdf_pipeline run <input.pdf> <outdir>``.
-Outputs six canonical JSON documents plus the compiled target PDF and
+Outputs seven canonical JSON documents plus the compiled target PDF and
 page previews for the viewer.
 """
 
@@ -245,7 +245,7 @@ def run_pipeline(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="M2 Walking Skeleton pipeline")
+    parser = argparse.ArgumentParser(description="PDF paper analysis pipeline")
     parser.add_argument("input", type=Path, help="source PDF")
     parser.add_argument("outdir", type=Path, help="output directory")
     parser.add_argument(

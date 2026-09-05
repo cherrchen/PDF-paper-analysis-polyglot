@@ -4,7 +4,7 @@
 
 Polyglot monorepo for PDF paper analysis, document understanding, translation, structure reconstruction, and PDF rendering.
 
-**Status:** M1 core contracts and the M2 Walking Skeleton are complete. The end-to-end pipeline and bidirectional viewer have passed renewed acceptance. See the [development roadmap](docs/development/roadmap.en.md) for current progress.
+**Status:** M1 core contracts, the M2 Walking Skeleton, and the M3 Layout Recovery Engine are complete. The end-to-end pipeline, bidirectional viewer, and layout recovery have passed renewed acceptance. See the [development roadmap](docs/development/roadmap.en.md) for current progress.
 
 ## Rendering
 

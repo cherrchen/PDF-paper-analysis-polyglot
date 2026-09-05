@@ -1,10 +1,10 @@
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportAttributeAccessIssue=false
-"""Phase 2.1 minimal PDF backend: PDFium bytes -> PhysicalDocument.
+"""Physical PDF backend: PDFium bytes -> PhysicalDocument.
 
-Only what the Walking Skeleton needs: pages, text spans, basic images,
-page geometry, and rasterization of pages for later phases. Reading order,
-semantics, captions, and citations are deliberately absent (physical layer
-must stay objective).
+Extracts pages, text spans, images, and vector path objects
+(``FPDF_PAGEOBJ_PATH``) into canonical page space. Vector paths are M3
+input for band/column detection; reading order, semantics, captions, and
+citations are absent (physical layer must stay objective).
 
 Determinism: IDs are derived from the document fingerprint and stable
 per-object counters, so parsing the same PDF bytes twice yields identical

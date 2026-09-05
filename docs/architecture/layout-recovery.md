@@ -21,5 +21,5 @@ PhysicalDocument
 - **确定性**：同输入字节产出逐字节相同的 LayoutDocument；所有 ID 由 source fingerprint 派生。
 - **先结构后分块**：通栏行会桥接左右栏，band/column 检测必须发生在文本分块之前。
 - **Evidence 是唯一外部输入通道**：第三方 parser 输出只以 `EvidenceBundle` 候选进入融合；provider 类型永不越过该边界。当前 provider 为确定性 `MockLayoutEvidenceProvider`；真实 MinerU 适配器以同一 Protocol 接入。
-- **阅读顺序无 sort(y,x)**：band 自上而下、列自左而右、列内自上而下；continuation/caption/footnote 以 reason+confidence 边表达。
+- **阅读主序由 band/column 驱动，列内仍按几何**：band 自上而下、列自左而右、列内 (y, x)（y 量化到 4pt）；continuation/caption/footnote 以 reason+confidence 边表达。没有文档级全局 `sort(y, x)`。
 - **评估**：`tests/fixtures/layout-truth/`（ground truth）+ `pdf_pipeline.metrics`（Region Recall / pairwise / sequence accuracy）+ `tests/benchmark/test_layout_benchmark.py`。

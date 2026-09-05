@@ -4,7 +4,7 @@
 
 面向 PDF 论文分析、文档理解、翻译、结构重建与 PDF 渲染的多语言单仓。
 
-**状态：** M1 核心契约与 M2 Walking Skeleton 已完成，端到端管线及双向 Viewer 已通过重新验收。当前进度以[开发路线图](docs/development/roadmap.md)为准。
+**状态：** M1 核心契约、M2 Walking Skeleton 与 M3 Layout Recovery Engine 已完成。端到端管线、双向 Viewer 与版面恢复已通过重新验收。当前进度以[开发路线图](docs/development/roadmap.md)为准。
 
 ## 渲染
 

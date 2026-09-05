@@ -1,8 +1,8 @@
 """Phase 3.5 ReadingFlowGraph + Phase 3.6 paragraph continuation detection.
 
 Reading order is derived from the band/column structure, never from a
-global ``sort(y, x)``: bands are read top to bottom, columns left to
-right, regions within a column top to bottom. Every edge carries a
+global document-wide ``sort(y, x)``: bands are read top to bottom, columns
+left to right, and regions within a column by quantized geometric (y, x). Every edge carries a
 ReadingOrderReason and a confidence; continuation between two text
 regions (column break, page break, or interruption by a figure) overrides
 the positional reason so semantic recovery (M4) can merge paragraphs.

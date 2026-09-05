@@ -13,7 +13,7 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-05
-**Current position:** M3 Layout Recovery Engine is complete (all of Phase 3.1–3.8, exit gate met); M4 (Semantic Recovery Engine) is next.
+**Current position:** M3 Layout Recovery Engine is complete (all of Phase 3.1–3.8, exit gate met after review repairs); M4 (Semantic Recovery Engine) is next.
 
 README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine.
 
@@ -24,7 +24,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M0 Engineering Foundation | Done | Phases 0.1–0.3 complete; Tier 1 corpus established |
 | M1 Core Document Contracts | Done | Six schemas at `0.1.0`; generated bindings + cross-language roundtrip |
 | M2 Walking Skeleton | Done | All 11 Tier-1 fixtures pass end to end; independent Translation/Render IR, rotated coordinates, and the bidirectional viewer passed renewed acceptance |
-| M3 Layout Recovery Engine | Done | Evidence adapter boundary + mock provider, XY-cut band/column detection, structure-driven ReadingFlowGraph, continuation/caption/footnote recovery; benchmark green |
+| M3 Layout Recovery Engine | Done | Evidence adapter boundary + mock provider, XY-cut band/column detection, structure-driven ReadingFlowGraph, continuation/caption/footnote recovery; exit gate met after review repairs |
 | M4 Semantic Recovery Engine | Not started | — |
 | M5 Translation & Rendering | Not started | — |
 | M6 Bidirectional Reader | Not started | — |
@@ -74,15 +74,15 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | 3.1 Evidence Normalization | Done | `pdf_pipeline.evidence`: `EvidenceProvider` Protocol + deterministic mock provider (all candidate types + provenance); idempotent label/coordinate normalization, tested |
-| 3.2 Region Fusion | Done | `pdf_pipeline.fusion`: IoU/containment/text-overlap/label-similarity/confidence weighting; structured absorption and cell-noise drop; Region Recall ≥ 0.9 |
+| 3.2 Region Fusion | Done | `pdf_pipeline.fusion`: IoU/containment/text-overlap/label-similarity/confidence weighting; structured absorption and cell-noise drop; Region Recall ≥ 0.9; precision waits for region-level annotation |
 | 3.3 Page Band Detection | Done | recursive XY-cut in `pdf_pipeline.page_structure`: mixed-bands/spanning-figure assert SPANNING bands; title → 2 columns → wide figure → 2 columns holds |
-| 3.4 Column Recovery | Done | XY-cut vertical cuts + narrow-island merge + unbalanced-column order preserved; BERT two-column / Attention single-column stable |
-| 3.5 ReadingFlowGraph | Done | driven by band/column structure (no sort(y,x)), every edge carries reason+confidence; pairwise = 1.0, all sequences exact |
+| 3.4 Column Recovery | Done | XY-cut vertical cuts + narrow-island merge + unbalanced-column order preserved; lengthened synthetic fixtures assert `MULTI_COLUMN`; BERT / Attention are `@pytest.mark.slow` |
+| 3.5 ReadingFlowGraph | Done | primary order driven by band/column structure, geometric (y, x) within a column; every edge carries reason+confidence; pairwise ≥ 0.95, all sequences exact |
 | 3.6 Paragraph Continuation | Done | CONTINUATION edges across column/page breaks and figure interruptions; asserted on the cross-page-paragraph fixture |
 | 3.7 Caption Association | Done | layout-level scoring (distance/alignment/font/prefix/width) + FIGURE_BLOCK/TABLE_BLOCK groups; consumed by the semantic layer |
-| 3.8 Footnote Recovery | Done | bottom zone + font size + marker prefix; separate FOOTNOTE_FLOW chains outside primaryFlow |
+| 3.8 Footnote Recovery | Done | bottom zone + font size + marker prefix; separate FOOTNOTE_FLOW chains outside primaryFlow; reference evidence deferred to M4 |
 
-**M3 exit gate:** Met. See [`.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.en.md`](../../.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.en.md).
+**M3 exit gate:** Met after review repairs. See [`.agents/notes/implemented/bug-fix/2026-09-05-m3-review-repairs.en.md`](../../.agents/notes/implemented/bug-fix/2026-09-05-m3-review-repairs.en.md); architecture decisions remain in [the M3 implementation note](../../.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.en.md).
 
 ### Recommended next steps
 
@@ -1214,9 +1214,11 @@ Converge multiple candidates into Internal LayoutRegion.
 Evaluate on manually annotated pages:
 
 ```text
-Region Recall
-Region Precision
+Region Recall ≥ 0.9
+Region Precision (waits for region-level annotation)
 ```
+
+Snippet-level ground truth currently supports recall and ordering only.
 
 ---
 
@@ -1387,7 +1389,7 @@ Identify:
 ```text
 FootnoteRegion
 Footnote flow
-Reference evidence
+Reference evidence (deferred to M4)
 ```
 
 Footnotes do not directly pollute main reading flow.
