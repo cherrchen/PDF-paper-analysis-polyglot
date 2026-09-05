@@ -13,9 +13,9 @@
 ## 当前进度追踪
 
 **最后更新：** 2026-09-05
-**当前位置：** M2 Review 修复完成并重新通过 Exit Gate；下一阶段为 M3（Layout Recovery Engine）。
+**当前位置：** M3 Layout Recovery Engine 完成（Phase 3.1–3.8 全部完成，Exit Gate 达成）；下一阶段为 M4（Semantic Recovery Engine）。
 
-README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线。
+README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine。
 
 ### Milestone 总览
 
@@ -24,7 +24,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M0 Engineering Foundation | 已完成 | 0.1–0.3 全部完成；Tier 1 语料已建立 |
 | M1 Core Document Contracts | 已完成 | 六套 schema `0.1.0`；生成绑定 + 跨语言 roundtrip |
 | M2 Walking Skeleton | 已完成 | 11 个 Tier-1 fixture 全链通过；独立 Translation/Render IR、旋转坐标与双向 Viewer 已重新验收 |
-| M3 Layout Recovery Engine | 未开始 | — |
+| M3 Layout Recovery Engine | 已完成 | Evidence 适配边界 + mock provider、XY-cut band/column、结构驱动 ReadingFlowGraph、continuation/caption/footnote 恢复；benchmark 全绿 |
 | M4 Semantic Recovery Engine | 未开始 | — |
 | M5 Translation & Rendering | 未开始 | — |
 | M6 Bidirectional Reader | 未开始 | — |
@@ -69,9 +69,24 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 **M2 Exit Gate：** 已重新达成；修复决策与验证结果见 [M2 Review 修复 Note](../../.agents/notes/implemented/bug-fix/2026-09-05-m2-review-repairs.md)。
 
+### M3 明细
+
+| Phase | 状态 | 证据 |
+| --- | --- | --- |
+| 3.1 Evidence Normalization | 已完成 | `pdf_pipeline.evidence`：`EvidenceProvider` Protocol + 确定性 mock provider（全候选类型 + provenance）；label/coordinate normalization 幂等且有测试 |
+| 3.2 Region Fusion | 已完成 | `pdf_pipeline.fusion`：IoU/containment/text-overlap/label-相似度/置信度加权；结构化候选吸收与 cell-noise 丢弃；Region Recall ≥ 0.9 |
+| 3.3 Page Band Detection | 已完成 | `pdf_pipeline.page_structure` 递归 XY-cut：mixed-bands/spanning-figure 断言 SPANNING band；标题→双栏→通栏图→双栏成立 |
+| 3.4 Column Recovery | 已完成 | XY-cut 竖切 + 窄岛合并 + 非平衡栏保持阅读顺序；BERT 双栏 / Attention 单栏稳定 |
+| 3.5 ReadingFlowGraph | 已完成 | band/column 结构驱动（无 sort(y,x)），每边 reason+confidence；pairwise = 1.0、sequence 全对 |
+| 3.6 Paragraph Continuation | 已完成 | 跨栏/跨页/figure 打断的 CONTINUATION 边；cross-page-paragraph fixture 断言 |
+| 3.7 Caption Association | 已完成 | layout 层打分（距离/对齐/字号/前缀/宽度）+ FIGURE_BLOCK/TABLE_BLOCK group；semantic 层消费 |
+| 3.8 Footnote Recovery | 已完成 | 页底 zone + 字号 + 标记前缀；FOOTNOTE_FLOW 独立链，不进 primaryFlow |
+
+**M3 Exit Gate：** 已达成（见 [`.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.md`](../../.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.md)）
+
 ### 建议下一步
 
-1. 进入 M3：Layout Recovery Engine——真实 band/column 分割、MinerU Evidence 接入、caption/heading 启发式升级。
+1. 进入 M4：Semantic Recovery Engine——段落合并（消费 CONTINUATION evidence）、表格/公式节点、FOOTNOTE_OF 关系、章节层级。
 
 ### 维护说明
 

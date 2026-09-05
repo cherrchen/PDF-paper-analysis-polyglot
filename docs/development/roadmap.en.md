@@ -13,9 +13,9 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-05
-**Current position:** M2 review repairs are complete and the exit gate has passed again; M3 (Layout Recovery Engine) is next.
+**Current position:** M3 Layout Recovery Engine is complete (all of Phase 3.1–3.8, exit gate met); M4 (Semantic Recovery Engine) is next.
 
-README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline.
+README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine.
 
 ### Milestone overview
 
@@ -24,7 +24,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M0 Engineering Foundation | Done | Phases 0.1–0.3 complete; Tier 1 corpus established |
 | M1 Core Document Contracts | Done | Six schemas at `0.1.0`; generated bindings + cross-language roundtrip |
 | M2 Walking Skeleton | Done | All 11 Tier-1 fixtures pass end to end; independent Translation/Render IR, rotated coordinates, and the bidirectional viewer passed renewed acceptance |
-| M3 Layout Recovery Engine | Not started | — |
+| M3 Layout Recovery Engine | Done | Evidence adapter boundary + mock provider, XY-cut band/column detection, structure-driven ReadingFlowGraph, continuation/caption/footnote recovery; benchmark green |
 | M4 Semantic Recovery Engine | Not started | — |
 | M5 Translation & Rendering | Not started | — |
 | M6 Bidirectional Reader | Not started | — |
@@ -69,9 +69,24 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 **M2 exit gate:** Met again. See the [M2 review repair note](../../.agents/notes/implemented/bug-fix/2026-09-05-m2-review-repairs.en.md) for the decision and validation results.
 
+### M3 details
+
+| Phase | Status | Evidence |
+| --- | --- | --- |
+| 3.1 Evidence Normalization | Done | `pdf_pipeline.evidence`: `EvidenceProvider` Protocol + deterministic mock provider (all candidate types + provenance); idempotent label/coordinate normalization, tested |
+| 3.2 Region Fusion | Done | `pdf_pipeline.fusion`: IoU/containment/text-overlap/label-similarity/confidence weighting; structured absorption and cell-noise drop; Region Recall ≥ 0.9 |
+| 3.3 Page Band Detection | Done | recursive XY-cut in `pdf_pipeline.page_structure`: mixed-bands/spanning-figure assert SPANNING bands; title → 2 columns → wide figure → 2 columns holds |
+| 3.4 Column Recovery | Done | XY-cut vertical cuts + narrow-island merge + unbalanced-column order preserved; BERT two-column / Attention single-column stable |
+| 3.5 ReadingFlowGraph | Done | driven by band/column structure (no sort(y,x)), every edge carries reason+confidence; pairwise = 1.0, all sequences exact |
+| 3.6 Paragraph Continuation | Done | CONTINUATION edges across column/page breaks and figure interruptions; asserted on the cross-page-paragraph fixture |
+| 3.7 Caption Association | Done | layout-level scoring (distance/alignment/font/prefix/width) + FIGURE_BLOCK/TABLE_BLOCK groups; consumed by the semantic layer |
+| 3.8 Footnote Recovery | Done | bottom zone + font size + marker prefix; separate FOOTNOTE_FLOW chains outside primaryFlow |
+
+**M3 exit gate:** Met. See [`.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.en.md`](../../.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.en.md).
+
 ### Recommended next steps
 
-1. Enter M3: Layout Recovery Engine—real band/column segmentation, MinerU evidence ingestion, and caption/heading heuristic upgrades.
+1. Enter M4: Semantic Recovery Engine—paragraph merging (consuming CONTINUATION evidence), table/equation nodes, FOOTNOTE_OF relations, and section hierarchy.
 
 ### Maintenance
 
