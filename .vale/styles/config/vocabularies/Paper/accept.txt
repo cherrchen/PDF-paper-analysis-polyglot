@@ -105,4 +105,7 @@ subpackages
 rects
 fixpoint
 booktabs
+PGF
+TikZ
+pgf
 misclassification

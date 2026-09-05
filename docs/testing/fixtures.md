@@ -33,4 +33,4 @@ Tier 4 扫描 PDF 不提交进仓库；占位元数据见 `tests/fixtures/metada
 
 不要提交巨大的 PDF 语料。Git 历史必须保持精简。
 
-命令：`just latex-smoke`（编译全部 fixture 源文件）。
+命令：`just latex-smoke`（编译全部 fixture 源文件）。生成的 PDF 不入库。依赖这些 PDF 的测试在文件缺失时 `pytest.skip`，而不是崩溃。GitHub 的 Python job 会先编译夹具再跑 `just test-python`，因此 clean checkout 仍能执行管线、golden 与覆盖率门禁。

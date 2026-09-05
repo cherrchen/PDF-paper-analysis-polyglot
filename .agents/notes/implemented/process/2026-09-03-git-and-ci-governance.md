@@ -20,4 +20,4 @@ Status: implemented
 
 ## 后果
 
-hooks 保持快速。PR CI 覆盖格式、lint、类型、单元测试、文档、schema 与 LaTeX 冒烟。Nightly 留给语料、fuzz 与重审计。在真正应用之前，不要默默假设 GitHub ruleset 已经存在。
+hooks 保持快速。PR CI 覆盖格式、lint、类型、单元测试、文档、schema 与 LaTeX 冒烟。Python job 安装与 LaTeX job 相同的 TeX Live 宏包集，先 `just latex-smoke` 再 `just test-python`，因为夹具 PDF 不入库，而覆盖率门禁需要它们。缺少 PDF 时依赖夹具的测试 skip。Nightly 留给语料、fuzz 与重审计。在真正应用之前，不要默默假设 GitHub ruleset 已经存在。夹具 PDF 与 TikZ 宏包细节见 [CI 夹具与 TikZ 修复](../bug-fix/2026-09-05-ci-tikz-and-fixture-tests.md)。

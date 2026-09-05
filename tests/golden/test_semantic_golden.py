@@ -29,8 +29,15 @@ FIXTURES = ROOT / "tests/fixtures/source/latex/build"
 GOLDEN = ROOT / "tests/golden"
 
 
+def _fixture_pdf(fixture: str) -> Path:
+    path = FIXTURES / f"{fixture}.pdf"
+    if not path.exists():
+        pytest.skip(f"fixture PDF {fixture} not built; run `just latex-smoke`")
+    return path
+
+
 def _expected_semantic(fixture: str) -> SemanticDocument:
-    physical = extract_physical_document((FIXTURES / f"{fixture}.pdf").read_bytes())
+    physical = extract_physical_document(_fixture_pdf(fixture).read_bytes())
     layout = recover_layout_document(physical)
     return recover_semantic_document(layout, region_texts_from(physical, layout))
 

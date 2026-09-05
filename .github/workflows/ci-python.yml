@@ -20,8 +20,17 @@ jobs:
         with:
           cache: true
 
+      - name: Install TeX Live 2026
+        uses: zauguin/install-texlive@6671d0c62046c7e349fe154d5208fe746b07e037  # v4.4.0
+        with:
+          texlive_version: 2026
+          package_file: tex/packages.txt
+
       - name: Install Python workspace
         run: just setup-ci
+
+      - name: Compile fixture PDFs
+        run: just latex-smoke
 
       - name: Format, lint, typecheck, test
         run: |

@@ -23,11 +23,15 @@ if TYPE_CHECKING:
 FIXTURE_DIR = Path(__file__).resolve().parents[4] / "tests/fixtures/source/latex/build"
 
 
-def _fixture(name: str) -> bytes:
+def _fixture_path(name: str) -> Path:
     path = FIXTURE_DIR / f"{name}.pdf"
     if not path.exists():
-        pytest.skip(f"fixture PDF {name} not built")
-    return path.read_bytes()
+        pytest.skip(f"fixture PDF {name} not built; run `just latex-smoke`")
+    return path
+
+
+def _fixture(name: str) -> bytes:
+    return _fixture_path(name).read_bytes()
 
 
 @pytest.fixture(scope="module")
@@ -86,7 +90,7 @@ def test_render_anchors_recover_all_body_nodes(
 
 
 def test_end_to_end_pipeline_runs_and_validates(tmp_path: Path) -> None:
-    paths = run_pipeline(FIXTURE_DIR / "smoke.pdf", tmp_path / "out")
+    paths = run_pipeline(_fixture_path("smoke"), tmp_path / "out")
     for name in (
         "physical.json",
         "layout.json",
@@ -140,7 +144,7 @@ def test_figure_and_caption_share_one_float() -> None:
     ],
 )
 def test_tier1_pipeline_compiles_every_fixture(tmp_path: Path, fixture: str) -> None:
-    paths = run_pipeline(FIXTURE_DIR / f"{fixture}.pdf", tmp_path / fixture)
+    paths = run_pipeline(_fixture_path(fixture), tmp_path / fixture)
     assert paths["target.pdf"].exists()
 
 

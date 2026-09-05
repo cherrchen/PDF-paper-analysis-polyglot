@@ -20,4 +20,4 @@ Trunk-based development on `main`. Squash merges. Conventional Commits. Lefthook
 
 ## Consequences
 
-Hooks stay fast. PR CI covers format, lint, types, unit tests, docs, schema, and LaTeX smoke. Nightly is reserved for corpus, fuzzing, and heavy audits. GitHub rulesets are not silently assumed to exist until applied.
+Hooks stay fast. PR CI covers format, lint, types, unit tests, docs, schema, and LaTeX smoke. The Python job installs the same TeX Live package set as the LaTeX job, runs `just latex-smoke`, then `just test-python`, because fixture PDFs are not committed and the coverage gate needs them. Tests that need those PDFs skip when the files are missing. Nightly is reserved for corpus, fuzzing, and heavy audits. GitHub rulesets are not silently assumed to exist until applied. Fixture PDFs and the TikZ package set: [CI fixture and TikZ fix](../bug-fix/2026-09-05-ci-tikz-and-fixture-tests.en.md).

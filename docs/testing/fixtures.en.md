@@ -33,4 +33,4 @@ Tier 4 scanned PDFs are not committed; placeholder metadata: `tests/fixtures/met
 
 Do not commit a huge PDF corpus. Git history must stay small.
 
-Command: `just latex-smoke` (compiles all fixture sources).
+Command: `just latex-smoke` (compiles all fixture sources). Generated PDFs are not committed. Tests that need those PDFs `pytest.skip` when the files are missing instead of crashing. The GitHub Python job compiles fixtures before `just test-python`, so pipeline, golden, and coverage gates still run on a clean checkout.
