@@ -1,0 +1,12 @@
+{
+  "fixture": "tikz-vector",
+  "purpose": "TikZ paths recover as one figure region with caption",
+  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "readingOrder": [
+    "Vector Figure Fixture",
+    "1 Vector diagram",
+    "Figure 1: Simple vector figure for graphics extraction tests"
+  ],
+  "captions": [{ "prefix": "Figure 1", "kind": "FIGURE_BLOCK" }],
+  "footnotesExpected": 0
+}

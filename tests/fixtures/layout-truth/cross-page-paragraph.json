@@ -1,0 +1,17 @@
+{
+  "fixture": "cross-page-paragraph",
+  "purpose": "Paragraph continuing across a page break needs continuation evidence",
+  "pages": [
+    { "pageIndex": 0, "singleColumnOnly": true },
+    { "pageIndex": 1, "singleColumnOnly": true }
+  ],
+  "readingOrder": [
+    "Cross-Page Paragraph Fixture",
+    "1 Continuous paragraph",
+    "This paragraph is intentionally long",
+    "The paragraph keeps going with additional synthetic academic prose"
+  ],
+  "captions": [],
+  "footnotesExpected": 0,
+  "expectCrossPageContinuation": true
+}

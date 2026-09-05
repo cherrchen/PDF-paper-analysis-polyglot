@@ -1,0 +1,15 @@
+{
+  "fixture": "spanning-figure",
+  "purpose": "Wide figure band interrupting a two-column article",
+  "pages": [{ "pageIndex": 0 }, { "pageIndex": 1, "expectSpanningBand": true }],
+  "readingOrder": [
+    "Spanning Figure Fixture",
+    "1 Columns before figure",
+    "Introductory text in the first column",
+    "2 Columns after figure",
+    "Text resumes below the spanning figure",
+    "Figure 1: Wide figure spanning both columns"
+  ],
+  "captions": [{ "prefix": "Figure 1", "kind": "FIGURE_BLOCK" }],
+  "footnotesExpected": 0
+}

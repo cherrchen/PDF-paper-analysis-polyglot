@@ -1,0 +1,8 @@
+{
+  "fixture": "smoke",
+  "purpose": "Minimal single-column baseline",
+  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "readingOrder": ["Smoke Fixture", "This fixture is the minimum LuaLaTeX regression document"],
+  "captions": [],
+  "footnotesExpected": 0
+}

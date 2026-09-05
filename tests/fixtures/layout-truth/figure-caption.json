@@ -1,0 +1,15 @@
+{
+  "fixture": "figure-caption",
+  "purpose": "Raster figure with caption association",
+  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "readingOrder": [
+    "Figure Caption Fixture",
+    "1 Figure with caption",
+    "This fixture embeds a raster placeholder",
+    "Figure 1: Synthetic raster figure",
+    "2 Text after the figure",
+    "Reading resumes below the figure block"
+  ],
+  "captions": [{ "prefix": "Figure 1", "kind": "FIGURE_BLOCK" }],
+  "footnotesExpected": 0
+}

@@ -1,0 +1,18 @@
+{
+  "fixture": "mixed-bands",
+  "purpose": "Full-width front matter, columns, wide figure band, resumed columns",
+  "pages": [{ "pageIndex": 0 }, { "pageIndex": 1, "expectSpanningBand": true }],
+  "readingOrder": [
+    "Mixed Bands Fixture",
+    "Abstract",
+    "Full-width title and abstract band",
+    "Body text begins in two-column mode",
+    "2 Second column section",
+    "More column text precedes a spanning figure band",
+    "3 After wide figure",
+    "Columns resume below the figure band",
+    "Figure 1: Wide figure between column bands"
+  ],
+  "captions": [{ "prefix": "Figure 1", "kind": "FIGURE_BLOCK" }],
+  "footnotesExpected": 0
+}

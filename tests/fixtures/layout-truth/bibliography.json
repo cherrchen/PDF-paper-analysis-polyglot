@@ -1,0 +1,15 @@
+{
+  "fixture": "bibliography",
+  "purpose": "Reference entries recover as ordered regions",
+  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "readingOrder": [
+    "Bibliography Fixture",
+    "1 Introduction",
+    "Prior work on document understanding",
+    "References",
+    "[1] A. Smith",
+    "[2] J. Doe"
+  ],
+  "captions": [],
+  "footnotesExpected": 0
+}

@@ -1,0 +1,12 @@
+{
+  "fixture": "table-heavy",
+  "purpose": "booktabs table with caption association",
+  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "readingOrder": [
+    "Table Fixture",
+    "1 Structured table",
+    "Table 1: Synthetic metrics for table-structure recovery"
+  ],
+  "captions": [{ "prefix": "Table 1", "kind": "TABLE_BLOCK" }],
+  "footnotesExpected": 0
+}
