@@ -22,6 +22,7 @@ from document_model import dump_document, validate_bundle_references
 from document_model.generated import schema_models as generated
 from paper_llm import translate_document
 
+from pdf_pipeline.evidence.providers import MockLayoutEvidenceProvider
 from pdf_pipeline.ids import stable_uuid
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
@@ -48,11 +49,11 @@ PIPELINE_VERSION = "0.1.0"
 
 
 def region_texts_from(physical: PhysicalDocument, layout: LayoutDocument) -> dict[str, str]:
-    """Join text of the physical spans behind each TEXT region."""
+    """Join text of the physical spans behind each text-carrying region."""
     spans = {obj.id: obj for obj in physical.objects if obj.objectType == "textSpan"}
     texts: dict[str, str] = {}
     for region in layout.regions:
-        if region.kind != "TEXT":
+        if region.kind not in {"TEXT", "FOOTNOTE"}:
             continue
         texts[region.id] = " ".join(
             spans[object_id].text for object_id in region.physicalObjectIds if object_id in spans
@@ -72,11 +73,9 @@ def build_source_anchors(
     """PhysicalLayoutBindings + SourceAnchors + SourceSemanticBindings.
 
     Layout regions carry the physical object ids; each semantic node records
-    which region(s) it came from via the region order used at recovery time.
-    The Walking Skeleton pairs the i-th non-root semantic node with the i-th
-    reading-flow region, mirroring the recovery-time walk.
+    its source region in ``attributes.layoutRegionId`` at recovery time, so
+    anchor pairing is identity-based instead of positional.
     """
-    del physical
     physical_layout_bindings = [
         generated.PhysicalLayoutBinding(
             id=stable_uuid(layout.id, "plb", region.id),
@@ -86,31 +85,28 @@ def build_source_anchors(
         for region in layout.regions
     ]
 
-    region_by_id = {region.id: region for region in layout.regions}
-    node_ids = [node.id for node in semantic.nodes[1:]]
-    body_regions = [region_by_id[rid] for rid in layout.primaryFlow if rid in region_by_id]
-
     source_anchors: list[generated.SourceAnchor] = []
     source_semantic_bindings: list[generated.SourceSemanticBinding] = []
-    for index, node_id in enumerate(node_ids):
-        if index >= len(body_regions):
-            break
-        region = body_regions[index]
+    for node in semantic.nodes[1:]:
+        region_id = node.attributes.get("layoutRegionId")
+        if not isinstance(region_id, str):
+            continue
         anchor = generated.SourceAnchor(
-            id=stable_uuid(semantic.id, "source-anchor", node_id),
+            id=stable_uuid(semantic.id, "source-anchor", node.id),
             fragments=[
-                generated.LayoutRegionRef(fragmentType="layoutRegion", layoutRegionId=region.id)
+                generated.LayoutRegionRef(fragmentType="layoutRegion", layoutRegionId=region_id)
             ],
             confidence=0.7,
         )
         source_anchors.append(anchor)
         source_semantic_bindings.append(
             generated.SourceSemanticBinding(
-                id=stable_uuid(semantic.id, "ssb", node_id),
-                semanticNodeId=node_id,
+                id=stable_uuid(semantic.id, "ssb", node.id),
+                semanticNodeId=node.id,
                 sourceAnchorIds=[anchor.id],
             )
         )
+    del physical
     return physical_layout_bindings, source_anchors, source_semantic_bindings
 
 
@@ -182,7 +178,8 @@ def run_pipeline(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     physical = extract_physical_document(data)
-    layout = recover_layout_document(physical)
+    evidence = MockLayoutEvidenceProvider().collect(physical)
+    layout = recover_layout_document(physical, evidence=evidence)
     semantic = recover_semantic_document(layout, region_texts_from(physical, layout))
     translation = translate_document(semantic)
     render = compose_render_document(semantic, translation)
@@ -203,6 +200,7 @@ def run_pipeline(
 
     outputs = {
         "physical.json": physical,
+        "evidence.json": evidence,
         "layout.json": layout,
         "semantic.json": semantic,
         "translation.json": translation,
@@ -218,6 +216,7 @@ def run_pipeline(
     # Cross-layer integrity: every id reference in the bundle resolves.
     bundle = {
         "physical": dump_document(physical),
+        "evidence": dump_document(evidence),
         "layout": dump_document(layout),
         "semantic": dump_document(semantic),
         "translation": dump_document(translation),
