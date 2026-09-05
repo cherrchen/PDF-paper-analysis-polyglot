@@ -81,6 +81,7 @@ def test_fused_regions_link_provenance_records() -> None:
     _, layout = _recover(_fixture("smoke"))
     linked = [region for region in layout.regions if region.provenanceIds]
     assert linked, "fusion provenance must be attached to regions"
+    assert layout.provenance is not None
     record_ids = {record.id for record in layout.provenance.records}
     for region in linked:
         assert set(region.provenanceIds) <= record_ids
