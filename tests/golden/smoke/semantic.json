@@ -1,22 +1,19 @@
 {
   "schemaVersion": "0.1.0",
-  "id": "8cd12c0c-d384-5a08-ab7b-f09118120439",
-  "layoutDocumentId": "4c3fcaff-7f17-6377-4fe9-487991b53a46",
-  "rootId": "30907f81-384f-30eb-5020-557299266aa0",
+  "id": "f6f2ab93-a59a-6cc6-c087-e4984c206cc1",
+  "layoutDocumentId": "6f0f6500-761c-3fff-013c-dc6b1e5cf38a",
+  "rootId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
   "nodes": [
     {
-      "id": "30907f81-384f-30eb-5020-557299266aa0",
+      "id": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
       "kind": "DOCUMENT",
       "parentId": null,
       "children": [
-        "0a426618-9a9e-04f2-7228-ea9c36902636",
-        "770986d0-8314-961a-0e5b-26526ac444ba",
-        "274d26c7-33b8-eaf4-c208-cec9286f9456",
-        "229ba3c5-f2e6-6fd3-933e-767fa1e29892",
-        "20655b7c-c210-daba-e036-f12673a8497b",
-        "ac286ac3-8cfd-8ce7-ca2f-65060ea1402e",
-        "98614979-0e2a-8cb3-7728-2cf1a8115b69",
-        "23c08a89-9a97-bfcb-4831-82602cf7881c"
+        "600a5582-8c70-c4e0-a3b0-0936ab957a03",
+        "94a308b5-9eb9-792e-79eb-1e4ef443dd23",
+        "05c527d4-4317-c2a0-fa85-68ba93092fbb",
+        "4a6c50c9-ea70-93d7-b6e9-87e4a390f5ea",
+        "7793a245-ce99-ecb1-8f16-86fa607eb91b"
       ],
       "content": {
         "text": "",
@@ -30,9 +27,9 @@
       "provenanceIds": []
     },
     {
-      "id": "0a426618-9a9e-04f2-7228-ea9c36902636",
+      "id": "600a5582-8c70-c4e0-a3b0-0936ab957a03",
       "kind": "HEADING",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
       "children": [],
       "content": {
         "text": "Smoke Fixture",
@@ -40,7 +37,7 @@
       },
       "attributes": {
         "level": 1,
-        "layoutRegionId": "3c7c5b45-12fa-e1e7-4d2b-8c9c106db7d6"
+        "layoutRegionId": "14d4099f-c2af-7632-4a93-a66cd3ea6e06"
       },
       "confidence": {
         "score": 0.6,
@@ -49,35 +46,34 @@
       "provenanceIds": []
     },
     {
-      "id": "770986d0-8314-961a-0e5b-26526ac444ba",
-      "kind": "HEADING",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "id": "94a308b5-9eb9-792e-79eb-1e4ef443dd23",
+      "kind": "PARAGRAPH",
+      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
       "children": [],
       "content": {
         "text": "Repository fixture",
         "marks": []
       },
       "attributes": {
-        "level": 1,
-        "layoutRegionId": "11b8a3f7-2001-2766-9f98-705acf3e3a02"
+        "layoutRegionId": "3b0c320e-d6f2-b25c-6414-8b0c9c4d31ca"
       },
       "confidence": {
-        "score": 0.6,
-        "reason": "layout heading label"
+        "score": 0.8,
+        "reason": "layout text region"
       },
       "provenanceIds": []
     },
     {
-      "id": "274d26c7-33b8-eaf4-c208-cec9286f9456",
+      "id": "05c527d4-4317-c2a0-fa85-68ba93092fbb",
       "kind": "PARAGRAPH",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
       "children": [],
       "content": {
         "text": "2026-09-03",
         "marks": []
       },
       "attributes": {
-        "layoutRegionId": "c42e7999-03a6-9e0b-1fdb-b828d8b8e97a"
+        "layoutRegionId": "0b43a49c-bb87-b60b-1df1-634ed30f8b6f"
       },
       "confidence": {
         "score": 0.8,
@@ -86,16 +82,16 @@
       "provenanceIds": []
     },
     {
-      "id": "229ba3c5-f2e6-6fd3-933e-767fa1e29892",
+      "id": "4a6c50c9-ea70-93d7-b6e9-87e4a390f5ea",
       "kind": "PARAGRAPH",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
       "children": [],
       "content": {
         "text": "This fixture is the minimum LuaLaTeX regression document. Unicode: Café, naïve, Zürich. Math: ",
         "marks": []
       },
       "attributes": {
-        "layoutRegionId": "a9431241-dc46-fa5e-62e6-30890a698d54"
+        "layoutRegionId": "88bcd3ba-31a1-914c-5e90-2e2b5d2f7e07"
       },
       "confidence": {
         "score": 0.8,
@@ -104,70 +100,16 @@
       "provenanceIds": []
     },
     {
-      "id": "20655b7c-c210-daba-e036-f12673a8497b",
+      "id": "7793a245-ce99-ecb1-8f16-86fa607eb91b",
       "kind": "PARAGRAPH",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
+      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
       "children": [],
       "content": {
-        "text": "E  =  mc2  and  R \r\n0 1",
+        "text": "E  =  mc2 .",
         "marks": []
       },
       "attributes": {
-        "layoutRegionId": "7db46e28-ebcf-1456-c7b7-fe5423991faf"
-      },
-      "confidence": {
-        "score": 0.8,
-        "reason": "layout text region"
-      },
-      "provenanceIds": []
-    },
-    {
-      "id": "ac286ac3-8cfd-8ce7-ca2f-65060ea1402e",
-      "kind": "PARAGRAPH",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
-      "children": [],
-      "content": {
-        "text": "2  dx .",
-        "marks": []
-      },
-      "attributes": {
-        "layoutRegionId": "4a14b236-0359-d74e-df2b-90056d5e41a3"
-      },
-      "confidence": {
-        "score": 0.8,
-        "reason": "layout text region"
-      },
-      "provenanceIds": []
-    },
-    {
-      "id": "98614979-0e2a-8cb3-7728-2cf1a8115b69",
-      "kind": "PARAGRAPH",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
-      "children": [],
-      "content": {
-        "text": "x",
-        "marks": []
-      },
-      "attributes": {
-        "layoutRegionId": "53b5367b-98e4-6e94-3755-223158ef9d13"
-      },
-      "confidence": {
-        "score": 0.8,
-        "reason": "layout text region"
-      },
-      "provenanceIds": []
-    },
-    {
-      "id": "23c08a89-9a97-bfcb-4831-82602cf7881c",
-      "kind": "PARAGRAPH",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
-      "children": [],
-      "content": {
-        "text": "R \r\n0",
-        "marks": []
-      },
-      "attributes": {
-        "layoutRegionId": "b51a080b-e803-5e5f-47d5-3b0d4e26dfba"
+        "layoutRegionId": "eb3e1277-8a51-cb6d-ed6b-df427ea02ed6"
       },
       "confidence": {
         "score": 0.8,

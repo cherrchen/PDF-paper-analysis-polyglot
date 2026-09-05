@@ -26,4 +26,4 @@ Status: implemented
 
 ## 后果
 
-Clean checkout 的 Python job 先编译夹具再测。缺少 PDF 时测试 skip，而不是崩溃。新增需要 TikZ 或其它 TeX 宏包的夹具时，必须同步更新 `tex/packages.txt`。Python job 与 LaTeX job 都安装 TeX；共享的 TeX Live 缓存使第二次安装便宜。Golden 比较重映射 PDF 指纹 ID：MacTeX 与 CI TeX Live 编译的 `smoke.pdf` 字节不同，不透明 ID 相等不是契约。
+Clean checkout 的 Python job 先编译夹具再测。缺少 PDF 时测试 skip，而不是崩溃。新增需要 TikZ 或其它 TeX 宏包的夹具时，必须同步更新 `tex/packages.txt`。Python job 与 LaTeX job 都安装 TeX；共享的 TeX Live 缓存使第二次安装便宜。Golden 比较重映射 PDF 指纹 ID：MacTeX 与 CI TeX Live 编译的 `smoke.pdf` 字节不同，不透明 ID 相等不是契约。`smoke` 夹具不含 `\int`：PDFium 在 macOS 上把它抽成 `R`，在 Linux CI 上抽成积分号，精确文本无法同时两边成立。积分回归由 `equation-heavy` 承担。

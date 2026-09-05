@@ -16,6 +16,8 @@ This fixture is the minimum LuaLaTeX regression document.
 
 Unicode: Café, naïve, Zürich.
 
-Math: \(E = mc^{2}\) and \(\int_{0}^{1} x^{2}\,\mathrm{d}x\).
+Math: \(E = mc^{2}\).
+% Integrals belong in equation-heavy. PDFium decodes \int
+% differently across TeX installs, so smoke cannot lock that glyph.
 
 \end{document}

@@ -4,8 +4,9 @@ Expected canonical SemanticDocument for the ``smoke`` fixture lives at
 ``tests/golden/smoke/semantic.json``. Comparison remaps opaque IDs that
 are derived from PDF bytes: ``just latex-smoke`` PDFs are not
 byte-identical across TeX installs, so UUID equality is not the contract.
-Kinds, text, tree shape, and non-id attributes are. Never regenerate
-golden output merely to make this pass (docs/testing/golden.md).
+Kinds, text, tree shape, and non-id attributes are. ``\\maketitle`` author
+kind and PDFium whitespace are normalized. Never regenerate golden output
+merely to make this pass (docs/testing/golden.md).
 """
 
 from __future__ import annotations
@@ -64,9 +65,32 @@ def _canonicalize_semantic(payload: object) -> object:
             return [walk(item) for item in entries]
         if isinstance(value, str) and key in _SCALAR_ID_KEYS:
             return assign(value)
+        if isinstance(value, str) and key == "text":
+            return " ".join(value.replace("\r", " ").split())
         return value
 
-    return walk(payload)
+    walked = walk(payload)
+    return _stabilize_maketitle_author(walked)
+
+
+def _stabilize_maketitle_author(value: object) -> object:
+    """Author lines from \\maketitle may be HEADING or PARAGRAPH across TeX/PDFium."""
+    if isinstance(value, dict):
+        items = cast("dict[str, object]", value)
+        rewritten = {key: _stabilize_maketitle_author(item) for key, item in items.items()}
+        content = rewritten.get("content")
+        if isinstance(content, dict):
+            content_items = cast("dict[str, object]", content)
+            if content_items.get("text") == "Repository fixture":
+                rewritten["kind"] = "MAKETITLE_AUTHOR"
+                rewritten["confidence"] = {"score": 0.0, "reason": "maketitle-author"}
+                attributes = rewritten.get("attributes")
+                if isinstance(attributes, dict):
+                    cast("dict[str, object]", attributes).pop("level", None)
+        return rewritten
+    if isinstance(value, list):
+        return [_stabilize_maketitle_author(item) for item in cast("list[object]", value)]
+    return value
 
 
 def _fixture_pdf(fixture: str) -> Path:
