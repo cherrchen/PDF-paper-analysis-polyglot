@@ -1,15 +1,15 @@
 origin: repository-authored
 license: MIT with Non-Commercial additional terms
-purpose: Wide figure spanning both columns
+purpose: Filled two-column body interrupted by a spanning figure
 generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
 tier: 1
 layout:
   columns: 2
-  pages_expected: 1
+  pages_expected: 3
   has_math: false
   has_table: false
   has_figure: true
   multilingual: false
 known_special_cases:
-  - figure* spanning region
+  - Spanning figure band via onecolumn switch
   - Caption association candidate

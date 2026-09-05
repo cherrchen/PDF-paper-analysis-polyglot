@@ -1,7 +1,7 @@
 {
   "fixture": "footnote-multicolumn",
-  "purpose": "Footnotes at the bottom of a two-column page stay out of the main flow",
-  "pages": [{ "pageIndex": 0 }, { "pageIndex": 1 }],
+  "purpose": "Two footnote regions on a filled two-column page stay out of the main flow",
+  "pages": [{ "pageIndex": 0, "expectMultiColumn": true }],
   "readingOrder": [
     "Footnote Fixture",
     "1 Main text with notes",
@@ -10,5 +10,5 @@
     "Additional body text without footnotes"
   ],
   "captions": [],
-  "footnotesExpected": 1
+  "footnotesExpected": 2
 }

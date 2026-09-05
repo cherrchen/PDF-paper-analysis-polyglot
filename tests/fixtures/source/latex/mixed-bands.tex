@@ -16,21 +16,56 @@
     Full-width title and abstract band followed by two columns, a wide figure
     band, and resumed columns.
   \end{abstract}
+  \vspace{18pt}
 ]
-
 \section{First column section}
-Body text begins in two-column mode after the full-width front matter.
+Body text begins in two-column mode after the full-width front matter. The
+opening column is filled with synthetic scholarly prose so a genuine gutter
+appears on this page rather than a leftover single stack.
+
+Layout recovery should classify the title and abstract as a full-width band
+and the following body as two columns. Extra sentences exist only to occupy
+vertical space: mixed-band detection fails when the left column never
+fills, because the compiled article then looks single-column.
+
+Repeated recovery notes continue down the first column. Each paragraph
+stays narrow enough to wrap inside one column, and none of them mention a
+figure yet. The second section heading is placed after enough text that it
+starts in the right column on the first page.
+
+Further first-column filler restates that full-width abstract lines must
+not bridge the later gutter. Title and abstract stay in a spanning front
+band; only the body below that band is two-column text.
+
+Another first-column paragraph records that horizontal cuts must fire at
+the skip below the abstract. Without that skip, a full-width abstract line
+would keep the x-reach across the whole page and hide the gutter.
 
 \section{Second column section}
-More column text precedes a spanning figure band.
+More column text precedes a spanning figure band. This right-column block
+must be visible beside the first-column paragraphs so band detection sees
+a MULTI\_COLUMN strip above the later spanning figure.
 
-\begin{figure*}[t]
+A second right-column paragraph keeps the column balanced. After this
+page, the article switches to a single-column figure band and then resumes
+two-column text, matching the Title, two columns, wide figure, two columns
+layout required by the milestone.
+
+\onecolumn
+\begin{figure}[h]
   \centering
   \rule{0.8\textwidth}{2.5cm}
   \caption{Wide figure between column bands.}
-\end{figure*}
+\end{figure}
 
+\twocolumn
 \section{After wide figure}
 Columns resume below the figure band for page-band detection benchmarks.
+This section and the following paragraph refill both columns so the page
+after the spanning figure is not a single leftover stack.
+
+Resumed right-column sentences keep the second column occupied. Reading
+order visits the spanning figure and its caption, then this section,
+without treating the figure as ordinary column text.
 
 \end{document}

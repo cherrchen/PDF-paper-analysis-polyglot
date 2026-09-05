@@ -1,13 +1,13 @@
 {
   "fixture": "two-column",
-  "purpose": "Short two-column article; content fills the left column only",
-  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "purpose": "Filled two-column article; both columns occupy page 0",
+  "pages": [{ "pageIndex": 0, "expectMultiColumn": true }],
   "readingOrder": [
     "Two-Column Fixture",
     "1 Left column start",
     "This fixture exercises a standard two-column article layout",
-    "2 Second block",
-    "The recovery pipeline should infer column boundaries and reading order"
+    "2 Right column body",
+    "Right column material appears after the left column"
   ],
   "captions": [],
   "footnotesExpected": 0

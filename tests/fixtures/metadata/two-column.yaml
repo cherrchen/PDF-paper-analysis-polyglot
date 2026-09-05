@@ -1,6 +1,6 @@
 origin: repository-authored
 license: MIT with Non-Commercial additional terms
-purpose: Standard two-column article layout benchmark
+purpose: Standard two-column article with both columns filled
 generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
 tier: 1
 layout:

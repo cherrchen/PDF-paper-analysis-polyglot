@@ -6,10 +6,10 @@ footnote expectations, band/column invariants). Metrics follow Roadmap M3
 Validation: Region Recall, pairwise ordering accuracy, sequence accuracy.
 
 Band/Column stability (M3 Exit Gate) is asserted through the per-page
-``singleColumnOnly`` / ``expectSpanningBand`` flags plus structural
-invariants; exact band-mode sequences are intentionally not pinned (the
-XY-cut fragments bands at display gaps, which is structure-preserving but
-not worth pinning byte-for-byte).
+``singleColumnOnly`` / ``expectMultiColumn`` / ``expectSpanningBand``
+flags plus structural invariants; exact band-mode sequences are
+intentionally not pinned (the XY-cut fragments bands at display gaps,
+which is structure-preserving but not worth pinning byte-for-byte).
 """
 
 from __future__ import annotations
@@ -87,6 +87,15 @@ def _assert_band_structure(
         if page_truth.get("singleColumnOnly"):
             assert all(len(band.columnIds) == 1 for band in bands), (
                 f"{truth['fixture']} page {index}: expected single-column bands"
+            )
+        if page_truth.get("expectMultiColumn"):
+            multicolumn = [
+                band
+                for band in bands
+                if band.layoutMode == "MULTI_COLUMN" and len(band.columnIds) == 2
+            ]
+            assert multicolumn, (
+                f"{truth['fixture']} page {index}: expected a MULTI_COLUMN band with 2 columns"
             )
         if page_truth.get("expectSpanningBand"):
             assert any(band.layoutMode == "SPANNING" for band in bands), (

@@ -13,16 +13,54 @@
 \maketitle
 
 \section{Columns before figure}
-Introductory text in the first column precedes a figure that spans both columns.
+Introductory text in the first column precedes a figure that spans both
+columns. Enough synthetic prose fills the left column so a MULTI\_COLUMN
+band exists above the spanning figure instead of a single leftover stack.
 
-\begin{figure*}[t]
+Column recovery should keep these sentences in the left column until the
+column is full. The next paragraph continues the same contract: reading
+order visits left-column text before right-column text, and the later
+figure is a spanning band rather than a third column.
+
+Further filler repeats layout-invariant language so the compiled PDF stays
+deterministic. Band detection may split display gaps, but at least one
+body strip on this page must contain two columns once the left column
+fills.
+
+A second left-column paragraph continues until the column is visually
+full. Only then does the next section heading belong in the right column
+in the compiled article.
+
+Still more left-column prose records that a spanning figure is not a
+column. The recovery engine must wait until this stack reaches the bottom
+of the first column before wrapping. Extra sentences about gutters,
+bands, and captions exist only to occupy space.
+
+A closing left-column note restates the reading-order contract one last
+time. Left column first, then right column, then the spanning figure on
+the following page. This paragraph should be among the last blocks that
+still sit in the left column.
+
+\section{Right column before figure}
+Right-column sentences sit beside the opening column and precede the
+spanning figure. This heading is the visual marker that the first page
+has two columns of body text.
+
+\onecolumn
+\begin{figure}[h]
   \centering
   \rule{0.85\textwidth}{3cm}
   \caption{Wide figure spanning both columns in a two-column article.}\label{fig:span}
-\end{figure*}
+\end{figure}
 
+\twocolumn
 \section{Columns after figure}
-Text resumes below the spanning figure. Layout recovery must treat the figure
-band separately from single-column reading flow.
+Text resumes below the spanning figure. Layout recovery must treat the
+figure band separately from single-column reading flow, then recover two
+columns again for the remaining body.
+
+Resumed right-column sentences keep the second column occupied after the
+figure. The caption stays associated with the spanning figure rather than
+with these paragraphs.
 
 \end{document}

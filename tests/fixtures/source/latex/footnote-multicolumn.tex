@@ -13,13 +13,33 @@
 
 \section{Main text with notes}
 A claim about sample efficiency\footnote{Synthetic footnote for layout tests.}
-appears in the first column.
+appears in the first column. The surrounding paragraph is long enough that
+the two-column class fills the left column before later body text wraps,
+so footnote recovery is exercised on a genuine multi-column page.
+
+Synthetic notes about layout invariants continue here. Footnote markers
+stay in the body; the footnote text itself must remain in a separate
+region at the page bottom and must not enter the primary reading flow.
+Extra sentences exist so the compiled article is not a single leftover
+column with two notes stacked under a short paragraph.
 
 A second reference\footnote{Footnotes should not pollute the main reading-order
-  graph when recovered correctly.} appears nearby.
+  graph when recovered correctly.} appears nearby. The two notes start with
+distinct markers so blocking must not merge them into one footnote region.
+
+Follow-up filler in the opening section keeps occupying the left column.
+Ordinary paragraph flow continues without another marker until the next
+section heading, which should wrap into the right column after the left
+column fills.
 
 \section{Follow-up}
-Additional body text without footnotes checks that footnote regions are isolated
-from ordinary paragraph flow.
+Additional body text without footnotes checks that footnote regions are
+isolated from ordinary paragraph flow. This follow-up block is written
+long enough to occupy remaining left-column space and then continue in
+the right column.
+
+Right column follow-up sentences keep the second column from collapsing.
+The benchmark asserts a MULTI\_COLUMN band, at least two footnote regions,
+and a primary flow that never includes those notes.
 
 \end{document}

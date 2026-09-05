@@ -17,6 +17,7 @@ from document_model import dump_document, load_document, validate_layer_separati
 from pdf_pipeline.evidence.providers import MockLayoutEvidenceProvider
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
+from pdf_pipeline.pipeline import region_texts_from
 
 if TYPE_CHECKING:
     from document_model.generated import schema_models as generated
@@ -49,6 +50,42 @@ def test_layout_valid_layer_separated_and_deterministic() -> None:
     assert dump_document(_recover(data)[1]) == layout_data
 
 
+def test_two_column_fixture_recovers_multicolumn_band() -> None:
+    _, layout = _recover(_fixture("two-column"))
+    assert any(
+        band.layoutMode == "MULTI_COLUMN" and len(band.columnIds) == 2 for band in layout.bands
+    )
+
+
+def test_mixed_bands_and_spanning_figure_fixtures_are_multicolumn() -> None:
+    for name in ("mixed-bands", "spanning-figure", "footnote-multicolumn"):
+        _, layout = _recover(_fixture(name))
+        assert any(
+            band.layoutMode == "MULTI_COLUMN" and len(band.columnIds) == 2 for band in layout.bands
+        ), f"{name} must recover a two-column band"
+
+
+def test_page_numbers_leave_primary_flow() -> None:
+    physical, layout = _recover(_fixture("two-column"))
+    texts = region_texts_from(physical, layout)
+    footers = [region for region in layout.regions if region.kind == "FOOTER"]
+    assert footers, "page number must be recovered as FOOTER"
+    for footer in footers:
+        assert footer.id not in layout.primaryFlow
+        assert (
+            texts.get(footer.id, "").strip().isdigit() or len(texts.get(footer.id, "").strip()) <= 4
+        )
+
+
+def test_fused_regions_link_provenance_records() -> None:
+    _, layout = _recover(_fixture("smoke"))
+    linked = [region for region in layout.regions if region.provenanceIds]
+    assert linked, "fusion provenance must be attached to regions"
+    record_ids = {record.id for record in layout.provenance.records}
+    for region in linked:
+        assert set(region.provenanceIds) <= record_ids
+
+
 def test_smoke_title_is_heading_like() -> None:
     _, layout = _recover(_fixture("smoke"))
     heading_regions = [
@@ -59,6 +96,7 @@ def test_smoke_title_is_heading_like() -> None:
     assert heading_regions, "title span should be heading-like"
 
 
+@pytest.mark.slow
 def test_two_column_real_paper_body_is_multicolumn() -> None:
     physical, layout = _recover(_fixture("arxiv-1810.04805", EXTERNAL_DIR))
     pages = {page.id: page.index for page in physical.pages}
@@ -72,6 +110,7 @@ def test_two_column_real_paper_body_is_multicolumn() -> None:
     assert any(band.layoutMode == "FULL_WIDTH" for band in title_bands)
 
 
+@pytest.mark.slow
 def test_single_column_real_paper_stays_single_column() -> None:
     physical, layout = _recover(_fixture("arxiv-1706.03762", EXTERNAL_DIR))
     pages = {page.id: page.index for page in physical.pages}

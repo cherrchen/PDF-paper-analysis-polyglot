@@ -1,11 +1,11 @@
 origin: repository-authored
 license: MIT with Non-Commercial additional terms
-purpose: Full-width front matter, columns, wide figure, resumed columns
+purpose: Full-width front matter, filled columns, spanning figure, resumed columns
 generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
 tier: 1
 layout:
   columns: 2
-  pages_expected: 1
+  pages_expected: 3
   has_math: false
   has_table: false
   has_figure: true

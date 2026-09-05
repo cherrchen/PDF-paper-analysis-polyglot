@@ -14,15 +14,43 @@
 
 \section{Left column start}
 This fixture exercises a standard two-column article layout with sequential
-paragraphs in each column.
+paragraphs in each column. The left column must fill before body text wraps
+into the right column, so layout recovery can observe a real gutter rather
+than a single narrow stack of leftover lines.
 
-\section{Second block}
-The recovery pipeline should infer column boundaries and reading order without
-relying on a naive sort-by-y-then-x heuristic alone.
+Synthetic recovery notes occupy the remainder of the opening column. Column
+clustering should keep these sentences together even when a heading sits
+above a wrapped paragraph, and the gutter must stay empty of text. Repeated
+prose is intentional: a short fixture never reaches the right column, which
+made the previous two-column benchmark assert a single-column page.
+
+Additional filler continues with layout-invariant language so the compiled
+PDF remains deterministic. Band detection may fragment display gaps into
+several strips; each strip of the body still has two columns once the left
+column is full. The recovery pipeline should infer column boundaries and
+reading order without relying on a naive sort-by-y-then-x heuristic alone.
 
 Left column continues with enough text to wrap within the column width.
+Paragraphs remain ordinary scholarly prose without tables, figures, or
+display mathematics, so the only structural signal is the two-column
+geometry itself.
 
-Right column material appears after the left column block in source order when
-using the default \texttt{twocolumn} flow.
+A final left-column paragraph repeats the recovery contract: regions in the
+left column are read top to bottom before any right-column region. If this
+paragraph still sits in the left column, the following section heading
+belongs to the right column in visual order.
+
+One more left-column block of synthetic notes describes confidence, gutter
+width, and unbalanced columns. Unbalanced columns must keep left-column
+items together even when the right column continues further down the page.
+
+\section{Right column body}
+Right column material appears after the left column block in source order
+when using the default \texttt{twocolumn} flow. This paragraph is the first
+body block that must occupy the right column once the left column is full.
+
+Further right-column sentences keep the second column from collapsing into
+a narrow island. The benchmark asserts a MULTI\_COLUMN band on this page
+and a reading order that visits left-column headings before this section.
 
 \end{document}

@@ -25,7 +25,7 @@ FIXTURE_DIR = Path(__file__).resolve().parents[4] / "tests/fixtures/source/latex
 FIXTURES: dict[str, dict[str, object]] = {
     "smoke": {"pages": 1, "expect_text": "Smoke Fixture"},
     "two-column": {"pages": 1, "expect_text": "Two-Column Fixture"},
-    "spanning-figure": {"pages": 2, "expect_text": None},
+    "spanning-figure": {"pages": 3, "expect_text": None},
 }
 
 

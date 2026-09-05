@@ -1,6 +1,6 @@
 origin: repository-authored
 license: MIT with Non-Commercial additional terms
-purpose: Footnotes in a two-column article
+purpose: Isolated footnotes on a filled two-column page
 generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
 tier: 1
 layout:
