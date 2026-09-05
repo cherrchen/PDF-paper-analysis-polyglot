@@ -15,10 +15,11 @@ amsmath
 amsfonts
 booktabs
 graphics
-# pgf provides tikz.sty for the tikz-vector fixture. xcolor and ms (everyshi) are pgf dependencies.
+# pgf provides tikz.sty for the tikz-vector fixture. xcolor and everyshi are pgf dependencies.
+# `ms` is not a tlmgr package in TeX Live 2026; everyshi shipped from that former bundle.
 pgf
 xcolor
-ms
+everyshi
 tools
 hyperref
 geometry

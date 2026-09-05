@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-1. 在 `tex/packages.txt` 加入 `pgf`、`xcolor`、`ms`。`tikz-vector` 需要 TikZ；CI 的精简 TeX Live 不会安装未列出的宏包。
+1. 在 `tex/packages.txt` 加入 `pgf`、`xcolor`、`everyshi`。`tikz-vector` 需要 TikZ；CI 的精简 TeX Live 不会安装未列出的宏包。TeX Live 2026 的 tlmgr 没有独立 `ms` 包（与 `array` 相同），`everyshi` 已从该旧 bundle 拆出。
 2. 所有依赖夹具 PDF 的测试在文件缺失时 `pytest.skip`，并提示运行 `just latex-smoke`。本机未先编译时不应崩溃。
 3. Python job 安装与 LaTeX job 相同的 TeX Live 2026 与 `tex/packages.txt`，在 `just test-python` 之前运行 `just latex-smoke`。这样覆盖率门禁与 11 个 Tier-1 全链测试在 clean checkout 上真正执行，而不把 `just test-python` 拆成另一套 CI 命令。
 
@@ -22,6 +22,7 @@ Status: implemented
 - 只 skip、不在 Python job 编译夹具：覆盖率约 66%，`just test-python` 仍然失败。
 - 把覆盖率门禁降到 warning 或拆成另一条 CI 专用命令：会让 GitHub Actions 与 `justfile` 漂移。
 - 只在 LaTeX job 跑 pytest、Python job 关掉 `fail_under`：夹具回归不再由 Python 作业拥有，且本地 `just test-python` 在未编译时也会因覆盖率失败。
+- 继续列出 `ms`：TeX Live 安装器在 TeX Live 2026 上报 `package ms not present in repository`。
 
 ## 后果
 
