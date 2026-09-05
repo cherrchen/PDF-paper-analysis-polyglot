@@ -16,8 +16,7 @@
         "20655b7c-c210-daba-e036-f12673a8497b",
         "ac286ac3-8cfd-8ce7-ca2f-65060ea1402e",
         "98614979-0e2a-8cb3-7728-2cf1a8115b69",
-        "23c08a89-9a97-bfcb-4831-82602cf7881c",
-        "5c738751-77f2-5aa8-ac83-8da6cf79d03d"
+        "23c08a89-9a97-bfcb-4831-82602cf7881c"
       ],
       "content": {
         "text": "",
@@ -88,20 +87,19 @@
     },
     {
       "id": "229ba3c5-f2e6-6fd3-933e-767fa1e29892",
-      "kind": "HEADING",
+      "kind": "PARAGRAPH",
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "E  =  mc2  and  R \r\n0 1",
+        "text": "This fixture is the minimum LuaLaTeX regression document. Unicode: Café, naïve, Zürich. Math: ",
         "marks": []
       },
       "attributes": {
-        "level": 1,
         "layoutRegionId": "a9431241-dc46-fa5e-62e6-30890a698d54"
       },
       "confidence": {
-        "score": 0.6,
-        "reason": "layout heading label"
+        "score": 0.8,
+        "reason": "layout text region"
       },
       "provenanceIds": []
     },
@@ -111,7 +109,7 @@
       "parentId": "30907f81-384f-30eb-5020-557299266aa0",
       "children": [],
       "content": {
-        "text": "This fixture is the minimum LuaLaTeX regression document. Unicode: Café, naïve, Zürich. Math: ",
+        "text": "E  =  mc2  and  R \r\n0 1",
         "marks": []
       },
       "attributes": {
@@ -170,24 +168,6 @@
       },
       "attributes": {
         "layoutRegionId": "b51a080b-e803-5e5f-47d5-3b0d4e26dfba"
-      },
-      "confidence": {
-        "score": 0.8,
-        "reason": "layout text region"
-      },
-      "provenanceIds": []
-    },
-    {
-      "id": "5c738751-77f2-5aa8-ac83-8da6cf79d03d",
-      "kind": "PARAGRAPH",
-      "parentId": "30907f81-384f-30eb-5020-557299266aa0",
-      "children": [],
-      "content": {
-        "text": "1",
-        "marks": []
-      },
-      "attributes": {
-        "layoutRegionId": "4fb0ccbb-8870-3c25-5457-96d5502b625f"
       },
       "confidence": {
         "score": 0.8,
