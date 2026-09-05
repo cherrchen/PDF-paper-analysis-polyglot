@@ -5,6 +5,7 @@ globs:
   - "**/*.md"
 
 ignores:
+  - "**/.zcode/**"
   - "**/node_modules/**"
   - "**/dist/**"
   - "**/target/**"
