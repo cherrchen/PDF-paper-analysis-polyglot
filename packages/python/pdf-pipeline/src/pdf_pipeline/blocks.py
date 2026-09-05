@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pdf_pipeline.footnotes import FOOTNOTE_MARKER
 from pdf_pipeline.furniture import font_size
 from pdf_pipeline.fusion import RegionLine, draft_region
 from pdf_pipeline.geometry import as_rect, overlap_ratio, union_rect, vertical_gap
@@ -69,6 +70,11 @@ def build_text_block_drafts(
     for span in spans:
         rect = as_rect(span.geometry)
         height = rect.height or 1.0
+        # A new footnote marker starts its own region so two notes are not
+        # fused into one FOOTNOTE block (Phase 3.8 flow).
+        if FOOTNOTE_MARKER.match(span.text.strip()):
+            blocks.append([span])
+            continue
         best: list[generated.TextSpan] | None = None
         best_gap = float("inf")
         for block in blocks:
@@ -134,6 +140,8 @@ def _is_heading_like(
     if body_font <= 0 or font / body_font < 1.15:
         return False
     text = " ".join(line.text for line in lines)
+    if "=" in text:
+        return False
     return len(text) <= 120 and len(lines) <= 2
 
 
@@ -231,6 +239,7 @@ def build_furniture_drafts(
 
 
 __all__ = [
+    "MIN_GRAPHIC_THICKNESS_PT",
     "build_figure_drafts",
     "build_furniture_drafts",
     "build_text_block_drafts",

@@ -77,6 +77,14 @@ def test_figure_caption_detected_and_related() -> None:
     assert "CAPTION_OF" in relation_types
 
 
+def test_table_caption_is_not_figure_caption() -> None:
+    _, layout, semantic = _recover("table-heavy")
+    assert any(group.kind == "TABLE_BLOCK" for group in layout.groups)
+    kinds = [node.kind for node in semantic.nodes]
+    assert "TABLE_CAPTION" in kinds
+    assert "FIGURE_CAPTION" not in kinds
+
+
 def test_semantic_carries_no_geometry() -> None:
     physical, layout, semantic = _recover("smoke")
     issues = validate_layer_separation(dump_document(physical), dump_document(layout))

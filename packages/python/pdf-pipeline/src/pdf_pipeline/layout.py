@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, cast
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.blocks import (
+    MIN_GRAPHIC_THICKNESS_PT,
     build_figure_drafts,
     build_furniture_drafts,
     build_text_block_drafts,
@@ -36,7 +37,7 @@ from pdf_pipeline.evidence.providers import EvidenceProvider, MockLayoutEvidence
 from pdf_pipeline.footnotes import detect_footnote_ids
 from pdf_pipeline.furniture import body_font_size, split_furniture
 from pdf_pipeline.fusion import fuse_page
-from pdf_pipeline.geometry import containment
+from pdf_pipeline.geometry import containment, reading_order_key
 from pdf_pipeline.ids import stable_uuid
 from pdf_pipeline.page_structure import (
     BandStructure,
@@ -139,9 +140,18 @@ class _PageRecovery:
 
         body_font = body_font_size(spans)
         body, headers, footers = split_furniture(spans, page.geometry.heightPt, body_font)
-        items = cluster_graphics(
-            items_from_objects([*body, *images, *vectors])  # type: ignore[arg-type]
-        )
+        body_font = body_font_size(body) or body_font
+        items = [
+            item
+            for item in cluster_graphics(
+                items_from_objects([*body, *images, *vectors])  # type: ignore[arg-type]
+            )
+            if not item.is_graphic
+            or (
+                item.rect.height >= MIN_GRAPHIC_THICKNESS_PT
+                and item.rect.width >= MIN_GRAPHIC_THICKNESS_PT
+            )
+        ]
 
         bands = detect_bands(
             page_id=page.id,
@@ -260,7 +270,7 @@ class _PageRecovery:
                                 for r in self.regions_by_id.values()
                                 if r.column_tag == tag and r.page_id == page.id
                             ),
-                            key=lambda region: (region.rect.y, region.rect.x),
+                            key=lambda region: reading_order_key(region.rect),
                         )
                     ]
                     flow_columns.append(FlowColumn(rect=column.rect, region_ids=member_ids))
@@ -290,10 +300,15 @@ class _PageRecovery:
                         best_score = score
                         best_tag = (band.index, column_ordinal)
             if best_tag is None and bands:
-                # Fall back to the horizontal mid-point: columns are
-                # left-to-right ordered, so half the page width splits them.
+                # Fall back to the band that overlaps this region in y, then
+                # the horizontal mid-point: columns are left-to-right.
                 center_x = region.rect.x + region.rect.width / 2
-                band = bands[0]
+                top = region.rect.y
+                bottom = region.rect.y + region.rect.height
+                band = max(
+                    bands,
+                    key=lambda item, y0=top, y1=bottom: _band_y_overlap(item, y0, y1),
+                )
                 best_tag = (band.index, 0 if center_x < page_width / 2 else len(band.columns) - 1)
             assigned.append(replace(region, column_tag=best_tag))
         return assigned
@@ -319,6 +334,19 @@ def _assemble(
             )
             for index, label in enumerate(region.labels)
         ]
+        provenance_ids: list[str] = []
+        if region.evidence_ids:
+            record_id = stable_uuid(fingerprint, "layout-prov", region.region_id)
+            provenance_ids.append(record_id)
+            provenance_records.append(
+                generated.ProvenanceRecord(
+                    id=record_id,
+                    producer=LAYOUT_PRODUCER,
+                    producerVersion=LAYOUT_PRODUCER_VERSION,
+                    operation="region-fusion",
+                    inputRefs=list(region.evidence_ids),
+                )
+            )
         regions.append(
             generated.LayoutRegion(
                 id=region.region_id,
@@ -329,19 +357,9 @@ def _assemble(
                 physicalObjectIds=list(region.physical_object_ids),
                 labels=labels,
                 confidence=region.confidence,
-                provenanceIds=[],
+                provenanceIds=provenance_ids,
             )
         )
-        if region.evidence_ids:
-            provenance_records.append(
-                generated.ProvenanceRecord(
-                    id=stable_uuid(fingerprint, "layout-prov", region.region_id),
-                    producer=LAYOUT_PRODUCER,
-                    producerVersion=LAYOUT_PRODUCER_VERSION,
-                    operation="region-fusion",
-                    inputRefs=list(region.evidence_ids),
-                )
-            )
 
     pages: list[generated.LayoutPage] = []
     bands: list[generated.PageBand] = []
@@ -362,7 +380,7 @@ def _assemble(
                     region.region_id
                     for region in sorted(
                         _regions_of_column(recovery, band, column_ordinal),
-                        key=lambda region: (region.rect.y, region.rect.x),
+                        key=lambda region: reading_order_key(region.rect),
                     )
                 ]
                 columns.append(
@@ -456,6 +474,11 @@ def _regions_of_column(
         for region in recovery.regions_by_id.values()
         if region.column_tag == tag and region.page_id == band.page_id
     ]
+
+
+def _band_y_overlap(band: BandStructure, top: float, bottom: float) -> float:
+    """Vertical overlap between a band and a [top, bottom] interval."""
+    return max(0.0, min(band.y_end, bottom) - max(band.y_start, top))
 
 
 def _items_rect(band: BandStructure) -> generated.Rect:

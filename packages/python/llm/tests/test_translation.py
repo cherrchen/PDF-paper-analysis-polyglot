@@ -64,7 +64,7 @@ def test_translation_rewrites_only_text_nodes() -> None:
     expected_ids = {
         node.id
         for node in semantic.nodes
-        if node.kind in {"HEADING", "PARAGRAPH", "FIGURE_CAPTION"}
+        if node.kind in {"HEADING", "PARAGRAPH", "FIGURE_CAPTION", "TABLE_CAPTION"}
         and isinstance(getattr(node.content, "text", None), str)
     }
     assert {entry.semanticNodeId for entry in translation.entries} == expected_ids

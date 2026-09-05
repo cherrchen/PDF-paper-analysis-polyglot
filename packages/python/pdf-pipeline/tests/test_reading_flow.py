@@ -155,7 +155,7 @@ def test_footnotes_form_separate_flow() -> None:
         [PageFlow(page_id="page", bands=[band], footnote_ids=[note.region_id])], regions, []
     )
     assert result.primary_flow == [body.region_id]
-    assert all(edge.reason != "FOOTNOTE_FLOW" for edge in result.edges) or True
+    assert all(edge.reason != "FOOTNOTE_FLOW" for edge in result.edges)
     # A single footnote has no chain edge; nodes still cover it.
     assert note.region_id in result.nodes
 

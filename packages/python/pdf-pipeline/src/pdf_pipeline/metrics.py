@@ -78,15 +78,20 @@ def order_metrics(
 ) -> OrderMetrics:
     """Compute the M3 reading-order metrics for one document.
 
-    ``region_texts`` maps layout region id -> recovered text; snippets
-    only present in excluded regions (footers, footnotes) count against
-    recall, matching the exit gate's content-completeness priority.
+    ``region_texts`` maps layout region id -> recovered text. Recall still
+    counts snippets that landed in excluded regions (footers, footnotes)
+    against the score. Precision is computed only over non-empty primary-flow
+    text regions: snippet-level ground truth cannot support region-level
+    precision against every recovered fragment.
     """
     matched_truth, matched_regions = region_matches(truth_snippets, region_texts)
 
     flow_position = {region_id: index for index, region_id in enumerate(primary_flow)}
     positions = [
         flow_position[region_id] for region_id in matched_regions if region_id in flow_position
+    ]
+    flow_text_ids = [
+        region_id for region_id in primary_flow if region_texts.get(region_id, "").strip()
     ]
 
     pairs_total = 0
@@ -97,10 +102,11 @@ def order_metrics(
             if positions[i] < positions[j]:
                 pairs_correct += 1
     pairwise = pairs_correct / pairs_total if pairs_total else 1.0
+    matched_in_flow = sum(1 for region_id in matched_regions if region_id in flow_position)
 
     return OrderMetrics(
         region_recall=len(matched_truth) / len(truth_snippets) if truth_snippets else 1.0,
-        region_precision=len(matched_truth) / len(region_texts) if region_texts else 1.0,
+        region_precision=matched_in_flow / len(flow_text_ids) if flow_text_ids else 1.0,
         pairwise_ordering_accuracy=round(pairwise, 4),
         sequence_accuracy=positions == sorted(positions),
         matched_regions=len(matched_truth),

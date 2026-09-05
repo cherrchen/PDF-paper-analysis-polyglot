@@ -134,7 +134,7 @@ class MockLayoutEvidenceProvider:
             page_body_spans[page.id] = body
             page_headers[page.id] = headers
             page_footers[page.id] = footers
-            body_font_by_page[page.id] = body_font_size(spans)
+            body_font_by_page[page.id] = body_font_size(body) or body_font_size(spans)
 
         for page in physical.pages:
             body_font = body_font_by_page[page.id]
@@ -313,7 +313,13 @@ def _emit_region_candidate(
         )
         return
 
-    if body_font > 0 and font_size / body_font >= 1.15 and len(text) <= 120:
+    if (
+        body_font > 0
+        and font_size / body_font >= 1.15
+        and len(text) <= 120
+        and "=" not in text
+        and len(cluster) <= 2
+    ):
         sink.add_region(
             page_id=page_id,
             rect=rect,

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 # Page furniture strips (fraction of page height).
 HEADER_STRIP = 0.06
-FOOTER_STRIP = 0.93
+FOOTER_STRIP = 0.85
 FURNITURE_MAX_FONT_FACTOR = 0.9
 
 # A footer page number is at most a few characters.
@@ -62,10 +62,8 @@ def split_furniture(
         short = len(span.text.strip()) <= 120
         if small and short and rect.y + rect.height <= HEADER_STRIP * page_height:
             headers.append(span)
-        elif (
-            small
-            and rect.y >= FOOTER_STRIP * page_height
-            and (span.text.strip().isdigit() or len(span.text.strip()) <= FOOTER_MAX_CHARS)
+        elif rect.y >= FOOTER_STRIP * page_height and (
+            span.text.strip().isdigit() or (small and len(span.text.strip()) <= FOOTER_MAX_CHARS)
         ):
             footers.append(span)
         else:

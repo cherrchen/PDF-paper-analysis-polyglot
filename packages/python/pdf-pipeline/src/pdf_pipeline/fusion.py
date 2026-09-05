@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, cast
 
 from document_model.generated import schema_models as generated
 
+from pdf_pipeline.evidence.normalize import MATCH_KEY_QUANTUM_PT, NormalizedCandidate
 from pdf_pipeline.geometry import (
     containment,
     iou,
@@ -27,8 +28,6 @@ from pdf_pipeline.geometry import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
-
-    from pdf_pipeline.evidence.normalize import NormalizedCandidate
 
 # Candidate matching thresholds.
 MATCH_IOU = 0.4
@@ -183,6 +182,14 @@ def match_candidate(
         via_parts.append(f"containment={geometry_containment:.2f}")
     if score <= 0.0:
         return None
+    quantized = (
+        candidate.pageId,
+        round(rect.x / MATCH_KEY_QUANTUM_PT),
+        round(rect.y / MATCH_KEY_QUANTUM_PT),
+        candidate.label,
+    )
+    if candidate.match_key()[:3] == quantized[:3]:
+        via_parts.append("match_key")
     if candidate.textPreview and text:
         text_overlap = text_overlap_ratio(candidate.textPreview, text)
         if text_overlap >= MATCH_TEXT_OVERLAP:

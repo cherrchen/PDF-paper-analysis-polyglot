@@ -75,6 +75,14 @@ def test_match_candidate_requires_geometry_and_label() -> None:
     )
 
 
+def test_match_candidate_records_match_key() -> None:
+    candidate = _candidate("e1", 0, 0, 100, 50, label="PARAGRAPH_LIKE")
+    match = match_candidate(candidate, rect=_rect(0, 0, 100, 50), label="PARAGRAPH_LIKE")
+    assert match is not None
+    assert "match_key" in match.via
+    assert candidate.match_key()[0] == "page"
+
+
 def test_fuse_page_folds_matching_candidates_into_blocks() -> None:
     draft = draft_region(
         region_id="d1",

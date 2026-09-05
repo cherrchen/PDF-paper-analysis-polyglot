@@ -14,7 +14,7 @@ from document_model.generated import schema_models as generated
 TRANSLATION_MARKER = "[TRANSLATED]"
 
 # Node kinds whose text content is translated in the Walking Skeleton.
-TEXT_NODE_KINDS = frozenset({"HEADING", "PARAGRAPH", "FIGURE_CAPTION"})
+TEXT_NODE_KINDS = frozenset({"HEADING", "PARAGRAPH", "FIGURE_CAPTION", "TABLE_CAPTION"})
 
 
 class TranslationProvider(Protocol):

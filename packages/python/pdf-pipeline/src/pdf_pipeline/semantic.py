@@ -40,9 +40,9 @@ def _region_label(region: LayoutRegion) -> str | None:
 def _caption_bindings(
     layout: generated.LayoutDocument,
     regions_by_id: dict[str, LayoutRegion],
-) -> dict[str, str]:
-    """Caption region id -> main region id, from layout groups."""
-    bindings: dict[str, str] = {}
+) -> dict[str, tuple[str, str]]:
+    """Caption region id -> (main region id, group kind), from layout groups."""
+    bindings: dict[str, tuple[str, str]] = {}
     for group in layout.groups:
         if group.kind not in {"FIGURE_BLOCK", "TABLE_BLOCK"} or len(group.memberIds) != 2:
             continue
@@ -50,9 +50,9 @@ def _caption_bindings(
         if main is None or caption is None:
             continue
         if main.kind in {"FIGURE", "TABLE"} and caption.kind == "TEXT":
-            bindings[caption.id] = main.id
+            bindings[caption.id] = (main.id, group.kind)
         elif caption.kind in {"FIGURE", "TABLE"} and main.kind == "TEXT":
-            bindings[main.id] = caption.id
+            bindings[main.id] = (caption.id, group.kind)
     return bindings
 
 
@@ -150,10 +150,11 @@ def recover_semantic_document(
             # TABLE region is intentionally not projected yet.
             return
         elif region.id in caption_bindings:
+            main_region_id, group_kind = caption_bindings[region.id]
+            caption_kind = "TABLE_CAPTION" if group_kind == "TABLE_BLOCK" else "FIGURE_CAPTION"
             node_id = _make_text_node(
-                "FIGURE_CAPTION", region, CONFIDENCE_CAPTION, "layout caption group"
+                caption_kind, region, CONFIDENCE_CAPTION, "layout caption group"
             )
-            main_region_id = caption_bindings[region.id]
             if main_region_id in figure_region_nodes:
                 relations.append(
                     generated.SemanticRelation(

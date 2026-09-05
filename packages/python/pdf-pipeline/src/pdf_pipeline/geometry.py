@@ -70,6 +70,15 @@ def overlap_ratio(a: generated.Rect, b: generated.Rect) -> float:
     return max(overlap, 0.0) / narrower
 
 
+def reading_order_key(rect: generated.Rect, quantum_pt: float = 4.0) -> tuple[float, float]:
+    """Stable within-column sort: top-to-bottom, then left-to-right.
+
+    Y is quantized so two items on the same baseline (sub-point extraction
+    jitter) stay left-to-right instead of inverting a two-column heading row.
+    """
+    return (round(rect.y / quantum_pt) * quantum_pt, rect.x)
+
+
 def center(rect: generated.Rect) -> tuple[float, float]:
     """Center point of a rect."""
     return (rect.x + rect.width / 2, rect.y + rect.height / 2)

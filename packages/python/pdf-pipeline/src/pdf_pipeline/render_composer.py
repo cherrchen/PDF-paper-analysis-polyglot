@@ -64,9 +64,12 @@ def compose_render_document(
                     level=level if isinstance(level, int) and 1 <= level <= 3 else 1,
                 )
             )
-        elif node.kind in {"PARAGRAPH", "FIGURE_CAPTION", "FOOTNOTE"} and isinstance(
-            content, generated.RichText
-        ):
+        elif node.kind in {
+            "PARAGRAPH",
+            "FIGURE_CAPTION",
+            "TABLE_CAPTION",
+            "FOOTNOTE",
+        } and isinstance(content, generated.RichText):
             blocks.append(
                 generated.RenderParagraphBlock(
                     renderKind="PARAGRAPH",
