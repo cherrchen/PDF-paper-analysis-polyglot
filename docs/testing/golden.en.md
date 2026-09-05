@@ -2,9 +2,9 @@
 
 [中文](./golden.md) | [English](./golden.en.md)
 
-Expected SemanticDocument output lives under `tests/golden/<fixture>/document.json`.
+Expected SemanticDocument output lives under `tests/golden/<fixture>/semantic.json`.
 
-Canonicalize before comparison. Avoid nondeterministic ordering.
+Canonicalize before comparison. Avoid nondeterministic ordering. Fixture PDFs come from each environment's `just latex-smoke` run and are not byte-identical across TeX installs; opaque IDs derived from the PDF fingerprint are remapped before comparison. Golden output locks node kinds, text, tree shape, and non-id attributes, not opaque identifiers.
 
 Never update golden output merely to silence a failing test. Decide:
 
