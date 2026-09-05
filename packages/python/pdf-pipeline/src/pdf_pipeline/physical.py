@@ -197,6 +197,42 @@ def _extract_images(
     return objects
 
 
+def _extract_vectors(
+    page: pdfium.PdfPage,
+    *,
+    page_id: str,
+    raw_to_canonical: generated.Matrix,
+    fingerprint: str,
+    page_index: int,
+) -> list[generated.VectorObject]:
+    """Extract vector path objects (M3): figure drawings, rules, diagrams.
+
+    Individual paths stay separate: layout recovery clusters them into
+    figure regions. Form XObjects are descended so nested drawings appear.
+    """
+    objects: list[generated.VectorObject] = []
+    vector_counter = 0
+    for obj in page.get_objects(max_depth=16):
+        if obj.type != pdfium_c.FPDF_PAGEOBJ_PATH:
+            continue
+        try:
+            left, bottom, right, top = obj.get_pos()
+        except RuntimeError:  # pragma: no cover - degenerate path
+            continue
+        if right - left <= 0 or top - bottom <= 0:
+            continue
+        objects.append(
+            generated.VectorObject(
+                objectType="vectorObject",
+                id=_deterministic_id(fingerprint, "vector", page_index, vector_counter),
+                pageId=page_id,
+                geometry=_canonical_rect(left, bottom, right, top, raw_to_canonical),
+            )
+        )
+        vector_counter += 1
+    return objects
+
+
 def _page_geometry(
     width: float, height: float, rotation: generated.PageRotation
 ) -> generated.PageGeometry:
@@ -269,14 +305,22 @@ def extract_physical_document(
                 fingerprint=fingerprint,
                 page_index=page_index,
             )
+            vectors = _extract_vectors(
+                page,
+                page_id=page_id,
+                raw_to_canonical=page_geometry.rawToCanonical,
+                fingerprint=fingerprint,
+                page_index=page_index,
+            )
             objects.extend(spans)
             objects.extend(images)
+            objects.extend(vectors)
             pages.append(
                 generated.PhysicalPage(
                     id=page_id,
                     index=page_index,
                     geometry=page_geometry,
-                    objectIds=[obj.id for obj in (*spans, *images)],
+                    objectIds=[obj.id for obj in (*spans, *images, *vectors)],
                 )
             )
         metadata = generated.PhysicalMetadata(
