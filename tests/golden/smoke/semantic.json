@@ -9,17 +9,17 @@
       "kind": "DOCUMENT",
       "parentId": null,
       "children": [
-        "600a5582-8c70-c4e0-a3b0-0936ab957a03",
-        "94a308b5-9eb9-792e-79eb-1e4ef443dd23",
-        "05c527d4-4317-c2a0-fa85-68ba93092fbb",
-        "4a6c50c9-ea70-93d7-b6e9-87e4a390f5ea",
-        "7793a245-ce99-ecb1-8f16-86fa607eb91b"
+        "59058cac-b9d2-87ec-a813-95df90648576",
+        "ac12457b-0273-8382-a65a-b70a5f9b6a04",
+        "23a1e206-2457-b112-61a5-c3c71007209f"
       ],
       "content": {
         "text": "",
         "marks": []
       },
-      "attributes": {},
+      "attributes": {
+        "layoutRegionIds": []
+      },
       "confidence": {
         "score": 1.0,
         "reason": "document root"
@@ -27,53 +27,96 @@
       "provenanceIds": []
     },
     {
-      "id": "600a5582-8c70-c4e0-a3b0-0936ab957a03",
-      "kind": "HEADING",
+      "id": "59058cac-b9d2-87ec-a813-95df90648576",
+      "kind": "FRONT_MATTER",
       "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
+      "children": [
+        "20a7f0c2-39ce-0f49-5d92-02c0d30c1921",
+        "8c51b15e-3db3-2818-4d8a-550e55dd58be",
+        "0eb343fb-d43e-1dfc-6e1e-05f394151117"
+      ],
+      "content": {
+        "text": "",
+        "marks": []
+      },
+      "attributes": {
+        "layoutRegionIds": []
+      },
+      "confidence": {
+        "score": 0.65,
+        "reason": "page-1 title block"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "20a7f0c2-39ce-0f49-5d92-02c0d30c1921",
+      "kind": "HEADING",
+      "parentId": "59058cac-b9d2-87ec-a813-95df90648576",
       "children": [],
       "content": {
         "text": "Smoke Fixture",
         "marks": []
       },
       "attributes": {
+        "layoutRegionIds": ["14d4099f-c2af-7632-4a93-a66cd3ea6e06"],
         "level": 1,
-        "layoutRegionId": "14d4099f-c2af-7632-4a93-a66cd3ea6e06"
+        "role": "title"
       },
       "confidence": {
         "score": 0.6,
-        "reason": "layout heading label"
+        "reason": "front matter title"
       },
       "provenanceIds": []
     },
     {
-      "id": "94a308b5-9eb9-792e-79eb-1e4ef443dd23",
+      "id": "8c51b15e-3db3-2818-4d8a-550e55dd58be",
       "kind": "PARAGRAPH",
-      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
+      "parentId": "59058cac-b9d2-87ec-a813-95df90648576",
       "children": [],
       "content": {
         "text": "Repository fixture",
         "marks": []
       },
       "attributes": {
-        "layoutRegionId": "3b0c320e-d6f2-b25c-6414-8b0c9c4d31ca"
+        "layoutRegionIds": ["3b0c320e-d6f2-b25c-6414-8b0c9c4d31ca"],
+        "role": "author"
       },
       "confidence": {
         "score": 0.8,
-        "reason": "layout text region"
+        "reason": "front matter author"
       },
       "provenanceIds": []
     },
     {
-      "id": "05c527d4-4317-c2a0-fa85-68ba93092fbb",
+      "id": "0eb343fb-d43e-1dfc-6e1e-05f394151117",
       "kind": "PARAGRAPH",
-      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
+      "parentId": "59058cac-b9d2-87ec-a813-95df90648576",
       "children": [],
       "content": {
         "text": "2026-09-03",
         "marks": []
       },
       "attributes": {
-        "layoutRegionId": "0b43a49c-bb87-b60b-1df1-634ed30f8b6f"
+        "layoutRegionIds": ["0b43a49c-bb87-b60b-1df1-634ed30f8b6f"],
+        "role": "date"
+      },
+      "confidence": {
+        "score": 0.8,
+        "reason": "front matter date"
+      },
+      "provenanceIds": []
+    },
+    {
+      "id": "ac12457b-0273-8382-a65a-b70a5f9b6a04",
+      "kind": "PARAGRAPH",
+      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
+      "children": [],
+      "content": {
+        "text": "This fixture is the minimum LuaLaTeX regression document. Unicode: Café, naïve, Zürich. Math:",
+        "marks": []
+      },
+      "attributes": {
+        "layoutRegionIds": ["88bcd3ba-31a1-914c-5e90-2e2b5d2f7e07"]
       },
       "confidence": {
         "score": 0.8,
@@ -82,38 +125,20 @@
       "provenanceIds": []
     },
     {
-      "id": "4a6c50c9-ea70-93d7-b6e9-87e4a390f5ea",
-      "kind": "PARAGRAPH",
+      "id": "23a1e206-2457-b112-61a5-c3c71007209f",
+      "kind": "EQUATION",
       "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
       "children": [],
       "content": {
-        "text": "This fixture is the minimum LuaLaTeX regression document. Unicode: Café, naïve, Zürich. Math: ",
-        "marks": []
+        "unicodeText": "E = mc2 .",
+        "rawText": "E = mc2 ."
       },
       "attributes": {
-        "layoutRegionId": "88bcd3ba-31a1-914c-5e90-2e2b5d2f7e07"
+        "layoutRegionIds": ["eb3e1277-8a51-cb6d-ed6b-df427ea02ed6"]
       },
       "confidence": {
-        "score": 0.8,
-        "reason": "layout text region"
-      },
-      "provenanceIds": []
-    },
-    {
-      "id": "7793a245-ce99-ecb1-8f16-86fa607eb91b",
-      "kind": "PARAGRAPH",
-      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
-      "children": [],
-      "content": {
-        "text": "E  =  mc2 .",
-        "marks": []
-      },
-      "attributes": {
-        "layoutRegionId": "eb3e1277-8a51-cb6d-ed6b-df427ea02ed6"
-      },
-      "confidence": {
-        "score": 0.8,
-        "reason": "layout text region"
+        "score": 0.55,
+        "reason": "display equation: 1 regions"
       },
       "provenanceIds": []
     }

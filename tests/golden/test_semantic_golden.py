@@ -1,12 +1,12 @@
-"""Golden regression for the M2 Walking Skeleton.
+"""Golden regression for the semantic recovery engine.
 
 Expected canonical SemanticDocument for the ``smoke`` fixture lives at
 ``tests/golden/smoke/semantic.json``. Comparison remaps opaque IDs that
 are derived from PDF bytes: ``just latex-smoke`` PDFs are not
 byte-identical across TeX installs, so UUID equality is not the contract.
-Kinds, text, tree shape, and non-id attributes are. ``\\maketitle`` author
-kind and PDFium whitespace are normalized. Never regenerate golden output
-merely to make this pass (docs/testing/golden.md).
+Kinds, text, tree shape, and non-id attributes are. PDFium whitespace is
+normalized. Never regenerate golden output merely to make this pass
+(docs/testing/golden.md).
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import pytest
 from document_model import dump_document
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
-from pdf_pipeline.pipeline import region_texts_from
+from pdf_pipeline.pipeline import region_lines_from, region_texts_from
 from pdf_pipeline.semantic import recover_semantic_document
 
 if TYPE_CHECKING:
@@ -35,12 +35,13 @@ _SCALAR_ID_KEYS = frozenset(
         "rootId",
         "layoutDocumentId",
         "parentId",
-        "layoutRegionId",
         "source",
         "target",
+        "targetNodeId",
     }
 )
-_LIST_ID_KEYS = frozenset({"children", "provenanceIds"})
+# Region-id lists (multi-fragment anchors) canonicalize element-wise.
+_LIST_ID_KEYS = frozenset({"children", "provenanceIds", "layoutRegionIds"})
 
 
 def _canonicalize_semantic(payload: object) -> object:
@@ -63,34 +64,14 @@ def _canonicalize_semantic(payload: object) -> object:
             if key in _LIST_ID_KEYS:
                 return [assign(item) if isinstance(item, str) else walk(item) for item in entries]
             return [walk(item) for item in entries]
-        if isinstance(value, str) and key in _SCALAR_ID_KEYS:
-            return assign(value)
-        if isinstance(value, str) and key == "text":
-            return " ".join(value.replace("\r", " ").split())
+        if isinstance(value, str):
+            if key in _SCALAR_ID_KEYS:
+                return assign(value)
+            if key in {"text", "rawText", "unicodeText"}:
+                return " ".join(value.replace("\r", " ").split())
         return value
 
-    walked = walk(payload)
-    return _stabilize_maketitle_author(walked)
-
-
-def _stabilize_maketitle_author(value: object) -> object:
-    """Author lines from \\maketitle may be HEADING or PARAGRAPH across TeX/PDFium."""
-    if isinstance(value, dict):
-        items = cast("dict[str, object]", value)
-        rewritten = {key: _stabilize_maketitle_author(item) for key, item in items.items()}
-        content = rewritten.get("content")
-        if isinstance(content, dict):
-            content_items = cast("dict[str, object]", content)
-            if content_items.get("text") == "Repository fixture":
-                rewritten["kind"] = "MAKETITLE_AUTHOR"
-                rewritten["confidence"] = {"score": 0.0, "reason": "maketitle-author"}
-                attributes = rewritten.get("attributes")
-                if isinstance(attributes, dict):
-                    cast("dict[str, object]", attributes).pop("level", None)
-        return rewritten
-    if isinstance(value, list):
-        return [_stabilize_maketitle_author(item) for item in cast("list[object]", value)]
-    return value
+    return walk(payload)
 
 
 def _fixture_pdf(fixture: str) -> Path:
@@ -103,7 +84,11 @@ def _fixture_pdf(fixture: str) -> Path:
 def _expected_semantic(fixture: str) -> SemanticDocument:
     physical = extract_physical_document(_fixture_pdf(fixture).read_bytes())
     layout = recover_layout_document(physical)
-    return recover_semantic_document(layout, region_texts_from(physical, layout))
+    return recover_semantic_document(
+        layout,
+        region_texts_from(physical, layout),
+        lines=region_lines_from(physical, layout),
+    )
 
 
 def test_canonicalize_semantic_remaps_opaque_ids() -> None:
