@@ -4,7 +4,7 @@ Status: implemented
 
 [中文](./2026-09-06-m4-semantic-recovery-engine.md) | [English](./2026-09-06-m4-semantic-recovery-engine.en.md)
 
-> 2026-09-06 Review 曾重新打开 M4 Exit Gate。本文保留最初落地内容与理由；第一轮夹具与验证修正见 [M4 Review 修复 Note](../bug-fix/2026-09-06-m4-review-repairs.md)；第二轮正确性修复见 [M4 第二轮审查正确性修复](../bug-fix/2026-09-06-m4-correctness-repairs.md)。
+> 2026-09-06 Review 曾重新打开 M4 Exit Gate。本文保留最初落地内容与理由；第一轮夹具与验证修正见 [M4 Review 修复 Note](../bug-fix/2026-09-06-m4-review-repairs.md)；第二轮正确性修复见 [M4 第二轮审查正确性修复](../bug-fix/2026-09-06-m4-correctness-repairs.md)。决策 10 中「BIBLIOGRAPHY_ENTRY 直接可译」已由 [参考文献不翻译（FR-CITE-004）](./2026-09-06-bibliography-not-translated.md) 部分取代：条目仍渲染为段落，但不写入 TranslationLayer。
 
 ## 问题
 

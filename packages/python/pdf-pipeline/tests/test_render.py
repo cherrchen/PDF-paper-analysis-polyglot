@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 from document_model import load_document
-from paper_llm import translate_document
+from paper_llm import TRANSLATION_MARKER, translate_document
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
-from pdf_pipeline.pipeline import region_texts_from, run_pipeline
+from pdf_pipeline.pipeline import region_lines_from, region_texts_from, run_pipeline
 from pdf_pipeline.render_anchor import recover_render_anchors
 from pdf_pipeline.render_composer import compose_render_document
 from pdf_pipeline.render_latex import compile_latex, escape_latex, project_to_latex
@@ -135,6 +135,34 @@ def test_viewer_mapping_keeps_all_cross_page_source_fragments(tmp_path: Path) ->
         assert len(pages) > 1
         for fragment in anchor["fragments"]:
             assert fragment["layoutRegionId"] in region_ids
+
+
+def test_bibliography_entries_render_in_source_language() -> None:
+    physical = extract_physical_document(_fixture("bibliography"))
+    layout = recover_layout_document(physical)
+    semantic = recover_semantic_document(
+        layout,
+        region_texts_from(physical, layout),
+        lines=region_lines_from(physical, layout),
+    )
+    translation = translate_document(semantic)
+    render = compose_render_document(semantic, translation)
+    entries = [node for node in semantic.nodes if node.kind == "BIBLIOGRAPHY_ENTRY"]
+    assert entries
+    entry_ids = {node.id for node in entries}
+    assert entry_ids.isdisjoint({item.semanticNodeId for item in translation.entries})
+    source_by_id = {node.id: node for node in entries}
+    rendered = [block for block in render.blocks if entry_ids.intersection(block.semanticNodeIds)]
+    assert len(rendered) == len(entries)
+    for block in rendered:
+        content = getattr(block, "content", None)
+        text = getattr(content, "text", None)
+        assert isinstance(text, str)
+        assert TRANSLATION_MARKER not in text
+        source = source_by_id[block.semanticNodeIds[0]]
+        source_text = getattr(source.content, "text", None)
+        assert isinstance(source_text, str)
+        assert text == source_text
 
 
 def test_figure_and_caption_share_one_float() -> None:

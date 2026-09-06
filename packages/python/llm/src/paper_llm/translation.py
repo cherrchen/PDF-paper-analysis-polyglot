@@ -20,10 +20,10 @@ from document_model.generated import schema_models as generated
 
 TRANSLATION_MARKER = "[TRANSLATED]"
 
-# Node kinds whose text content is translated in the Walking Skeleton.
-TEXT_NODE_KINDS = frozenset(
-    {"HEADING", "PARAGRAPH", "FIGURE_CAPTION", "TABLE_CAPTION", "BIBLIOGRAPHY_ENTRY"}
-)
+# Node kinds whose text content is translated. BIBLIOGRAPHY_ENTRY is
+# excluded (PRD FR-CITE-004): reference entries stay in the source
+# language. RenderComposer falls back to SemanticDocument text.
+TEXT_NODE_KINDS = frozenset({"HEADING", "PARAGRAPH", "FIGURE_CAPTION", "TABLE_CAPTION"})
 
 # Placeholders must survive a dummy prefix and not appear in papers.
 _PLACEHOLDER = "⟦{index}⟧"

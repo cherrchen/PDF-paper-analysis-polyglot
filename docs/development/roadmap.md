@@ -17,7 +17,7 @@ Initial Product 关键约束（摘自 PRD v0.2）：仅 Born-digital PDF；Targe
 ## 当前进度追踪
 
 **最后更新：** 2026-09-06
-**当前位置：** M4 语义恢复基线已落地（第二轮正确性修复后）；GROBID、1 Layout→N Semantic、真实多列表格与图资源链仍延期。下一阶段为 M5（Translation & Rendering）。
+**当前位置：** M4 语义恢复基线已落地（第二轮正确性修复后）；GROBID、1 Layout→N Semantic、真实多列表格与图资源链仍延期。dummy 翻译层已按 FR-CITE-004 排除参考文献条目。下一阶段为 M5（Translation & Rendering）。
 
 README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线（完整原始 Phase 验收仍有延期项）。
 
@@ -106,7 +106,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 ### 建议下一步
 
-1. 进入 M5：Translation & Rendering——真实翻译 provider 接入、RenderDocument 的表格/公式排版、默认 `readable-single-column` 的 RenderProfile/RenderPolicy（`SourceDerivedProfile` 属 Post-Initial R2，见 PRD §23）、References 不翻译（PRD FR-CITE-004）。
+1. 进入 M5：Translation & Rendering——真实翻译 provider 接入、RenderDocument 的表格/公式排版、默认 `readable-single-column` 的 RenderProfile/RenderPolicy（`SourceDerivedProfile` 属 Post-Initial R2，见 PRD §23）。References 不翻译（PRD FR-CITE-004）已在 M5 前落地，见 [参考文献不翻译](../../.agents/notes/implemented/architecture/2026-09-06-bibliography-not-translated.md)。
 
 ### 维护说明
 

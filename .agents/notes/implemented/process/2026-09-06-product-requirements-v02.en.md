@@ -36,9 +36,11 @@ Items are split into **must fix before M5** versus **align docs/plans now, imple
 
 ### A. Must fix before M5 (implementation conflicts with v0.2)
 
+The review also called excluding `BIBLIOGRAPHY_ENTRY` an M5 task, which conflicted with “must fix before M5.” That item landed before M5; see [References are not translated (FR-CITE-004)](../architecture/2026-09-06-bibliography-not-translated.en.md).
+
 | Conflict | Evidence | Affected | Notes |
 | --- | --- | --- | --- |
-| References treated as translatable | `packages/python/llm/src/paper_llm/translation.py`: `TEXT_NODE_KINDS` includes `BIBLIOGRAPHY_ENTRY`; `translate_document` prefixes reference entries with `[TRANSLATED]` | M5 Translation | Violates PRD FR-CITE-004 / §43 “References not translated”. M5 must exclude `BIBLIOGRAPHY_ENTRY` (and any bibliography body policy) and add regression tests. |
+| References treated as translatable | `packages/python/llm/src/paper_llm/translation.py`: `TEXT_NODE_KINDS` included `BIBLIOGRAPHY_ENTRY`; `translate_document` prefixes reference entries with `[TRANSLATED]` | Translation layer (pre-M5) | **Resolved.** Violates PRD FR-CITE-004 / §43 “References not translated”. `BIBLIOGRAPHY_ENTRY` is now excluded from `TEXT_NODE_KINDS` with regression tests; this is not M5 scope. |
 
 ### B. Documentation and planning alignment (update docs now; code follows milestones)
 
@@ -57,8 +59,8 @@ Items are split into **must fix before M5** versus **align docs/plans now, imple
 | Translation-only, no bilingual PDF | Pipeline emits translation layer only; matches FR-OUTPUT-001 |
 | Figure caption translatable | `TEXT_NODE_KINDS` includes `FIGURE_CAPTION` |
 | Figure assets / in-image text | Asset chain still M5; not translating in-image text is product policy, not a conflict |
-| Translation provider abstraction | `TranslationProvider` Protocol + `DummyTranslationProvider`; matches FR-PROVIDER-* |
-| Source↔Target viewer | M2 walking skeleton validated dual-document semantic navigation; matches FR-SYNC-* / FR-VIEW-* |
+| Translation provider abstraction | `TranslationProvider` Protocol + `DummyTranslationProvider`; matches `FR-PROVIDER-*` |
+| Source↔Target viewer | M2 walking skeleton validated dual-document semantic navigation; matches `FR-SYNC-*` / `FR-VIEW-*` |
 | SemanticDocument not editable | No user edit UI; schema keeps stable IDs and provenance |
 | Local-first, domain separate from UI | Core models in `schemas/`, `packages/python/`; `apps/` is thin shell |
 | Bilingual PDF, figure internal translation, semantic editing, server deployment | PRD §44 Post-Initial; intentionally deferred |
@@ -72,6 +74,6 @@ Items are split into **must fix before M5** versus **align docs/plans now, imple
 ## Consequences
 
 - All new plans, implementation decisions, and milestone acceptance use PRD v0.2 upstream.
-- M5 kickoff checklist must cover: references not translated, default single-column RenderProfile, born-digital input rejection (or equivalent UX).
+- M5 kickoff checklist must cover: default single-column RenderProfile, born-digital input rejection (or equivalent UX). References-not-translated landed before M5; see [References are not translated (FR-CITE-004)](../architecture/2026-09-06-bibliography-not-translated.en.md).
 - Architecture v0.1 and Roadmap v0.1 remain technical contract baselines; on product conflict, PRD v0.2 wins and alignment items are recorded.
 - The “§36 must close” wording in [PRD v0.1 establishment](./2026-09-06-product-requirements.en.md) is superseded by this note.

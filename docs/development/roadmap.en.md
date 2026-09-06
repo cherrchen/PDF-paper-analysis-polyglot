@@ -17,7 +17,7 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-06
-**Current position:** The M4 semantic-recovery baseline has landed (after second-round correctness repairs); GROBID, 1 Layout→N Semantic, true multi-column tables, and figure asset chains remain deferred. M5 (Translation & Rendering) is next.
+**Current position:** The M4 semantic-recovery baseline has landed (after second-round correctness repairs); GROBID, 1 Layout→N Semantic, true multi-column tables, and figure asset chains remain deferred. The dummy translation layer already excludes bibliography entries per FR-CITE-004. M5 (Translation & Rendering) is next.
 
 README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery baseline (the original phases are not fully closed).
 
@@ -106,7 +106,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 ### Recommended next steps
 
-1. Enter M5: Translation & Rendering—real translation provider wiring, table/equation typesetting in RenderDocument, default `readable-single-column` RenderProfile/RenderPolicy (`SourceDerivedProfile` is Post-Initial R2 per PRD §23), references not translated (PRD FR-CITE-004).
+1. Enter M5: Translation & Rendering—real translation provider wiring, table/equation typesetting in RenderDocument, default `readable-single-column` RenderProfile/RenderPolicy (`SourceDerivedProfile` is Post-Initial R2 per PRD §23). References not translated (PRD FR-CITE-004) landed before M5; see [References are not translated](../../.agents/notes/implemented/architecture/2026-09-06-bibliography-not-translated.en.md).
 
 ### Maintenance
 

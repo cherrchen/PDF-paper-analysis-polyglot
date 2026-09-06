@@ -36,9 +36,11 @@ Status: implemented
 
 ### A. 当前必须在 M5 前修正（实现与 v0.2 直接冲突）
 
+审查当时把「排除 `BIBLIOGRAPHY_ENTRY`」写成 M5 任务，与「必须在 M5 前修正」冲突。该项已在 M5 前落地，见 [参考文献不翻译（FR-CITE-004）](../architecture/2026-09-06-bibliography-not-translated.md)。
+
 | 冲突 | 证据 | 受影响 | 说明 |
 | --- | --- | --- | --- |
-| References 被纳入可翻译节点 | `packages/python/llm/src/paper_llm/translation.py` 中 `TEXT_NODE_KINDS` 含 `BIBLIOGRAPHY_ENTRY`；`translate_document` 会对参考文献条目加 `[TRANSLATED]` 前缀 | M5 Translation | 违反 PRD FR-CITE-004 / §43「References 不翻译」。M5 应排除 `BIBLIOGRAPHY_ENTRY`（及必要时 `BIBLIOGRAPHY` 容器下的正文策略），并补回归测试。 |
+| References 被纳入可翻译节点 | `packages/python/llm/src/paper_llm/translation.py` 中 `TEXT_NODE_KINDS` 曾含 `BIBLIOGRAPHY_ENTRY`；`translate_document` 会对参考文献条目加 `[TRANSLATED]` 前缀 | 翻译层（M5 前） | **已解决。** 违反 PRD FR-CITE-004 / §43「References 不翻译」。现已从 `TEXT_NODE_KINDS` 排除 `BIBLIOGRAPHY_ENTRY` 并补回归测试；不是 M5 范围。 |
 
 ### B. 文档与计划对齐（现在改文档/计划，实现可随 Milestone 跟进）
 
@@ -57,8 +59,8 @@ Status: implemented
 | 纯译文、无双语 PDF | 当前管线仅生成译文层；符合 FR-OUTPUT-001 |
 | Figure Caption 可译 | `TEXT_NODE_KINDS` 含 `FIGURE_CAPTION` |
 | Figure Asset / 图内文字 | 资源链仍在 M5；不翻译图内文字为产品决策，非冲突 |
-| Translation Provider 抽象 | `TranslationProvider` Protocol + `DummyTranslationProvider`；符合 FR-PROVIDER-* |
-| Source↔Target Viewer | M2 Walking Skeleton 已验收双文档语义导航；符合 FR-SYNC-* / FR-VIEW-* |
+| Translation Provider 抽象 | `TranslationProvider` Protocol + `DummyTranslationProvider`；符合 `FR-PROVIDER-*` |
+| Source↔Target Viewer | M2 Walking Skeleton 已验收双文档语义导航；符合 `FR-SYNC-*` / `FR-VIEW-*` |
 | SemanticDocument 不可编辑 | 无用户编辑 UI；Schema 保留 stable ID / provenance |
 | Local-first、Domain 与 UI 分离 | 核心模型在 `schemas/`、`packages/python/`；`apps/` 为薄壳，未把 Domain 绑死 Desktop |
 | Bilingual PDF、Figure 内译、Semantic 编辑、Server 化 | PRD §44 Post-Initial；刻意延期 |
@@ -72,6 +74,6 @@ Status: implemented
 ## 后果
 
 - 所有新 Plan、Implementation Decision、Milestone 验收以 PRD v0.2 为上游。
-- M5 启动检查须包含：References 不翻译、默认单栏 RenderProfile、born-digital 输入拒绝（或等效 UX）。
+- M5 启动检查须包含：默认单栏 RenderProfile、born-digital 输入拒绝（或等效 UX）。References 不翻译已在 M5 前落地，见 [参考文献不翻译（FR-CITE-004）](../architecture/2026-09-06-bibliography-not-translated.md)。
 - Architecture v0.1 与 Roadmap v0.1 仍为技术契约真源，但与产品冲突时以 PRD v0.2 为准并记录对齐项。
 - [产品需求文档 v0.1 建立](./2026-09-06-product-requirements.md) 中「§36 待闭合」的表述由本 note 取代。

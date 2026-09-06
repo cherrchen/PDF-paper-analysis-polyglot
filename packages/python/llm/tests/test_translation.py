@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 from paper_llm import TRANSLATION_MARKER, DummyTranslationProvider, translate_document
-from paper_llm.translation import translate_rich_text
+from paper_llm.translation import TEXT_NODE_KINDS, translate_rich_text
 
 if TYPE_CHECKING:
     from document_model.generated import schema_models as generated
 
-PIPELINE_TESTS = (
-    Path(__file__).resolve().parents[4] / "tests" / "fixtures" / "source" / "latex" / "build"
+REPO_ROOT = Path(__file__).resolve().parents[4]
+PIPELINE_TESTS = REPO_ROOT / "tests" / "fixtures" / "source" / "latex" / "build"
+SEMANTIC_FIXTURE = (
+    REPO_ROOT / "schemas" / "fixtures" / "semantic-document" / "paper-structure.valid.json"
 )
 
 
@@ -65,8 +68,7 @@ def test_translation_rewrites_only_text_nodes() -> None:
     expected_ids = {
         node.id
         for node in semantic.nodes
-        if node.kind in {"HEADING", "PARAGRAPH", "FIGURE_CAPTION", "TABLE_CAPTION"}
-        and isinstance(getattr(node.content, "text", None), str)
+        if node.kind in TEXT_NODE_KINDS and isinstance(getattr(node.content, "text", None), str)
     }
     assert {entry.semanticNodeId for entry in translation.entries} == expected_ids
     for entry in translation.entries:
@@ -85,6 +87,53 @@ def test_translation_layer_validates() -> None:
     translation = translate_document(semantic)
     data = load_document("translation-layer", dump_document(translation))
     assert data == translation
+
+
+def test_bibliography_entries_are_not_translated() -> None:
+    pytest.importorskip("document_model")
+    from document_model.generated import schema_models as generated
+
+    semantic = generated.SemanticDocument.model_validate(
+        json.loads(SEMANTIC_FIXTURE.read_text(encoding="utf-8"))
+    )
+    translation = translate_document(semantic)
+    entry_ids = {node.id for node in semantic.nodes if node.kind == "BIBLIOGRAPHY_ENTRY"}
+    translated_ids = {entry.semanticNodeId for entry in translation.entries}
+    assert entry_ids
+    assert "BIBLIOGRAPHY_ENTRY" not in TEXT_NODE_KINDS
+    assert entry_ids.isdisjoint(translated_ids)
+    by_id = {node.id: node for node in semantic.nodes}
+    for entry in translation.entries:
+        node = by_id[entry.semanticNodeId]
+        assert node.kind != "BIBLIOGRAPHY_ENTRY"
+        text = getattr(entry.content, "text", None)
+        source_text = getattr(node.content, "text", None)
+        assert isinstance(text, str)
+        assert isinstance(source_text, str)
+        assert text == f"{TRANSLATION_MARKER} {source_text}"
+
+
+def test_recovered_bibliography_entries_are_not_translated() -> None:
+    pytest.importorskip("pdf_pipeline")
+    from pdf_pipeline.layout import recover_layout_document
+    from pdf_pipeline.physical import extract_physical_document
+    from pdf_pipeline.pipeline import region_lines_from, region_texts_from
+    from pdf_pipeline.semantic import recover_semantic_document
+
+    pdf_path = PIPELINE_TESTS / "bibliography.pdf"
+    if not pdf_path.exists():
+        pytest.skip("bibliography fixture not built")
+    physical = extract_physical_document(pdf_path.read_bytes())
+    layout = recover_layout_document(physical)
+    semantic = recover_semantic_document(
+        layout,
+        region_texts_from(physical, layout),
+        lines=region_lines_from(physical, layout),
+    )
+    translation = translate_document(semantic)
+    entry_ids = {node.id for node in semantic.nodes if node.kind == "BIBLIOGRAPHY_ENTRY"}
+    assert entry_ids
+    assert entry_ids.isdisjoint({entry.semanticNodeId for entry in translation.entries})
 
 
 def test_dummy_translation_shifts_mark_offsets() -> None:
