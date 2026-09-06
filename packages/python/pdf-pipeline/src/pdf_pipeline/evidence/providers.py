@@ -343,11 +343,17 @@ def _emit_region_candidate(
 
 
 def _looks_like_formula(text: str) -> bool:
-    """Formula guess: math-symbol dense and short."""
+    """Formula guess: math-symbol dense and short.
+
+    M4 lowered the density threshold (0.25 -> 0.15): PDFium fragments
+    display math into short spans whose symbol ratio sits between the
+    old cut and prose; anything with a relation operator and almost no
+    prose is closer to math than to text.
+    """
     if not text or len(text) > 200:
         return False
     stripped = text.strip()
     if stripped.count("=") + stripped.count("\\") == 0:
         return False
     math_chars = sum(1 for char in stripped if char in _FORMULA_CHARS)
-    return math_chars / len(stripped) >= 0.25
+    return math_chars / len(stripped) >= 0.15
