@@ -23,6 +23,8 @@ from document_model.generated import schema_models as generated
 from paper_llm import translate_document
 
 from pdf_pipeline.evidence.providers import MockLayoutEvidenceProvider
+from pdf_pipeline.fusion import RegionLine
+from pdf_pipeline.geometry import as_rect
 from pdf_pipeline.ids import stable_uuid
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
@@ -53,12 +55,43 @@ def region_texts_from(physical: PhysicalDocument, layout: LayoutDocument) -> dic
     spans = {obj.id: obj for obj in physical.objects if obj.objectType == "textSpan"}
     texts: dict[str, str] = {}
     for region in layout.regions:
-        if region.kind not in {"TEXT", "FOOTNOTE"}:
+        if region.kind not in {"TEXT", "FOOTNOTE", "TABLE", "FORMULA"}:
             continue
         texts[region.id] = " ".join(
             spans[object_id].text for object_id in region.physicalObjectIds if object_id in spans
         )
     return texts
+
+
+def region_lines_from(
+    physical: PhysicalDocument, layout: LayoutDocument
+) -> dict[str, list[RegionLine]]:
+    """Physical spans behind each text-carrying region as per-span lines.
+
+    Semantic recovery needs the line granularity the joined text loses:
+    table rows are one span each, and font size separates titles from
+    authors. Regions outside :func:`region_texts_from` carry no lines.
+    """
+    spans = {obj.id: obj for obj in physical.objects if obj.objectType == "textSpan"}
+    lines: dict[str, list[RegionLine]] = {}
+    for region in layout.regions:
+        if region.kind not in {"TEXT", "FOOTNOTE", "TABLE", "FORMULA"}:
+            continue
+        region_lines: list[RegionLine] = []
+        for object_id in region.physicalObjectIds:
+            span = spans.get(object_id)
+            if span is None:  # pragma: no cover - defensive; ids come from layout
+                continue
+            region_lines.append(
+                RegionLine(
+                    text=span.text,
+                    rect=as_rect(span.geometry),
+                    font_size=span.fontSize or as_rect(span.geometry).height,
+                )
+            )
+        if region_lines:
+            lines[region.id] = region_lines
+    return lines
 
 
 def build_source_anchors(
