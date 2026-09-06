@@ -1,7 +1,9 @@
-"""Phase 2.3 minimal semantic recovery tests.
+"""M4 semantic recovery tests.
 
-Covers Roadmap M2 Phase 2.3: HEADING / PARAGRAPH / FIGURE / FIGURE_CAPTION
-node recovery with layer separation and bundle reference integrity.
+Covers Roadmap M2 Phase 2.3 (heading/paragraph/figure recovery with layer
+separation and bundle reference integrity) and M4 (front matter, section
+tree, merged paragraphs, tables, equations, footnote references,
+bibliography and citations).
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from document_model import (
 from document_model.generated import schema_models as generated
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
+from pdf_pipeline.pipeline import region_lines_from, region_texts_from
 from pdf_pipeline.semantic import recover_semantic_document
 
 if TYPE_CHECKING:
@@ -37,24 +40,21 @@ def _fixture(name: str) -> bytes:
     return path.read_bytes()
 
 
-def _region_texts(physical: PhysicalDocument, layout: LayoutDocument) -> dict[str, str]:
-    texts: dict[str, str] = {}
-    spans = {obj.id: obj for obj in physical.objects if obj.objectType == "textSpan"}
-    for region in layout.regions:
-        if region.kind != "TEXT":
-            continue
-        joined = " ".join(
-            spans[obj_id].text for obj_id in region.physicalObjectIds if obj_id in spans
-        )
-        texts[region.id] = joined
-    return texts
-
-
 def _recover(name: str) -> tuple[PhysicalDocument, LayoutDocument, SemanticDocument]:
     physical = extract_physical_document(_fixture(name))
     layout = recover_layout_document(physical)
-    semantic = recover_semantic_document(layout, _region_texts(physical, layout))
+    texts = region_texts_from(physical, layout)
+    lines = region_lines_from(physical, layout)
+    semantic = recover_semantic_document(layout, texts, lines=lines)
     return physical, layout, semantic
+
+
+def _node(semantic: SemanticDocument, kind: str) -> generated.SemanticNode:
+    return next(node for node in semantic.nodes if node.kind == kind)
+
+
+def _nodes(semantic: SemanticDocument, kind: str) -> list[generated.SemanticNode]:
+    return [node for node in semantic.nodes if node.kind == kind]
 
 
 def test_smoke_produces_headings_and_paragraphs() -> None:
@@ -62,7 +62,15 @@ def test_smoke_produces_headings_and_paragraphs() -> None:
     kinds = {node.kind for node in semantic.nodes}
     assert "HEADING" in kinds
     assert "PARAGRAPH" in kinds
-    assert kinds <= {"DOCUMENT", "HEADING", "PARAGRAPH", "FIGURE", "FIGURE_CAPTION"}
+    assert kinds <= {
+        "DOCUMENT",
+        "FRONT_MATTER",
+        "HEADING",
+        "PARAGRAPH",
+        "FIGURE",
+        "FIGURE_CAPTION",
+        "EQUATION",
+    }
 
 
 def test_figure_caption_detected_and_related() -> None:
@@ -70,11 +78,14 @@ def test_figure_caption_detected_and_related() -> None:
     kinds = [node.kind for node in semantic.nodes]
     assert kinds.count("FIGURE") == 1
     assert kinds.count("FIGURE_CAPTION") == 1
-    caption = next(node for node in semantic.nodes if node.kind == "FIGURE_CAPTION")
+    caption = _node(semantic, "FIGURE_CAPTION")
     assert isinstance(caption.content, generated.RichText)
     assert "Synthetic raster figure" in caption.content.text
-    relation_types = {relation.type for relation in semantic.relations}
-    assert "CAPTION_OF" in relation_types
+    relation = next(r for r in semantic.relations if r.type == "CAPTION_OF")
+    figure = _node(semantic, "FIGURE")
+    assert relation.target == figure.id
+    assert isinstance(figure.content, generated.FigureContent)
+    assert figure.content.label == "1"
 
 
 def test_table_caption_is_not_figure_caption() -> None:
@@ -83,6 +94,132 @@ def test_table_caption_is_not_figure_caption() -> None:
     kinds = [node.kind for node in semantic.nodes]
     assert "TABLE_CAPTION" in kinds
     assert "FIGURE_CAPTION" not in kinds
+
+
+def test_table_region_becomes_structured_cells() -> None:
+    _, _, semantic = _recover("table-heavy")
+    table = _node(semantic, "TABLE")
+    assert isinstance(table.content, generated.TableContent)
+    assert table.content.rows >= 4
+    assert table.content.cells
+    assert all(cell.content.text.strip() for cell in table.content.cells)
+    assert "fallback" in (table.confidence.reason or "")
+
+
+def test_front_matter_title_author_date() -> None:
+    _, _, semantic = _recover("smoke")
+    front = _node(semantic, "FRONT_MATTER")
+    roles = {node.attributes.get("role") for node in semantic.nodes if node.parentId == front.id}
+    assert roles == {"title", "author", "date"}
+    title = next(
+        node
+        for node in semantic.nodes
+        if node.parentId == front.id and node.attributes.get("role") == "title"
+    )
+    assert isinstance(title.content, generated.RichText)
+    assert title.content.text == "Smoke Fixture"
+
+
+def test_section_tree_and_heading_levels() -> None:
+    _, _, semantic = _recover("table-heavy")
+    section = _node(semantic, "SECTION")
+    assert section.attributes["numbering"] == "1"
+    heading = next(node for node in semantic.nodes if node.parentId == section.id)
+    assert heading.kind == "HEADING"
+    assert heading.attributes["level"] == 1
+    # The table and its caption live inside the section, not at document root.
+    table = _node(semantic, "TABLE")
+    assert table.parentId == section.id
+
+
+def test_merged_paragraphs_carry_all_source_regions() -> None:
+    _, _layout, semantic = _recover("two-column")
+    merged = [
+        node
+        for node in semantic.nodes
+        if node.kind == "PARAGRAPH" and len(node.attributes.get("layoutRegionIds", [])) > 1
+    ]
+    assert merged, "two-column continuation regions must merge"
+    assert any((node.confidence.reason or "").startswith("paragraph merge") for node in merged)
+    covered = {
+        region_id
+        for node in semantic.nodes
+        for region_id in node.attributes.get("layoutRegionIds", [])
+    }
+    for node in merged:
+        first = node.attributes["layoutRegionIds"][0]
+        assert first in covered
+
+
+def test_display_equation_recovery_with_number() -> None:
+    _, _, semantic = _recover("equation-heavy")
+    equations = _nodes(semantic, "EQUATION")
+    assert equations
+    numbered = [node for node in equations if getattr(node.content, "number", None)]
+    assert numbered, "align block must recover its (1) number"
+    node = numbered[0]
+    content = node.content
+    assert isinstance(content, generated.EquationContent)
+    assert content.rawText
+    assert content.unicodeText
+    # Content is never lost even without FORMULA evidence.
+    assert any(
+        "b2" in equation.content.rawText
+        for equation in equations
+        if isinstance(equation.content, generated.EquationContent) and equation.content.rawText
+    )
+
+
+def test_inline_equation_marks() -> None:
+    _, _, semantic = _recover("equation-heavy")
+    marks = [
+        mark
+        for node in semantic.nodes
+        if isinstance(node.content, generated.RichText)
+        for mark in node.content.marks
+        if mark.type == "INLINE_EQUATION"
+    ]
+    assert marks, "inline f(x)=x^2 must be marked inside its paragraph"
+
+
+def test_footnote_references_link_bodies_to_paragraphs() -> None:
+    _, _, semantic = _recover("footnote-multicolumn")
+    footnotes = _nodes(semantic, "FOOTNOTE")
+    assert len(footnotes) == 2
+    relations = [r for r in semantic.relations if r.type == "FOOTNOTE_OF"]
+    assert len(relations) == 2
+    targets = {r.target for r in relations}
+    for node in semantic.nodes:
+        if not isinstance(node.content, generated.RichText):
+            continue
+        for mark in node.content.marks:
+            if mark.type == "FOOTNOTE_REFERENCE":
+                assert mark.targetNodeId in {f.id for f in footnotes}
+                assert node.id in targets
+                assert isinstance(node.content.text[mark.start : mark.end], str)
+
+
+def test_bibliography_entries_and_citations() -> None:
+    _, _, semantic = _recover("bibliography")
+    assert len(_nodes(semantic, "BIBLIOGRAPHY")) == 1
+    entries = _nodes(semantic, "BIBLIOGRAPHY_ENTRY")
+    assert [e.attributes.get("label") for e in entries] == ["1", "2"]
+    assert all(len(e.attributes["layoutRegionIds"]) > 1 for e in entries), (
+        "entry fragments must merge into one node"
+    )
+    cites = [r for r in semantic.relations if r.type == "CITES"]
+    assert len(cites) == 2
+    entry_ids = {e.id for e in entries}
+    assert {c.target for c in cites} == entry_ids
+    citation_marks = [
+        mark
+        for node in semantic.nodes
+        if isinstance(node.content, generated.RichText)
+        for mark in node.content.marks
+        if mark.type == "CITATION"
+    ]
+    assert len(citation_marks) == 2
+    assert {m.targetNodeId for m in citation_marks} == entry_ids
 
 
 def test_semantic_carries_no_geometry() -> None:
@@ -115,21 +252,26 @@ def test_bundle_references_resolve() -> None:
 def test_semantic_recovery_is_deterministic() -> None:
     _, layout, semantic = _recover("smoke")
     again = recover_semantic_document(
-        layout, _region_texts(extract_physical_document(_fixture("smoke")), layout)
+        layout,
+        region_texts_from(extract_physical_document(_fixture("smoke")), layout),
     )
     assert semantic == again
 
 
 def test_all_regions_become_nodes() -> None:
-    _, layout, semantic = _recover("smoke")
-    # Every non-empty text region maps to exactly one semantic node.
-    text_regions = {r.id for r in layout.regions if r.kind == "TEXT"}
-    assert len(semantic.nodes) - 1 >= len(text_regions) - len(
-        [
-            rid
-            for rid in text_regions
-            if not _region_texts(extract_physical_document(_fixture("smoke")), layout)
-            .get(rid, "")
-            .strip()
-        ]
-    )
+    physical, layout, semantic = _recover("smoke")
+    # Every non-empty content region maps to some semantic node.
+    texts = region_texts_from(physical, layout)
+    content_regions = {
+        region.id
+        for region in layout.regions
+        if region.id in layout.primaryFlow
+        and region.kind in {"TEXT", "TABLE", "FORMULA"}
+        and texts.get(region.id, "").strip()
+    }
+    covered = {
+        region_id
+        for node in semantic.nodes
+        for region_id in node.attributes.get("layoutRegionIds", [])
+    }
+    assert content_regions <= covered

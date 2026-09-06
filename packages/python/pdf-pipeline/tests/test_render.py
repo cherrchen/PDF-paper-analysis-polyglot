@@ -79,7 +79,13 @@ def test_render_anchors_recover_all_body_nodes(
     tex = project_to_latex(render)
     pdf = compile_latex(tex, tmp_path / "build")
     anchors = recover_render_anchors(pdf, smoke_semantic)
-    body_node_ids = {node.id for node in smoke_semantic.nodes[1:]}
+    # M4 container kinds (SECTION/FRONT_MATTER/BIBLIOGRAPHY) carry no text
+    # and render as their children; every content node must be anchored.
+    body_node_ids = {
+        node.id
+        for node in smoke_semantic.nodes[1:]
+        if node.kind not in {"SECTION", "FRONT_MATTER", "BIBLIOGRAPHY"}
+    }
     assert body_node_ids <= {anchor.semanticNodeId for anchor in anchors}
     for anchor in anchors:
         fragment = anchor.fragments[0]
