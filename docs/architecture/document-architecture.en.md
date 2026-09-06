@@ -724,6 +724,7 @@ INLINE_EQUATION
 LINK
 SUPERSCRIPT
 SUBSCRIPT
+FOOTNOTE_REFERENCE
 ```
 
 Principle: block semantics → SemanticNode; inline semantics → RichText mark. Avoid creating many TextNodes.

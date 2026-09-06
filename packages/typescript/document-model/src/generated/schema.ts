@@ -358,7 +358,7 @@ export declare namespace LayoutDocument {
 
 export declare namespace SemanticDocument {
   /** v0.1 inline mark types. Inline semantics are marks, not extra nodes. */
-  export type InlineMarkType = "BOLD" | "ITALIC" | "CITATION" | "FIGURE_REFERENCE" | "TABLE_REFERENCE" | "EQUATION_REFERENCE" | "SECTION_REFERENCE" | "INLINE_EQUATION" | "LINK" | "SUPERSCRIPT" | "SUBSCRIPT";
+  export type InlineMarkType = "BOLD" | "ITALIC" | "CITATION" | "FIGURE_REFERENCE" | "TABLE_REFERENCE" | "EQUATION_REFERENCE" | "SECTION_REFERENCE" | "INLINE_EQUATION" | "LINK" | "SUPERSCRIPT" | "FOOTNOTE_REFERENCE" | "SUBSCRIPT";
   /** v0.1 node kinds covering the required academic paper structure. */
   export type NodeKind = "DOCUMENT" | "FRONT_MATTER" | "SECTION" | "HEADING" | "PARAGRAPH" | "LIST" | "LIST_ITEM" | "FIGURE" | "FIGURE_CAPTION" | "TABLE" | "TABLE_CAPTION" | "EQUATION" | "FOOTNOTE" | "BIBLIOGRAPHY" | "BIBLIOGRAPHY_ENTRY" | "QUOTE" | "UNKNOWN";
   /** v0.1 relation types for the non-tree graph. */

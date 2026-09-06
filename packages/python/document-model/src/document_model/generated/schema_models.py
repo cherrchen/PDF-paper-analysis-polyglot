@@ -844,6 +844,7 @@ InlineMarkType = Literal[
     "INLINE_EQUATION",
     "LINK",
     "SUPERSCRIPT",
+    "FOOTNOTE_REFERENCE",
     "SUBSCRIPT",
 ]
 

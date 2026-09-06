@@ -49,7 +49,7 @@
       "parentId": "01J5M1FXTRR00T00000000000M",
       "children": [],
       "content": {
-        "text": "Spanning paragraph across both columns.",
+        "text": "Spanning paragraph across both columns.1",
         "marks": [
           {
             "type": "CITATION",
@@ -57,6 +57,13 @@
             "end": 34,
             "targetNodeId": "01J5M1FXTRB1BE00000000000X",
             "label": "[1]"
+          },
+          {
+            "type": "FOOTNOTE_REFERENCE",
+            "start": 40,
+            "end": 41,
+            "targetNodeId": "01J5M1FXTRFN0000000000000V",
+            "label": "1"
           }
         ]
       },
