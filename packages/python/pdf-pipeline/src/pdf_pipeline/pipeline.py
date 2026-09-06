@@ -38,6 +38,7 @@ from pdf_pipeline.render_latex import (
     project_to_latex,
     render_target_document_id,
 )
+from pdf_pipeline.sem_validate import validate_semantic_recovery
 from pdf_pipeline.semantic import recover_semantic_document
 
 if TYPE_CHECKING:
@@ -216,7 +217,21 @@ def run_pipeline(
     physical = extract_physical_document(data)
     evidence = MockLayoutEvidenceProvider().collect(physical)
     layout = recover_layout_document(physical, evidence=evidence)
-    semantic = recover_semantic_document(layout, region_texts_from(physical, layout))
+    region_texts = region_texts_from(physical, layout)
+    semantic = recover_semantic_document(
+        layout,
+        region_texts,
+        lines=region_lines_from(physical, layout),
+        evidence=evidence,
+    )
+    recovery_issues = validate_semantic_recovery(semantic, layout, region_texts)
+    if recovery_issues:
+        store = semantic.issues or generated.IssueStore(issues=[])
+        semantic = semantic.model_copy(
+            update={
+                "issues": store.model_copy(update={"issues": [*store.issues, *recovery_issues]})
+            }
+        )
     translation = translate_document(semantic)
     render = compose_render_document(semantic, translation)
 
