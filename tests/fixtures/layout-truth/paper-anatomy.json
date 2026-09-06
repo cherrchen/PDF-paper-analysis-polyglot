@@ -1,0 +1,50 @@
+{
+  "fixture": "paper-anatomy",
+  "purpose": "Composite exit-gate paper: every M4 semantic element in one document",
+  "pages": [
+    { "pageIndex": 0, "singleColumnOnly": true },
+    { "pageIndex": 1, "singleColumnOnly": true }
+  ],
+  "readingOrder": [
+    "Anatomy of a Synthetic Paper",
+    "1 Introduction",
+    "2 Methods",
+    "Figure 1: Placeholder figure",
+    "3 Results",
+    "Table 1: Composite recovery metrics",
+    "References"
+  ],
+  "captions": [
+    { "prefix": "Figure 1", "kind": "FIGURE_BLOCK" },
+    { "prefix": "Table 1", "kind": "TABLE_BLOCK" }
+  ],
+  "footnotesExpected": 1,
+  "semantic": {
+    "kinds": [
+      "FRONT_MATTER",
+      "SECTION",
+      "HEADING",
+      "PARAGRAPH",
+      "FIGURE",
+      "FIGURE_CAPTION",
+      "TABLE",
+      "TABLE_CAPTION",
+      "EQUATION",
+      "FOOTNOTE",
+      "BIBLIOGRAPHY",
+      "BIBLIOGRAPHY_ENTRY"
+    ],
+    "minCounts": { "PARAGRAPH": 6, "SECTION": 4, "BIBLIOGRAPHY_ENTRY": 2 },
+    "headingLevels": [1, 2],
+    "captionOf": 2,
+    "footnotesLinked": 1,
+    "citationsResolved": 2,
+    "marks": { "CITATION": 2, "FOOTNOTE_REFERENCE": 1, "INLINE_EQUATION": 1 },
+    "equationNumbers": ["1"],
+    "mergedParagraphNodes": 3,
+    "multiFragmentAnchors": 3,
+    "tableCellsMin": 5,
+    "coverageMin": 0.95,
+    "noErrors": true
+  }
+}

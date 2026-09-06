@@ -1,12 +1,39 @@
 {
   "fixture": "table-heavy",
   "purpose": "booktabs table with caption association",
-  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "pages": [
+    {
+      "pageIndex": 0,
+      "singleColumnOnly": true
+    }
+  ],
   "readingOrder": [
     "Table Fixture",
     "1 Structured table",
     "Table 1: Synthetic metrics for table-structure recovery"
   ],
-  "captions": [{ "prefix": "Table 1", "kind": "TABLE_BLOCK" }],
-  "footnotesExpected": 0
+  "captions": [
+    {
+      "prefix": "Table 1",
+      "kind": "TABLE_BLOCK"
+    }
+  ],
+  "footnotesExpected": 0,
+  "semantic": {
+    "kinds": ["FRONT_MATTER", "SECTION", "HEADING", "PARAGRAPH", "TABLE", "TABLE_CAPTION"],
+    "minCounts": {
+      "PARAGRAPH": 1
+    },
+    "captionOf": 1,
+    "footnotesLinked": 0,
+    "citationsResolved": 0,
+    "marks": {},
+    "equationNumbers": [],
+    "mergedParagraphNodes": 0,
+    "multiFragmentAnchors": 0,
+    "tableCellsMin": 4,
+    "coverageMin": 0.95,
+    "noErrors": true,
+    "headingLevels": [1]
+  }
 }

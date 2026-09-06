@@ -1,7 +1,12 @@
 {
   "fixture": "footnote-multicolumn",
   "purpose": "Two footnote regions on a filled two-column page stay out of the main flow",
-  "pages": [{ "pageIndex": 0, "expectMultiColumn": true }],
+  "pages": [
+    {
+      "pageIndex": 0,
+      "expectMultiColumn": true
+    }
+  ],
   "readingOrder": [
     "Footnote Fixture",
     "1 Main text with notes",
@@ -10,5 +15,23 @@
     "Additional body text without footnotes"
   ],
   "captions": [],
-  "footnotesExpected": 2
+  "footnotesExpected": 2,
+  "semantic": {
+    "kinds": ["FRONT_MATTER", "SECTION", "HEADING", "PARAGRAPH", "FOOTNOTE"],
+    "minCounts": {
+      "FOOTNOTE": 2
+    },
+    "captionOf": 0,
+    "footnotesLinked": 2,
+    "citationsResolved": 0,
+    "marks": {
+      "FOOTNOTE_REFERENCE": 2
+    },
+    "equationNumbers": [],
+    "mergedParagraphNodes": 1,
+    "multiFragmentAnchors": 1,
+    "coverageMin": 0.95,
+    "noErrors": true,
+    "headingLevels": [1]
+  }
 }

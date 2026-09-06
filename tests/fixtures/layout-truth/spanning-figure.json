@@ -2,8 +2,14 @@
   "fixture": "spanning-figure",
   "purpose": "Filled two-column body interrupted by a spanning figure",
   "pages": [
-    { "pageIndex": 0, "expectMultiColumn": true },
-    { "pageIndex": 1, "expectSpanningBand": true }
+    {
+      "pageIndex": 0,
+      "expectMultiColumn": true
+    },
+    {
+      "pageIndex": 1,
+      "expectSpanningBand": true
+    }
   ],
   "readingOrder": [
     "Spanning Figure Fixture",
@@ -14,6 +20,36 @@
     "3 Columns after figure",
     "Text resumes below the spanning figure"
   ],
-  "captions": [{ "prefix": "Figure 1", "kind": "FIGURE_BLOCK" }],
-  "footnotesExpected": 0
+  "captions": [
+    {
+      "prefix": "Figure 1",
+      "kind": "FIGURE_BLOCK"
+    }
+  ],
+  "footnotesExpected": 0,
+  "semantic": {
+    "kinds": [
+      "FRONT_MATTER",
+      "SECTION",
+      "HEADING",
+      "PARAGRAPH",
+      "FIGURE",
+      "FIGURE_CAPTION",
+      "TABLE"
+    ],
+    "minCounts": {
+      "PARAGRAPH": 2,
+      "SECTION": 2
+    },
+    "captionOf": 1,
+    "footnotesLinked": 0,
+    "citationsResolved": 0,
+    "marks": {},
+    "equationNumbers": [],
+    "mergedParagraphNodes": 0,
+    "multiFragmentAnchors": 0,
+    "coverageMin": 0.95,
+    "noErrors": true,
+    "headingLevels": [1]
+  }
 }

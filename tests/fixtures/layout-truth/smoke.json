@@ -1,8 +1,29 @@
 {
   "fixture": "smoke",
   "purpose": "Minimal single-column baseline",
-  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "pages": [
+    {
+      "pageIndex": 0,
+      "singleColumnOnly": true
+    }
+  ],
   "readingOrder": ["Smoke Fixture", "This fixture is the minimum LuaLaTeX regression document"],
   "captions": [],
-  "footnotesExpected": 0
+  "footnotesExpected": 0,
+  "semantic": {
+    "kinds": ["FRONT_MATTER", "HEADING", "PARAGRAPH", "EQUATION"],
+    "minCounts": {
+      "PARAGRAPH": 1
+    },
+    "captionOf": 0,
+    "footnotesLinked": 0,
+    "citationsResolved": 0,
+    "marks": {},
+    "equationNumbers": [],
+    "mergedParagraphNodes": 0,
+    "multiFragmentAnchors": 0,
+    "coverageMin": 0.95,
+    "noErrors": true,
+    "headingLevels": [1]
+  }
 }

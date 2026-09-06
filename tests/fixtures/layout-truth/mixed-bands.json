@@ -2,8 +2,14 @@
   "fixture": "mixed-bands",
   "purpose": "Full-width front matter, filled columns, spanning figure, resumed columns",
   "pages": [
-    { "pageIndex": 0, "expectMultiColumn": true },
-    { "pageIndex": 1, "expectSpanningBand": true }
+    {
+      "pageIndex": 0,
+      "expectMultiColumn": true
+    },
+    {
+      "pageIndex": 1,
+      "expectSpanningBand": true
+    }
   ],
   "readingOrder": [
     "Mixed Bands Fixture",
@@ -17,6 +23,28 @@
     "3 After wide figure",
     "Columns resume below the figure band"
   ],
-  "captions": [{ "prefix": "Figure 1", "kind": "FIGURE_BLOCK" }],
-  "footnotesExpected": 0
+  "captions": [
+    {
+      "prefix": "Figure 1",
+      "kind": "FIGURE_BLOCK"
+    }
+  ],
+  "footnotesExpected": 0,
+  "semantic": {
+    "kinds": ["FRONT_MATTER", "SECTION", "HEADING", "PARAGRAPH", "FIGURE", "FIGURE_CAPTION"],
+    "minCounts": {
+      "PARAGRAPH": 3,
+      "SECTION": 2
+    },
+    "captionOf": 1,
+    "footnotesLinked": 0,
+    "citationsResolved": 0,
+    "marks": {},
+    "equationNumbers": [],
+    "mergedParagraphNodes": 0,
+    "multiFragmentAnchors": 0,
+    "coverageMin": 0.95,
+    "noErrors": true,
+    "headingLevels": [1]
+  }
 }

@@ -1,7 +1,12 @@
 {
   "fixture": "two-column",
   "purpose": "Filled two-column article; both columns occupy page 0",
-  "pages": [{ "pageIndex": 0, "expectMultiColumn": true }],
+  "pages": [
+    {
+      "pageIndex": 0,
+      "expectMultiColumn": true
+    }
+  ],
   "readingOrder": [
     "Two-Column Fixture",
     "1 Left column start",
@@ -10,5 +15,22 @@
     "Right column material appears after the left column"
   ],
   "captions": [],
-  "footnotesExpected": 0
+  "footnotesExpected": 0,
+  "semantic": {
+    "kinds": ["FRONT_MATTER", "SECTION", "HEADING", "PARAGRAPH"],
+    "minCounts": {
+      "PARAGRAPH": 2,
+      "SECTION": 2
+    },
+    "captionOf": 0,
+    "footnotesLinked": 0,
+    "citationsResolved": 0,
+    "marks": {},
+    "equationNumbers": [],
+    "mergedParagraphNodes": 1,
+    "multiFragmentAnchors": 1,
+    "coverageMin": 0.95,
+    "noErrors": true,
+    "headingLevels": [1]
+  }
 }

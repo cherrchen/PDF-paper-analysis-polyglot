@@ -1,12 +1,38 @@
 {
   "fixture": "tikz-vector",
   "purpose": "TikZ paths recover as one figure region with caption",
-  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "pages": [
+    {
+      "pageIndex": 0,
+      "singleColumnOnly": true
+    }
+  ],
   "readingOrder": [
     "Vector Figure Fixture",
     "1 Vector diagram",
     "Figure 1: Simple vector figure for graphics extraction tests"
   ],
-  "captions": [{ "prefix": "Figure 1", "kind": "FIGURE_BLOCK" }],
-  "footnotesExpected": 0
+  "captions": [
+    {
+      "prefix": "Figure 1",
+      "kind": "FIGURE_BLOCK"
+    }
+  ],
+  "footnotesExpected": 0,
+  "semantic": {
+    "kinds": ["FRONT_MATTER", "SECTION", "HEADING", "PARAGRAPH", "FIGURE", "FIGURE_CAPTION"],
+    "minCounts": {
+      "PARAGRAPH": 1
+    },
+    "captionOf": 1,
+    "footnotesLinked": 0,
+    "citationsResolved": 0,
+    "marks": {},
+    "equationNumbers": [],
+    "mergedParagraphNodes": 0,
+    "multiFragmentAnchors": 0,
+    "coverageMin": 0.95,
+    "noErrors": true,
+    "headingLevels": [1]
+  }
 }

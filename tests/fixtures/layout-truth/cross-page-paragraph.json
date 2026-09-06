@@ -2,8 +2,14 @@
   "fixture": "cross-page-paragraph",
   "purpose": "Paragraph continuing across a page break needs continuation evidence",
   "pages": [
-    { "pageIndex": 0, "singleColumnOnly": true },
-    { "pageIndex": 1, "singleColumnOnly": true }
+    {
+      "pageIndex": 0,
+      "singleColumnOnly": true
+    },
+    {
+      "pageIndex": 1,
+      "singleColumnOnly": true
+    }
   ],
   "readingOrder": [
     "Cross-Page Paragraph Fixture",
@@ -13,5 +19,22 @@
   ],
   "captions": [],
   "footnotesExpected": 0,
-  "expectCrossPageContinuation": true
+  "expectCrossPageContinuation": true,
+  "semantic": {
+    "kinds": ["FRONT_MATTER", "SECTION", "HEADING", "PARAGRAPH"],
+    "minCounts": {
+      "PARAGRAPH": 2,
+      "SECTION": 1
+    },
+    "captionOf": 0,
+    "footnotesLinked": 0,
+    "citationsResolved": 0,
+    "marks": {},
+    "equationNumbers": [],
+    "mergedParagraphNodes": 0,
+    "multiFragmentAnchors": 0,
+    "coverageMin": 0.95,
+    "noErrors": true,
+    "headingLevels": [1]
+  }
 }

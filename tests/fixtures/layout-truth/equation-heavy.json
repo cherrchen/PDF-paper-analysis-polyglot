@@ -1,7 +1,12 @@
 {
   "fixture": "equation-heavy",
   "purpose": "Display math fragments must not break prose reading order",
-  "pages": [{ "pageIndex": 0, "singleColumnOnly": true }],
+  "pages": [
+    {
+      "pageIndex": 0,
+      "singleColumnOnly": true
+    }
+  ],
   "readingOrder": [
     "Equation Fixture",
     "1 Inline and display math",
@@ -9,5 +14,23 @@
     "A multi-line alignment"
   ],
   "captions": [],
-  "footnotesExpected": 0
+  "footnotesExpected": 0,
+  "semantic": {
+    "kinds": ["FRONT_MATTER", "SECTION", "HEADING", "PARAGRAPH", "EQUATION"],
+    "minCounts": {
+      "EQUATION": 2
+    },
+    "captionOf": 0,
+    "footnotesLinked": 0,
+    "citationsResolved": 0,
+    "marks": {
+      "INLINE_EQUATION": 1
+    },
+    "equationNumbers": ["1"],
+    "mergedParagraphNodes": 0,
+    "multiFragmentAnchors": 2,
+    "coverageMin": 0.95,
+    "noErrors": true,
+    "headingLevels": [1]
+  }
 }
