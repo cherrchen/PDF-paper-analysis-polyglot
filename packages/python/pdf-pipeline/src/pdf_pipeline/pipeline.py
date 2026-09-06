@@ -106,8 +106,9 @@ def build_source_anchors(
     """PhysicalLayoutBindings + SourceAnchors + SourceSemanticBindings.
 
     Layout regions carry the physical object ids; each semantic node records
-    its source region in ``attributes.layoutRegionId`` at recovery time, so
-    anchor pairing is identity-based instead of positional.
+    its source regions in ``attributes.layoutRegionIds`` at recovery time, so
+    anchor pairing is identity-based instead of positional and a merged
+    paragraph anchors to every region it was recovered from (N -> 1).
     """
     physical_layout_bindings = [
         generated.PhysicalLayoutBinding(
@@ -121,13 +122,15 @@ def build_source_anchors(
     source_anchors: list[generated.SourceAnchor] = []
     source_semantic_bindings: list[generated.SourceSemanticBinding] = []
     for node in semantic.nodes[1:]:
-        region_id = node.attributes.get("layoutRegionId")
-        if not isinstance(region_id, str):
+        raw = node.attributes.get("layoutRegionIds")
+        region_ids: list[str] = [item for item in raw if isinstance(item, str)] if raw else []
+        if not region_ids:
             continue
         anchor = generated.SourceAnchor(
             id=stable_uuid(semantic.id, "source-anchor", node.id),
             fragments=[
                 generated.LayoutRegionRef(fragmentType="layoutRegion", layoutRegionId=region_id)
+                for region_id in region_ids
             ],
             confidence=0.7,
         )
