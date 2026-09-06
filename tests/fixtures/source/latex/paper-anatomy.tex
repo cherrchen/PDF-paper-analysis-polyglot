@@ -1,0 +1,94 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\setmainfont{Latin Modern Roman}
+
+\title{Anatomy of a Synthetic Paper}
+\author{Repository Fixture \and Second Author}
+\date{2026-09-06}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  This fixture contains every structural element the semantic recovery
+  engine must recognize in one paper: title block, abstract, numbered
+  sections, a figure, a table, a display equation, a footnote, and a
+  bibliography with in-text citations.
+\end{abstract}
+
+\section{Introduction}
+Prior work on layout recovery~\cite{smith2020docs} and citation
+resolution~\cite{doe2021refs} motivates this composite fixture. The
+paragraph below is deliberately long so it wraps onto a second page and
+exercises cross-page paragraph merging.%
+
+Synthetic filler sentences continue the same paragraph across the page
+boundary, because the reading flow must emit continuation evidence for
+semantic paragraph assembly rather than treating the fragments as
+unrelated blocks. Additional filler lines follow so the break happens
+inside this paragraph and not before the next section heading. This
+paragraph keeps growing with more synthetic academic prose about
+document compilers, evidence pipelines, and reading-order graphs.
+Repetition is deliberate: it inflates vertical extent without
+introducing new structural elements, isolating the cross-page
+continuation case.
+
+\subsection{Motivation}
+A subsection heading must recover with level two, nested inside the
+section tree. Inline math such as \(f(x) = x^{2}\) stays inside its
+paragraph as a mark, not a node.
+
+\section{Methods}
+The pipeline recovers structure in stages. The placeholder drawn below
+covers a region, and a synthetic footnote\footnote{The footnote body
+  must be recovered and linked back to this marker.} adds reference
+evidence. The linear identity anchors the numeric pipeline:
+\begin{equation}
+  y = 2x + 1
+\end{equation}
+\begin{figure}[htbp]
+  \centering
+  \rule{0.5\textwidth}{3cm}%
+  \caption{Placeholder figure for composite recovery.}
+\end{figure}
+
+\section{Results}
+The table reported below lists the synthetic metrics.
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{lrr}
+    \toprule
+    Region type & Count & Confidence \\
+    \midrule
+    Paragraph   & 9     & 0.93       \\
+    Heading     & 4     & 0.90       \\
+    Figure      & 1     & 0.84       \\
+    Table       & 1     & 0.80       \\
+    \bottomrule
+  \end{tabular}
+  \caption{Composite recovery metrics.}
+\end{table}
+
+\section{Conclusion}
+The conclusion closes the body before the bibliography. Recovery must
+keep it a plain paragraph under the last numbered section.
+
+\begin{thebibliography}{9}
+  \bibitem{smith2020docs}
+  A.~Smith.
+  Synthetic references for composite regression tests.
+  \emph{Fixture Journal}, 1(1):1--2, 2020.
+  \bibitem{doe2021refs}
+  J.~Doe.
+  Citation marks in academic PDFs.
+  \emph{Layout Letters}, 2(3):10--12, 2021.
+\end{thebibliography}
+
+\end{document}

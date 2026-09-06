@@ -1,0 +1,20 @@
+origin: repository-authored
+license: MIT with Non-Commercial additional terms
+purpose: Composite paper anatomy exercising all M4 semantic recovery paths
+generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
+tier: 1
+layout:
+  columns: 1
+  pages_expected: 2
+  has_math: true
+  has_table: true
+  has_figure: true
+  multilingual: false
+known_special_cases:
+  - Title block with abstract
+  - Nested numbered sections (level 1 and 2)
+  - Cross-page paragraph continuation
+  - Equation numbered via FORMULA region
+  - Footnote reference recovery
+  - Bibliography entries with citation marks
+  - Intentionally no integral glyphs (PDFium portability; see c1a3f75)
