@@ -110,3 +110,10 @@ PGF
 TikZ
 pgf
 misclassification
+canonicalizer
+enum
+headingLevels
+rawText
+subfigures
+thebibliography
+unicodeText
