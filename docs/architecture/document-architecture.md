@@ -3,6 +3,7 @@
 [中文](./document-architecture.md) | [English](./document-architecture.en.md)
 
 > **Status:** frozen v0.1。后续 parser、renderer、viewer、translation 均以本文档为契约基准开发。
+> 2026-09-06 additive amendment：`InlineMarkType` 增加 `FOOTNOTE_REFERENCE`；schema 版本仍为 `0.1.0`（M2 冻结后的记录例外，见 [M4 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.md)）。
 
 决策记录：[`.agents/notes/implemented/architecture/2026-09-03-document-architecture.md`](../../.agents/notes/implemented/architecture/2026-09-03-document-architecture.md)。
 

@@ -32,4 +32,4 @@ ADRs and implemented decisions: [`docs/decisions/`](../decisions/README.en.md) a
 
 ## Schema source of truth
 
-JSON Schemas live under `schemas/`. M1 establishes the `0.1.0` development baseline for common, physical-document, evidence, layout-document, semantic-document, and mapping; this version is not compatibility-frozen until the first end-to-end feature exists. Generated bindings and compatibility checks: [`schemas/AGENTS.md`](../../schemas/AGENTS.md), `just generate-check`, and `just schema`.
+JSON Schemas live under `schemas/`. M1 established the `0.1.0` development baseline for common, physical-document, evidence, layout-document, semantic-document, and mapping; the compatibility freeze took effect at the M2 exit gate. Adding `FOOTNOTE_REFERENCE` in M4 without a version bump is a recorded exception; see the [schema evolution policy](schema-evolution-policy.en.md). Generated bindings and compatibility checks: [`schemas/AGENTS.md`](../../schemas/AGENTS.md), `just generate-check`, and `just schema`.

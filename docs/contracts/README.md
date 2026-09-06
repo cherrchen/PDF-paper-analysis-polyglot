@@ -32,4 +32,4 @@ ADR 与已落地决策见 [`docs/decisions/`](../decisions/README.md) 与 `.agen
 
 ## Schema 真源
 
-JSON Schema 位于 `schemas/`。M1 已建立 common、physical-document、evidence、layout-document、semantic-document、mapping 的 `0.1.0` 开发基线；在首个端到端功能形成前，该版本尚未构成兼容性冻结。生成绑定（TS + Pydantic）与兼容性检查见 [`schemas/AGENTS.md`](../../schemas/AGENTS.md)、`just generate-check` 与 `just schema`。
+JSON Schema 位于 `schemas/`。M1 建立 common、physical-document、evidence、layout-document、semantic-document、mapping 的 `0.1.0` 开发基线；M2 Exit Gate 之后兼容性冻结已生效。M4 增加 `FOOTNOTE_REFERENCE` 而未升版本是记录例外，见 [schema 演进政策](schema-evolution-policy.md)。生成绑定（TS + Pydantic）与兼容性检查见 [`schemas/AGENTS.md`](../../schemas/AGENTS.md)、`just generate-check` 与 `just schema`。

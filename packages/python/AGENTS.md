@@ -5,7 +5,7 @@
 Reusable Python logic lives here, not under `apps/`.
 
 - `document-model` — Python view of SemanticDocument. Canonical schema is `schemas/`.
-- `pdf-pipeline` — ingestion, layout, reconstruction helpers.
+- `pdf-pipeline` — ingestion, layout recovery, semantic recovery, mapping, and render composition.
 - `llm` — model-client and prompt-assembly helpers.
 
 ## Typing

@@ -24,12 +24,12 @@ parser、renderer、viewer、translation 需要共享一套冻结的文档架构
 - Capability Registry 明确 PDFium / MinerU / Docling / GROBID / internal 职责边界
 - Schema first：JSON Schema 为跨语言契约真源
 
-本决策部分取代以下 proposed notes（保留其历史推理，不再作为当前权威）：
+本决策部分取代以下 notes（保留其历史推理，不再作为当前权威）：
 
-- [`.agents/notes/proposed/architecture/2026-09-03-semantic-document-canonical-model.md`](../../proposed/architecture/2026-09-03-semantic-document-canonical-model.md)
-- [`.agents/notes/proposed/architecture/2026-09-03-source-mapping-identity-model.md`](../../proposed/architecture/2026-09-03-source-mapping-identity-model.md)
-- [`.agents/notes/proposed/architecture/2026-09-03-layout-reconstruction-pipeline.md`](../../proposed/architecture/2026-09-03-layout-reconstruction-pipeline.md)
-- [`.agents/notes/proposed/architecture/2026-09-03-latex-render-model.md`](../../proposed/architecture/2026-09-03-latex-render-model.md)
+- [`.agents/notes/rejected/architecture/2026-09-03-semantic-document-canonical-model.md`](../../rejected/architecture/2026-09-03-semantic-document-canonical-model.md)
+- [`.agents/notes/rejected/architecture/2026-09-03-source-mapping-identity-model.md`](../../rejected/architecture/2026-09-03-source-mapping-identity-model.md)
+- [`.agents/notes/rejected/architecture/2026-09-03-layout-reconstruction-pipeline.md`](../../rejected/architecture/2026-09-03-layout-reconstruction-pipeline.md)
+- [`.agents/notes/rejected/architecture/2026-09-03-latex-render-model.md`](../../rejected/architecture/2026-09-03-latex-render-model.md)
 - [`.agents/notes/proposed/architecture/2026-09-03-python-rust-performance-boundary.md`](../../proposed/architecture/2026-09-03-python-rust-performance-boundary.md)
 
 与已落地 note [LaTeX 作为初始渲染后端](./2026-09-03-latex-as-initial-rendering-backend.md) 兼容：v0.1 将渲染路径细化为 RenderDocument → LaTeX，不改变 LaTeX 作为唯一一等后端。

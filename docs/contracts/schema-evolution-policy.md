@@ -14,9 +14,11 @@
 
 ## 兼容性冻结边界
 
-在第一个可运行的端到端功能形成前，`0.1.0` 是开发目标版本，而不是已发布的兼容性承诺。当前阶段允许破坏性 schema 修正在保持 `0.1.0` 的同时落地，但必须在同一变更中更新 canonical schema、fixtures、生成绑定和跨语言测试。
+在第一个可运行的端到端功能形成前，`0.1.0` 是开发目标版本，而不是已发布的兼容性承诺。该阶段允许破坏性 schema 修正在保持 `0.1.0` 的同时落地，但必须在同一变更中更新 canonical schema、fixtures、生成绑定和跨语言测试。
 
-首个功能纵切通过 Exit Gate 后，上述版本语义开始约束已有数据和调用方。若在该边界前发布 schema 或生成包，则发布动作会提前建立兼容性冻结点。
+**冻结已生效。** M2 Walking Skeleton 通过 Exit Gate 后，上表版本语义开始约束已有数据和调用方。此后 additive 能力必须升 MINOR；破坏性修改必须升 MAJOR，并提供 migration、fixture、兼容性测试和 Agent Note。
+
+M4 向 `InlineMarkType` 增加 `FOOTNOTE_REFERENCE` 而未升版本，是冻结后的记录例外（MINOR 级 additive enum）。后续 additive 变更不得重复此例外。见 [M4 Review 修复 Note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.md)。
 
 ## 核心 schema 范围
 

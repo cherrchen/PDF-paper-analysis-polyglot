@@ -24,7 +24,7 @@ table-heavy            — table
 equation-heavy         — equations
 footnote-multicolumn   — footnotes
 bibliography           — bibliography
-cross-page-paragraph   — cross-page paragraph
+cross-page-paragraph   — cross-page paragraph (short page, one paragraph that paginates)
 mixed-bands            — full-width bands + columns
 tikz-vector            — vector figure (TikZ)
 figure-caption         — raster figure with caption

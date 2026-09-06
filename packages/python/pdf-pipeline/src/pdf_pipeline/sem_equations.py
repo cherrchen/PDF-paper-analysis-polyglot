@@ -29,7 +29,6 @@ EQUATION_FRAGMENT_MAX_LINES = 3
 EQUATION_LEADIN_MAX_CHARS = 60
 EQUATION_SOLO_MAX_CHARS = 30
 EQUATION_SOLO_RATIO = 0.5
-NUMBERED_HEADING = re.compile(r"^\d+[\.\s]")
 EQUATION_NUMBER = re.compile(r"^\(\d{1,3}\)$")
 
 # Four-letter English word: prose, not math. Single variables stay allowed.

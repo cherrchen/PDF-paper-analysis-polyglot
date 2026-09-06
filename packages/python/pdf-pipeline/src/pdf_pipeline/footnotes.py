@@ -5,9 +5,9 @@ footnote marker (number or symbol). They form their own per-page flow with
 FOOTNOTE_FLOW edges and never enter the primary reading flow, so the main
 reading order stays clean (Roadmap M3 Phase 3.8).
 
-Reference evidence (superscript markers in the body) is left to semantic
-recovery (M4); layout only guarantees the footnote regions themselves are
-recovered and separated.
+Reference evidence (superscript markers in the body) is recovered in
+semantic recovery (M4); layout only guarantees the footnote regions
+themselves are recovered and separated.
 """
 
 from __future__ import annotations

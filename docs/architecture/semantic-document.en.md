@@ -16,12 +16,12 @@ Key points:
 
 The M4 recovery engine (`pdf_pipeline.semantic` + `sem_*` modules) produces:
 
-- The DOCUMENT root's first child is FRONT_MATTER (title/author/date/abstract roles); below it a numbering-driven SECTION tree (`attributes.level/numbering/title`), where HEADING level comes from the heading text pattern, not font size
-- Paragraph merging consumes CONTINUATION edges of the ReadingFlowGraph; source regions are recorded in `attributes.layoutRegionIds` (plural list), letting the mapping layer emit multi-fragment SourceAnchors (N Layout → 1 Semantic)
-- Inline semantics are marks: `CITATION` / `FOOTNOTE_REFERENCE` (pointing at BIBLIOGRAPHY_ENTRY / FOOTNOTE nodes) and `INLINE_EQUATION` (operator-anchored window detection under PDFium's wide math spacing)
-- Failed recognition never loses content: tables fall back to line-major cells without evidence, equations keep rawText/unicodeText, unresolved citations stay as text and report Issues
-- After recovery, `pdf_pipeline.sem_validate` audits the document (orphans, tree integrity, binding coverage, reference target kinds); findings land in `SemanticDocument.issues`
-- Decisions and known limits: [`.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.en.md`](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.en.md)
+- The DOCUMENT root's first child is FRONT_MATTER; below it a numbering-driven SECTION tree. HEADING level comes from the heading text pattern
+- Paragraph merging consumes CONTINUATION edges; `attributes.layoutRegionIds` drives N Layout → 1 Semantic multi-fragment SourceAnchors. 1 Layout → N Semantic is not implemented
+- Inline marks: `CITATION` / `FOOTNOTE_REFERENCE` / `INLINE_EQUATION`
+- Failed recognition never loses content: tables fall back to line-major cells by default, equations keep rawText, unresolved citations stay as text and report Issues. `FigureResource.embeddedImageIds` stays empty until a ResourceStore exists
+- After recovery, `pdf_pipeline.sem_validate` audits in document-tree order; findings land in `SemanticDocument.issues`
+- Landing: [M4 Semantic Recovery Engine](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.en.md); review repairs: [M4 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.en.md)
 
 See implemented note [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md).
 

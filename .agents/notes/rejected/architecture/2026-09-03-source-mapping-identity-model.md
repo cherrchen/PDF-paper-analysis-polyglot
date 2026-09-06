@@ -1,6 +1,6 @@
 # Agent Note: 源映射身份模型
 
-Status: proposed
+Status: rejected — landed by later implemented notes; no longer current authority
 
 [中文](./2026-09-03-source-mapping-identity-model.md) | [English](./2026-09-03-source-mapping-identity-model.en.md)
 

@@ -24,7 +24,7 @@ table-heavy            — Table
 equation-heavy         — Equation
 footnote-multicolumn   — Footnote
 bibliography           — Bibliography
-cross-page-paragraph   — 跨页 Paragraph
+cross-page-paragraph   — 跨页 Paragraph（短页单段落，强制跨页）
 mixed-bands            — 全宽 band + 双栏
 tikz-vector            — 复杂 Vector Figure
 figure-caption         — 栅格 Figure + caption

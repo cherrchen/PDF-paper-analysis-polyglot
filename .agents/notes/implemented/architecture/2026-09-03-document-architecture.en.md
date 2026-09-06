@@ -24,12 +24,12 @@ Decision summary:
 - Capability Registry defines PDFium / MinerU / Docling / GROBID / internal responsibility boundaries
 - Schema first: JSON Schema is the cross-language contract source of truth
 
-This decision partially supersedes the following proposed notes (historical rationale preserved; no longer current authority):
+This decision partially supersedes the following notes (historical rationale preserved; no longer current authority):
 
-- [`.agents/notes/proposed/architecture/2026-09-03-semantic-document-canonical-model.en.md`](../../proposed/architecture/2026-09-03-semantic-document-canonical-model.en.md)
-- [`.agents/notes/proposed/architecture/2026-09-03-source-mapping-identity-model.en.md`](../../proposed/architecture/2026-09-03-source-mapping-identity-model.en.md)
-- [`.agents/notes/proposed/architecture/2026-09-03-layout-reconstruction-pipeline.en.md`](../../proposed/architecture/2026-09-03-layout-reconstruction-pipeline.en.md)
-- [`.agents/notes/proposed/architecture/2026-09-03-latex-render-model.en.md`](../../proposed/architecture/2026-09-03-latex-render-model.en.md)
+- [`.agents/notes/rejected/architecture/2026-09-03-semantic-document-canonical-model.en.md`](../../rejected/architecture/2026-09-03-semantic-document-canonical-model.en.md)
+- [`.agents/notes/rejected/architecture/2026-09-03-source-mapping-identity-model.en.md`](../../rejected/architecture/2026-09-03-source-mapping-identity-model.en.md)
+- [`.agents/notes/rejected/architecture/2026-09-03-layout-reconstruction-pipeline.en.md`](../../rejected/architecture/2026-09-03-layout-reconstruction-pipeline.en.md)
+- [`.agents/notes/rejected/architecture/2026-09-03-latex-render-model.en.md`](../../rejected/architecture/2026-09-03-latex-render-model.en.md)
 - [`.agents/notes/proposed/architecture/2026-09-03-python-rust-performance-boundary.en.md`](../../proposed/architecture/2026-09-03-python-rust-performance-boundary.en.md)
 
 Compatible with the implemented note [LaTeX as initial rendering backend](./2026-09-03-latex-as-initial-rendering-backend.en.md): v0.1 refines the path to RenderDocument → LaTeX without changing LaTeX as the sole first-class backend.

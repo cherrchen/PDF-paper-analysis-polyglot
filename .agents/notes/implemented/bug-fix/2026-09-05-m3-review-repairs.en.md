@@ -19,7 +19,7 @@ Repair against the original exit gate. Do not rebuild the layout engine, and do 
 3. Relax the footer strip to 85% of page height so short numeric page numbers become FOOTER even at body size. Do not merge a footnote-marker line into the previous block.
 4. Write each fused region's `provenanceIds`. Project `TABLE_BLOCK` as `TABLE_CAPTION`. Reject `=`-shaped text in `_is_heading_like`. Recompute `body_font` after furniture splitting.
 5. Use `NormalizedCandidate.match_key()` as an observable co-location signal in fusion. Assign orphan columns by y-overlap. Drop graphics thinner than 2pt before column cuts. Quantize in-column y to 4pt so same-baseline items stay left-to-right.
-6. Compute region precision only over non-empty `primaryFlow` text regions; do not invent a high precision gate. Leave footnote reference evidence to M4.
+6. Compute region precision only over non-empty `primaryFlow` text regions; do not invent a high precision gate. Footnote reference recovery is M4 (now landed).
 
 ## Alternatives considered
 
@@ -31,4 +31,4 @@ Repair against the original exit gate. Do not rebuild the layout engine, and do 
 
 - The M3 exit gate closes after these review repairs: synthetic fixtures own two-column / spanning / footnote gates; the benchmark meets recall ≥ 0.9, pairwise ≥ 0.95, and exact sequences.
 - The smoke golden changes on purpose: math is no longer HEADING, and the page number leaves the semantic tree.
-- Known-limitation updates live on the M3 implementation note: region precision waits for region-level annotation; reference evidence remains M4.
+- Known-limitation updates live on the M3 implementation note: region precision waits for region-level annotation; footnote reference recovery moved to M4 and has since landed.

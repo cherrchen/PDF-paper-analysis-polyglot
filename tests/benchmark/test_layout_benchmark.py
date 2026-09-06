@@ -127,10 +127,14 @@ def _assert_reading_order(
     assert metrics.sequence_accuracy, f"{truth['fixture']}: reading sequence mismatch"
 
     if truth.get("expectCrossPageContinuation"):
-        continuation_targets = {
-            edge.target for edge in layout.readingFlow.edges if edge.reason == "CONTINUATION"
-        }
-        assert continuation_targets, f"{truth['fixture']}: no continuation evidence"
+        page_of = {region.id: region.pageId for region in layout.regions}
+        cross_page = [
+            edge
+            for edge in layout.readingFlow.edges
+            if edge.reason == "CONTINUATION"
+            and page_of.get(edge.source) != page_of.get(edge.target)
+        ]
+        assert cross_page, f"{truth['fixture']}: no cross-page CONTINUATION edge"
 
 
 def _assert_captions(

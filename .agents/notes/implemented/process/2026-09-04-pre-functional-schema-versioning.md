@@ -27,3 +27,4 @@ M1 建立了 `0.1.0` schema 开发基线，但仓库尚未形成可运行的端�
 - 当前 `LayoutDocument.groups` 等开发期修正可以继续属于 `0.1.0`，不需要虚构 migration。
 - 开发期契约变更仍必须通过 `just schema`、语言检查和 `just generate-check`。
 - 首个功能纵切或提前发布会建立明确且可审计的兼容性冻结点。
+- **事实更新（2026-09-06）：** M2 Exit Gate 已建立该冻结点。M4 在冻结后向 `InlineMarkType` 增加 `FOOTNOTE_REFERENCE` 而未升版本，作为记录例外见 [M4 Review 修复](../bug-fix/2026-09-06-m4-review-repairs.md)。

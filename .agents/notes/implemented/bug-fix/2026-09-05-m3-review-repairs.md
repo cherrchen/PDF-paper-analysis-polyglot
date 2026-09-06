@@ -19,7 +19,7 @@ Status: implemented
 3. 页脚条带放宽到页高 85%，短数字页码即使字号接近正文也标为 FOOTER；脚注标记行不并入上一块。
 4. 融合后的 `LayoutRegion.provenanceIds` 写入对应 `ProvenanceRecord`；`TABLE_BLOCK` 投影为 `TABLE_CAPTION`；`_is_heading_like` 拒绝含 `=` 的公式形态；正文 `body_font` 在家具分离后重算。
 5. `NormalizedCandidate.match_key()` 作为 fusion 的可观测 co-location 信号；孤儿列按 y 重叠选 band；切栏前丢弃厚度不足 2pt 的装饰线；列内阅读序对 y 做 4pt 量化，避免同行左右颠倒。
-6. Region Precision 只对非空 `primaryFlow` 文本 region 计算，不设虚假高门槛。脚注 reference evidence 留 M4。
+6. Region Precision 只对非空 `primaryFlow` 文本 region 计算，不设虚假高门槛。脚注 reference recovery 属 M4（现已落地）。
 
 ## 考虑过的替代方案
 
@@ -31,4 +31,4 @@ Status: implemented
 
 - M3 Exit Gate 在审查修复后关闭：合成夹具承担双栏 / 通栏 / 脚注门禁；benchmark recall ≥ 0.9、pairwise ≥ 0.95、sequence 全对。
 - smoke golden 有意变更：公式不再是 HEADING，页码退出语义树。
-- 已知限制更新见 M3 落地 note：Region Precision 待区域级标注；reference evidence 仍属 M4。
+- 已知限制更新见 M3 落地 note：Region Precision 待区域级标注；脚注 reference recovery 已移交并完成于 M4。

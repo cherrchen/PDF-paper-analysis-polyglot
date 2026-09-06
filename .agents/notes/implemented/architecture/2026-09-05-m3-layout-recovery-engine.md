@@ -20,19 +20,19 @@ M2 Walking Skeleton 的版面恢复是刻意极简的：每页一个 band、朴�
 6. **Caption Association（3.7）**：`pdf_pipeline.captions`。layout 层依据 caption 前缀（`Figure N`/`Table N`）、垂直距离（≤60pt，图下/表上优先）、水平对齐、字号、宽度比打分，贪心 1:1 分配，输出 `LayoutGroup(FIGURE_BLOCK/TABLE_BLOCK)`。`semantic.py` 改为消费该 group（caption 前缀类型与目标 kind 冲突时拒绝配对），不再自带几何启发式。caption 可以比居中的图更宽（LaTeX 惯例），硬上限放宽到 2.5×。
 7. **Footnote Recovery（3.8）**：`pdf_pipeline.footnotes`。页底 zone（≥72% 页高）+ 小字号（≤0.95×正文）+ 标记前缀（数字/符号）识别 FOOTNOTE region；标记下方的未标记小块并入同一 flow。footnote 有自己的 FOOTNOTE_FLOW 链，与 header/footer 一并**不进入 primaryFlow**（schema 描述即如此声明）。
 8. **物理层扩展**：`physical.py` 新增 vector path 对象提取（`FPDF_PAGEOBJ_PATH`，M2 刻意留白）。`\rule`、TikZ、booktabs 规则线进入 PhysicalDocument；figure 聚类过滤厚度 <2pt 的装饰线（规则线），避免伪 FIGURE。这是 M3 版面检测的必要输入，属于 Physical 层「客观内容」职责的自然补全。
-9. **下游适配**：`semantic.py` 为 FOOTNOTE region 生成 FOOTNOTE 节点（附加在文档尾部，不进主流程），每个节点在 `attributes.layoutRegionId` 记录来源 region，`pipeline.build_source_anchors` 改为**基于身份**配对 anchor（不再按位置枚举配对）；`render_composer.py` 把 FOOTNOTE 渲染为段落块（内容完整性优先级高于版面保真，Roadmap §8）。管线新增 `evidence.json` 输出（第 7 份 canonical 文档）。
+9. **下游适配**：`semantic.py` 为 FOOTNOTE region 生成 FOOTNOTE 节点（附加在文档尾部，不进主流程），每个节点在 `attributes.layoutRegionIds` 记录来源 region，`pipeline.build_source_anchors` 改为**基于身份**配对 anchor（不再按位置枚举配对）；`render_composer.py` 把 FOOTNOTE 渲染为段落块（内容完整性优先级高于版面保真，Roadmap §8）。管线新增 `evidence.json` 输出（第 7 份 canonical 文档）。
 10. **Benchmark（§6）**：`tests/fixtures/layout-truth/<fixture>.json` 为 11 个 Tier-1 fixture 的手工 ground truth（阅读顺序片段、caption 配对、footnote 数量、`expectMultiColumn` / `expectSpanningBand` 不变量），`tests/benchmark/test_layout_benchmark.py` + `pdf_pipeline.metrics`（token 前缀匹配）计算 Region Recall、pairwise ordering accuracy、sequence accuracy。门槛：recall ≥ 0.9、pairwise ≥ 0.95、sequence 全对、caption/footnote 断言全过。**双栏门禁由加长后的合成夹具承担**；BERT / Attention 真实论文测试标 `@pytest.mark.slow`，默认 CI 不下载 gitignore 的 arXiv PDF。Region Precision 只对非空 `primaryFlow` 文本 region 计算，不设虚假高门槛。
 
 ## 考虑过的替代方案
 
 - 安装真实 MinerU：数 GB 模型下载 + 原生依赖，违反「重型依赖需 Agent Note」约束且不可复现环境；mock provider 与真实 adapter 同一 Protocol，接入成本仅为一个类。
 - 全页投影直方图分栏：单行内部 gap（公式编号）与真 gutter 无法区分，产生 16 列 band；XY-cut 的「gap 贯穿全幅/全高」约束从几何上排除了单行噪声。
-- 保留 M2 位置配对 anchor（第 i 个节点 ↔ 第 i 个 region）：footnote 节点加入后错位；`attributes.layoutRegionId` 是身份模型（[source-mapping identity note](../../proposed/architecture/2026-09-03-source-mapping-identity-model.md)）的正确形态。
+- 保留 M2 位置配对 anchor（第 i 个节点 ↔ 第 i 个 region）：footnote 节点加入后错位；`attributes.layoutRegionIds` 是身份模型（[M4 语义恢复落地 note](./2026-09-06-m4-semantic-recovery-engine.md)）的正确形态。
 - Golden SemanticDocument 保持不变：smoke 的段落块合并与 HEADING 误判修正属于预期行为变化，按 `docs/testing/golden.md` 流程人工审查 diff 后更新。
 
 ## 后果
 
 - M3 Exit Gate 经 [审查修复](../bug-fix/2026-09-05-m3-review-repairs.md) 后达成：Band/Column 检测稳定（加长后的 Tier-1 夹具断言 `MULTI_COLUMN` / `SPANNING`）、Reading Order 达标（pairwise/sequence 全绿）、Caption Association 达标、跨页/跨栏 continuation 可用（cross-page-paragraph fixture 断言）、LayoutDocument 全部通过 schema 校验与层分离检查、无严重结构错误。
 - `pdf-pipeline` 新增模块：`geometry`、`furniture`、`evidence/`、`fusion`、`page_structure`、`blocks`、`captions`、`footnotes`、`reading_flow`、`metrics`；`layout.py` 变为编排器。
-- 已知限制（有意保留）：(1) 表格 cell 结构依赖 PDFium 合并行为，行内 cell 已合并时只能恢复为整块 TABLE region，真实 TABLE_STRUCTURE 需 MinerU；(2) 数学片段以行级 TEXT region 混入阅读流（M4 以 FORMULA evidence 与语义恢复处理）；(3) Region Precision 的 ground truth 目前只有文本片段级（无完整区域级人工标注），指标以 recall + 顺序为主，precision 待区域级标注；(4) `attributes.layoutRegionId` 是 open attribute bag 的身份引用，不含几何；(5) 脚注 reference evidence（正文上标与 FootnoteRegion 的对应）留 M4。
+- 已知限制（有意保留）：(1) 表格 cell 结构依赖 PDFium 合并行为，行内 cell 已合并时只能恢复为整块 TABLE region，真实 TABLE_STRUCTURE 需 MinerU；(2) 数学片段以行级 TEXT region 混入阅读流（M4 以 FORMULA evidence 与语义恢复处理）；(3) Region Precision 的 ground truth 目前只有文本片段级（无完整区域级人工标注），指标以 recall + 顺序为主，precision 待区域级标注；(4) `attributes.layoutRegionIds` 是 open attribute bag 的身份引用，不含几何；(5) 脚注正文标记与 FootnoteRegion 的对应已在 [M4](./2026-09-06-m4-semantic-recovery-engine.md) 落地。
 - 无新增第三方依赖。

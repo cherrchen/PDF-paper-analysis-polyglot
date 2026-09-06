@@ -1,9 +1,9 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[11pt]{article}
 
 \usepackage{fontspec}
 \usepackage{geometry}
 
-\geometry{margin=20mm}
+\geometry{paperwidth=110mm, paperheight=85mm, margin=12mm}
 \setmainfont{Latin Modern Roman}
 
 \title{Cross-Page Paragraph Fixture}
@@ -14,17 +14,21 @@
 \maketitle
 
 \section{Continuous paragraph}
-This paragraph is intentionally long so that it continues across a page break in
-a single-column article. Layout recovery should emit continuation evidence for
-semantic paragraph assembly rather than treating the fragments as unrelated
-blocks. The same semantic paragraph identity should survive the page boundary
-even when the visual blocks are split by pagination artifacts in the PDF.\@
-
-The paragraph keeps going with additional synthetic academic prose about document
-compilers, evidence pipelines, and reading-order graphs. Repetition is
-deliberate: it inflates vertical extent without introducing new structural
-elements. More lines follow to guarantee a second page in typical LuaLaTeX
-output. Still more text ensures the break happens before any new section heading
-appears, isolating the cross-page continuation case for benchmark evaluation.
+This paragraph is intentionally long so that it continues across a page
+break in a single-column article as one semantic identity rather than
+two unrelated blocks. Layout recovery must emit continuation evidence
+when pagination splits the same paragraph, and semantic recovery must
+merge those fragments onto one node whose source anchor lists every
+layout region. Additional synthetic academic prose about document
+compilers, evidence pipelines, reading-order graphs, and semantic
+identity follows without a paragraph break so LuaLaTeX has to ship the
+overflow onto the second page. Still more filler about PhysicalDocument,
+LayoutDocument, SemanticDocument, and SourceAnchor fragments inflates
+the vertical extent. The sentence keeps going with repeated claims that
+source layout is evidence rather than a target typesetting contract,
+and that SemanticNodeID is the stable bridge between representations.
+Further repetition about column breaks, page breaks, and figure
+interruptions guarantees the break happens inside this paragraph and
+not before the next structural element.
 
 \end{document}

@@ -45,6 +45,8 @@
     "multiFragmentAnchors": 3,
     "tableCellsMin": 5,
     "coverageMin": 0.95,
-    "noErrors": true
+    "noErrors": true,
+    "frontMatterRoles": ["title", "author", "date", "abstract"],
+    "sectionParentOf": { "1.1": "1" }
   }
 }

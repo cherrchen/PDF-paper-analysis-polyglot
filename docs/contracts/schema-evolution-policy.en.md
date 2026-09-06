@@ -14,9 +14,11 @@ Authoritative definition: [`docs/architecture/document-architecture.en.md`](../a
 
 ## Compatibility freeze boundary
 
-Before the first runnable end-to-end feature exists, `0.1.0` is a development target rather than a published compatibility promise. During this stage, breaking schema corrections may retain `0.1.0`, but the canonical schemas, fixtures, generated bindings, and cross-language tests must change atomically.
+Before the first runnable end-to-end feature exists, `0.1.0` is a development target rather than a published compatibility promise. During that stage, breaking schema corrections may retain `0.1.0`, but the canonical schemas, fixtures, generated bindings, and cross-language tests must change atomically.
 
-The version semantics above begin protecting stored data and consumers after the first functional vertical slice passes its exit gate. Publishing a schema or generated package earlier establishes the compatibility freeze at that earlier release.
+**The freeze is in effect.** After the M2 Walking Skeleton passed its exit gate, the version semantics above protect stored data and consumers. Additive capabilities must bump MINOR. Breaking changes must bump MAJOR and provide a migration, fixtures, compatibility tests, and an Agent Note.
+
+Adding `FOOTNOTE_REFERENCE` to `InlineMarkType` in M4 without a version bump is a recorded post-freeze exception (MINOR-class additive enum). Later additive changes must not repeat it. See the [M4 review-repairs note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.en.md).
 
 ## Core schema scope
 

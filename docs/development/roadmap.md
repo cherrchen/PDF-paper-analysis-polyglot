@@ -13,7 +13,7 @@
 ## 当前进度追踪
 
 **最后更新：** 2026-09-06
-**当前位置：** M4 Semantic Recovery Engine 完成（Phase 4.1–4.9 全部完成，Exit Gate 经 paper-anatomy 夹具与 semantic benchmark 机械验证）；下一阶段为 M5（Translation & Rendering）。
+**当前位置：** M4 Semantic Recovery Engine 完成（Phase 4.1–4.9；Exit Gate 经审查修复后由 paper-anatomy 与 semantic/layout benchmark 机械验证）；下一阶段为 M5（Translation & Rendering）。
 
 README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery Engine。
 
@@ -25,7 +25,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M1 Core Document Contracts | 已完成 | 六套 schema `0.1.0`；生成绑定 + 跨语言 roundtrip |
 | M2 Walking Skeleton | 已完成 | 11 个 Tier-1 fixture 全链通过；独立 Translation/Render IR、旋转坐标与双向 Viewer 已重新验收 |
 | M3 Layout Recovery Engine | 已完成 | Evidence 适配边界 + mock provider、XY-cut band/column、结构驱动 ReadingFlowGraph、continuation/caption/footnote 恢复；Exit Gate 经审查修复后达成 |
-| M4 Semantic Recovery Engine | 已完成 | CONTINUATION 段落合并（多 fragment SourceAnchor）、编号 heading + SECTION 树 + FRONT_MATTER、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复、CITATION/FOOTNOTE_REFERENCE marks、SemanticValidator；exit-gate 夹具 paper-anatomy |
+| M4 Semantic Recovery Engine | 已完成 | CONTINUATION 段落合并（多 fragment SourceAnchor）、编号 heading + SECTION 树 + FRONT_MATTER、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复、CITATION/FOOTNOTE_REFERENCE marks、SemanticValidator；Exit Gate 经审查修复后达成 |
 | M5 Translation & Rendering | 未开始 | — |
 | M6 Bidirectional Reader | 未开始 | — |
 | M7 Parser Ensemble & Quality | 未开始 | — |
@@ -78,9 +78,9 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | 3.3 Page Band Detection | 已完成 | `pdf_pipeline.page_structure` 递归 XY-cut：mixed-bands/spanning-figure 断言 SPANNING band；标题→双栏→通栏图→双栏成立 |
 | 3.4 Column Recovery | 已完成 | XY-cut 竖切 + 窄岛合并 + 非平衡栏保持阅读顺序；加长后的合成夹具断言 `MULTI_COLUMN`；BERT / Attention 为 `@pytest.mark.slow` |
 | 3.5 ReadingFlowGraph | 已完成 | 主序由 band/column 驱动，列内仍按几何 (y, x)；每边 reason+confidence；pairwise ≥ 0.95、sequence 全对 |
-| 3.6 Paragraph Continuation | 已完成 | 跨栏/跨页/figure 打断的 CONTINUATION 边；cross-page-paragraph fixture 断言 |
+| 3.6 Paragraph Continuation | 已完成 | 跨栏/跨页/figure 打断的 CONTINUATION 边；`cross-page-paragraph` 断言**跨页** CONTINUATION |
 | 3.7 Caption Association | 已完成 | layout 层打分（距离/对齐/字号/前缀/宽度）+ FIGURE_BLOCK/TABLE_BLOCK group；semantic 层消费 |
-| 3.8 Footnote Recovery | 已完成 | 页底 zone + 字号 + 标记前缀；FOOTNOTE_FLOW 独立链，不进 primaryFlow；reference evidence 留 M4 |
+| 3.8 Footnote Recovery | 已完成 | 页底 zone + 字号 + 标记前缀；FOOTNOTE_FLOW 独立链，不进 primaryFlow；正文 reference recovery 已于 M4 落地 |
 
 **M3 Exit Gate：** 审查修复后达成（见 [`.agents/notes/implemented/bug-fix/2026-09-05-m3-review-repairs.md`](../../.agents/notes/implemented/bug-fix/2026-09-05-m3-review-repairs.md)；架构决策见 [M3 落地 note](../../.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.md)）
 
@@ -88,17 +88,17 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
-| 4.1 Paragraph Recovery | 已完成 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；1→1 / N→1（跨栏、跨页、figure 打断）；连字符去断；`test_semantic.py::test_merged_paragraphs_carry_all_source_regions` + benchmark |
-| 4.2 Heading & Section Recovery | 已完成 | `sem_sections`：编号 pattern → level（`1.1` = 2），SECTION 树嵌套，FRONT_MATTER（title/author/date/abstract）；paper-anatomy 断言 headingLevels [1,2] |
-| 4.3 Figure Recovery | 已完成 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；subfigure 按 Roadmap 标记为 optional 未做 |
-| 4.4 Table Recovery | 已完成 | `sem_tables`：TABLE_STRUCTURE evidence 优先，行 fallback（永不为空 cells）；benchmark `tableCellsMin` |
+| 4.1 Paragraph Recovery | 已完成 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；N→1（跨栏、跨页、figure 打断）；连字符去断；`cross-page-paragraph` 断言 merge；1 Layout→N Semantic 未实现 |
+| 4.2 Heading & Section Recovery | 已完成 | `sem_sections`：编号 pattern → level（`1.1` = 2），SECTION 树嵌套，FRONT_MATTER（title/author/date/abstract）；paper-anatomy 断言 `frontMatterRoles` 与 `sectionParentOf` |
+| 4.3 Figure Recovery | 已完成 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；`embeddedImageIds` 保持空直到 ResourceStore；subfigure 按 Roadmap 标记为 optional 未做 |
+| 4.4 Table Recovery | 已完成 | `sem_tables`：默认行 fallback；结构化 TABLE_STRUCTURE 路径有合成单测；真实多列表格推迟到 M7 specialist |
 | 4.5 Equation Recovery | 已完成 | `sem_equations`：FORMULA/CONTINUATION 链 → EQUATION + `number`（anyOf 兜底 rawText，不丢内容）；INLINE_EQUATION marks |
-| 4.6 Footnote Semantic Recovery | 已完成 | `sem_footnotes`：FOOTNOTE_OF 关系 + `FOOTNOTE_REFERENCE` mark（schema additive patch，见 M4 note） |
-| 4.7 Bibliography & Citation | 已完成 | `sem_bibliography`：BIBLIOGRAPHY/BIBLIOGRAPHY_ENTRY/CITATION marks/CITES；未解析编号保留文本 + issue |
+| 4.6 Footnote Semantic Recovery | 已完成 | `sem_footnotes`：FOOTNOTE_OF 关系 + `FOOTNOTE_REFERENCE` mark（M2 冻结后 additive 例外，见审查修复 note） |
+| 4.7 Bibliography & Citation | 已完成 | `sem_bibliography`：数字括号引用 + 闭区间展开；未解析编号保留文本 + issue；GROBID / 作者-年推迟到 M7 |
 | 4.8 Source Anchoring | 已完成 | `attributes.layoutRegionIds` → 多 fragment SourceAnchor（N→1 原生）；benchmark `multiFragmentAnchors` |
-| 4.9 Semantic Validation | 已完成 | `sem_validate`：orphan/树/绑定/引用/caption/覆盖率检查，接入 `run_pipeline`，`test_semantic_validate.py` 逐项验证检测生效 |
+| 4.9 Semantic Validation | 已完成 | `sem_validate`：orphan/树序 heading 跳变/绑定/引用/caption taxonomy/覆盖率，接入 `run_pipeline`，`test_semantic_validate.py` 逐项验证 |
 
-**M4 Exit Gate：** 达成——`paper-anatomy` 夹具单篇恢复 Title/Abstract/Sections/Paragraphs/Figures/Tables/Equations/Footnotes/Bibliography/Citations 与完整 Source Mapping；`tests/benchmark/test_semantic_benchmark.py` 对 12 个夹具机械断言 kinds/关系/marks/覆盖率/零 ERROR（架构决策见 [M4 落地 note](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md)）
+**M4 Exit Gate：** 审查修复后达成——`paper-anatomy` 夹具单篇恢复 Title/Abstract/Sections/Paragraphs/Figures/Tables/Equations/Footnotes/Bibliography/Citations 与完整 Source Mapping；`cross-page-paragraph` 为短页单段落跨页；`tests/benchmark/test_semantic_benchmark.py` 对 12 个夹具机械断言 kinds/关系/marks/覆盖率/零 ERROR（修复决策见 [M4 Review 修复 Note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.md)；架构决策见 [M4 落地 note](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md)）
 
 ### 建议下一步
 

@@ -25,7 +25,7 @@ from document_model.generated import schema_models as generated
 from pdf_pipeline.ids import stable_uuid
 from pdf_pipeline.sem_bibliography import citation_spans, entry_label
 from pdf_pipeline.sem_equations import display_groups, equation_content, inline_equation_marks
-from pdf_pipeline.sem_footnotes import body_reference_spans, footnote_marker_number
+from pdf_pipeline.sem_footnotes import body_reference_spans, footnote_marker_label
 from pdf_pipeline.sem_paragraphs import (
     clean_text,
     continuation_pairs,
@@ -104,8 +104,8 @@ class _Claims:
         self.group_starts: dict[str, tuple[str, list[str]]] = {}
         self.skipped: set[str] = set()
         self.entries_by_label: dict[str, str] = {}
-        self.footnotes_by_number: dict[int, str] = {}
-        self.footnote_pages: dict[int, set[str]] = {}
+        self.footnotes_by_label: dict[str, str] = {}
+        self.footnote_pages: dict[str, set[str]] = {}
         self.parents: dict[str, str] = {}
         self.region_nodes: dict[str, str] = {}
 
@@ -537,9 +537,7 @@ class _Recovery:
                 "FIGURE",
                 parent_id,
                 generated.FigureContent(
-                    resources=generated.FigureResource(
-                        embeddedImageIds=list(region.physicalObjectIds)
-                    ),
+                    resources=generated.FigureResource(embeddedImageIds=[]),
                     **({"label": label} if label is not None else {}),
                 ),
                 score=CONFIDENCE_FIGURE,
@@ -622,9 +620,13 @@ class _Recovery:
             if region.kind != "FOOTNOTE":
                 continue
             text = self._texts.get(region.id, "")
-            if not text:
-                continue
             node_id = self._node_id(region.id)
+            if not text:
+                self.issue(
+                    "LAYOUT_REGION",
+                    f"footnote region {region.id} recovered with empty text",
+                    [region.id],
+                )
             self.make(
                 node_id,
                 "FOOTNOTE",
@@ -634,15 +636,15 @@ class _Recovery:
                 reason="layout footnote region",
             )
             self._bind_regions(node_id, [region.id])
-            number = footnote_marker_number(text)
-            if number is not None and number not in claims.footnotes_by_number:
-                claims.footnotes_by_number[number] = node_id
-                claims.footnote_pages[number] = {region.pageId}
+            label = footnote_marker_label(text)
+            if label is not None and label not in claims.footnotes_by_label:
+                claims.footnotes_by_label[label] = node_id
+                claims.footnote_pages[label] = {region.pageId}
 
     # --------------------------------------------------------------- marks
     def _apply_marks(self, claims: _Claims) -> None:
         """Attach inline-math, citation, and footnote-reference marks."""
-        used_footnotes: set[int] = set()
+        used_footnotes: set[str] = set()
         for index, node in enumerate(self.nodes):
             content = node.content
             if not isinstance(content, generated.RichText) or not content.text:
@@ -704,9 +706,9 @@ class _Recovery:
         node: generated.SemanticNode,
         text: str,
         claims: _Claims,
-        used: set[int],
+        used: set[str],
     ) -> list[generated.InlineMark]:
-        if not claims.footnotes_by_number:
+        if not claims.footnotes_by_label:
             return []
         pages = {
             region.pageId
@@ -714,21 +716,21 @@ class _Recovery:
             if (region := self._regions_by_id.get(str(region_id))) is not None
         }
         marks: list[generated.InlineMark] = []
-        for start, end, number in body_reference_spans(text, set(claims.footnotes_by_number)):
-            if number in used:
+        for start, end, label in body_reference_spans(text, set(claims.footnotes_by_label)):
+            if label in used:
                 continue
-            footnote_pages = claims.footnote_pages[number]
+            footnote_pages = claims.footnote_pages[label]
             if pages and footnote_pages and not (pages & footnote_pages):
-                continue  # same marker number, different page
-            used.add(number)
-            target = claims.footnotes_by_number[number]
+                continue  # same marker, different page
+            used.add(label)
+            target = claims.footnotes_by_label[label]
             marks.append(
                 generated.InlineMark(
                     type="FOOTNOTE_REFERENCE",
                     start=start,
                     end=end,
                     targetNodeId=target,
-                    label=str(number),
+                    label=label,
                 )
             )
             self.relation("FOOTNOTE_OF", target, node.id)

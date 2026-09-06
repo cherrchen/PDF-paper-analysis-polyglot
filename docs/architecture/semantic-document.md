@@ -16,12 +16,12 @@
 
 M4 恢复引擎（`pdf_pipeline.semantic` + `sem_*` 模块）的产出形态：
 
-- DOCUMENT root 首子为 FRONT_MATTER（title/author/date/abstract 角色），其下是编号驱动的 SECTION 树（`attributes.level/numbering/title`），HEADING 的 level 来自标题文本 pattern 而非字号
-- 段落合并消费 ReadingFlowGraph 的 CONTINUATION 边；来源 region 以 `attributes.layoutRegionIds`（复数 list）记录，映射层据此生成多 fragment SourceAnchor（N Layout → 1 Semantic）
-- 行内语义是 marks：`CITATION` / `FOOTNOTE_REFERENCE`（指向 BIBLIOGRAPHY_ENTRY / FOOTNOTE 节点）、`INLINE_EQUATION`（PDFium 宽空格排版下以算符锚定窗口检测）
-- 识别失败不丢内容：TABLE 无 evidence 时行 fallback（行优先单元格）、EQUATION 保留 rawText/unicodeText、未解析引用保留文本并以 Issue 记录
-- 恢复后由 `pdf_pipeline.sem_validate` 审计（孤儿节点、树完整性、绑定覆盖率、引用目标类型），结果写入 `SemanticDocument.issues`
-- 决策与已知限制见 [`.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md`](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md)
+- DOCUMENT root 首子为 FRONT_MATTER，其下是编号驱动的 SECTION 树；HEADING level 来自标题文本 pattern
+- 段落合并消费 CONTINUATION 边；`attributes.layoutRegionIds` 驱动 N Layout → 1 Semantic 的多 fragment SourceAnchor。1 Layout → N Semantic 尚未实现
+- 行内 marks：`CITATION` / `FOOTNOTE_REFERENCE` / `INLINE_EQUATION`
+- 识别失败不丢内容：TABLE 默认行 fallback；EQUATION 保留 rawText；未解析引用保留文本并以 Issue 记录。`FigureResource.embeddedImageIds` 保持空直到 ResourceStore
+- 恢复后由 `pdf_pipeline.sem_validate` 按文档树序审计，结果写入 `SemanticDocument.issues`
+- 落地决策：[M4 Semantic Recovery Engine](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md)；审查修复：[M4 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.md)
 
 契约见已落地 note [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md)。
 

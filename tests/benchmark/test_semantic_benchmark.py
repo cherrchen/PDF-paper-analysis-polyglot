@@ -163,6 +163,34 @@ def test_semantic_benchmark(fixture: str, expectation: dict[str, Any]) -> None:
     assert _merged_nodes(semantic) >= expectation["mergedParagraphNodes"], fixture
     assert _table_cells(semantic) >= expectation.get("tableCellsMin", 0), fixture
 
+    if "frontMatterRoles" in expectation:
+        roles = {
+            node.attributes.get("role")
+            for node in semantic.nodes
+            if isinstance(node.attributes.get("role"), str)
+        }
+        missing = set(expectation["frontMatterRoles"]) - roles
+        assert not missing, f"{fixture}: missing front-matter roles {missing}"
+
+    if "sectionParentOf" in expectation:
+        sections = {
+            node.attributes["numbering"]: node
+            for node in semantic.nodes
+            if node.kind == "SECTION" and isinstance(node.attributes.get("numbering"), str)
+        }
+        for child_number, parent_number in expectation["sectionParentOf"].items():
+            assert sections[child_number].parentId == sections[parent_number].id, (
+                f"{fixture}: section {child_number} parent is not {parent_number}"
+            )
+
+    if "figureLabels" in expectation:
+        labels = sorted(
+            node.content.label
+            for node in semantic.nodes
+            if isinstance(node.content, generated.FigureContent) and node.content.label
+        )
+        assert labels == sorted(expectation["figureLabels"]), fixture
+
     ratio = _coverage(layout, texts, semantic)
     assert ratio >= expectation["coverageMin"], f"{fixture}: coverage {ratio:.2f}"
 

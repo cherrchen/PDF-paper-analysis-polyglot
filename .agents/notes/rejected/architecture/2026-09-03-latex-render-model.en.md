@@ -1,6 +1,6 @@
 # Agent Note: LaTeX render model
 
-Status: proposed
+Status: rejected — landed by later implemented notes; no longer current authority
 
 [中文](./2026-09-03-latex-render-model.md) | [English](./2026-09-03-latex-render-model.en.md)
 

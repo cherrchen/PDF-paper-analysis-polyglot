@@ -2,20 +2,14 @@
   "fixture": "cross-page-paragraph",
   "purpose": "Paragraph continuing across a page break needs continuation evidence",
   "pages": [
-    {
-      "pageIndex": 0,
-      "singleColumnOnly": true
-    },
-    {
-      "pageIndex": 1,
-      "singleColumnOnly": true
-    }
+    { "pageIndex": 0, "singleColumnOnly": true },
+    { "pageIndex": 1, "singleColumnOnly": true },
+    { "pageIndex": 2, "singleColumnOnly": true }
   ],
   "readingOrder": [
     "Cross-Page Paragraph Fixture",
     "1 Continuous paragraph",
-    "This paragraph is intentionally long",
-    "The paragraph keeps going with additional synthetic academic prose"
+    "This paragraph is intentionally long so that it continues across a page"
   ],
   "captions": [],
   "footnotesExpected": 0,
@@ -23,7 +17,7 @@
   "semantic": {
     "kinds": ["FRONT_MATTER", "SECTION", "HEADING", "PARAGRAPH"],
     "minCounts": {
-      "PARAGRAPH": 2,
+      "PARAGRAPH": 1,
       "SECTION": 1
     },
     "captionOf": 0,
@@ -31,8 +25,8 @@
     "citationsResolved": 0,
     "marks": {},
     "equationNumbers": [],
-    "mergedParagraphNodes": 0,
-    "multiFragmentAnchors": 0,
+    "mergedParagraphNodes": 1,
+    "multiFragmentAnchors": 1,
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]

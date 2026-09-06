@@ -125,3 +125,42 @@ def test_double_coverage_is_error() -> None:
         semantic, other.id, attributes={**other.attributes, "layoutRegionIds": shared}
     )
     assert ("SOURCE_MAPPING", "ERROR") in _categories(layout, broken, texts)
+
+
+def test_heading_level_jump_is_warning() -> None:
+    _physical, layout, semantic, texts = _recover("paper-anatomy")
+    subsection = next(
+        node
+        for node in semantic.nodes
+        if node.kind == "HEADING" and node.attributes.get("level") == 2
+    )
+    broken = _replace_node(
+        semantic, subsection.id, attributes={**subsection.attributes, "level": 4}
+    )
+    assert ("SECTION_STRUCTURE", "WARNING") in _categories(layout, broken, texts)
+
+
+def test_missing_coverage_reports_mapping_issue() -> None:
+    _physical, layout, semantic, texts = _recover("smoke")
+    paragraph = next(node for node in semantic.nodes if node.kind == "PARAGRAPH")
+    nodes = [
+        node.model_copy(
+            update={"children": [child for child in node.children if child != paragraph.id]}
+        )
+        for node in semantic.nodes
+        if node.id != paragraph.id
+    ]
+    broken = semantic.model_copy(update={"nodes": nodes})
+    categories = _categories(layout, broken, texts)
+    assert ("SOURCE_MAPPING", "ERROR") in categories or ("SOURCE_MAPPING", "WARNING") in categories
+
+
+def test_table_caption_without_relation_uses_table_recovery() -> None:
+    _physical, layout, semantic, texts = _recover("table-heavy")
+    captions = [relation for relation in semantic.relations if relation.type == "CAPTION_OF"]
+    broken = semantic.model_copy(
+        update={
+            "relations": [relation for relation in semantic.relations if relation not in captions]
+        }
+    )
+    assert ("TABLE_RECOVERY", "WARNING") in _categories(layout, broken, texts)

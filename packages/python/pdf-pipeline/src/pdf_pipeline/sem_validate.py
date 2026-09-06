@@ -94,27 +94,41 @@ def _tree_issues(
         if node.id != semantic.rootId and node.id not in reachable
     )
 
-    for parent in semantic.nodes:
-        levels = [
-            (level, child.id)
-            for child in (nodes_by_id.get(kid) for kid in parent.children)
-            if child is not None
-            and child.kind == "HEADING"
-            and (level := _heading_level(child)) is not None
-        ]
-        for (level, node_id), (next_level, next_id) in pairwise(levels):
-            if next_level > level + 1:
-                issues.append(
-                    _issue(
-                        semantic.id,
-                        "SECTION_STRUCTURE",
-                        "WARNING",
-                        f"heading level jumps from {level} to {next_level} "
-                        f"({node_id} -> {next_id})",
-                        [node_id, next_id],
-                    )
+    levels = _headings_in_tree_order(semantic, nodes_by_id)
+    for (level, node_id), (next_level, next_id) in pairwise(levels):
+        if next_level > level + 1:
+            issues.append(
+                _issue(
+                    semantic.id,
+                    "SECTION_STRUCTURE",
+                    "WARNING",
+                    f"heading level jumps from {level} to {next_level} ({node_id} -> {next_id})",
+                    [node_id, next_id],
                 )
+            )
     return issues
+
+
+def _headings_in_tree_order(
+    semantic: generated.SemanticDocument,
+    nodes_by_id: Mapping[str, generated.SemanticNode],
+) -> list[tuple[int, str]]:
+    """HEADING levels in document-tree order, including nested SECTION trees."""
+    headings: list[tuple[int, str]] = []
+
+    def walk(node_id: str) -> None:
+        node = nodes_by_id.get(node_id)
+        if node is None:
+            return
+        if node.kind == "HEADING":
+            level = _heading_level(node)
+            if level is not None:
+                headings.append((level, node.id))
+        for child_id in node.children:
+            walk(child_id)
+
+    walk(semantic.rootId)
+    return headings
 
 
 def _heading_level(node: generated.SemanticNode) -> int | None:
@@ -172,10 +186,13 @@ def _reference_issues(
                 continue
             target = nodes_by_id.get(mark.targetNodeId)
             if target is None or target.kind not in allowed:
+                category: generated.IssueCategory = (
+                    "CITATION_RESOLUTION" if mark.type == "CITATION" else "SOURCE_MAPPING"
+                )
                 issues.append(
                     _issue(
                         semantic.id,
-                        "CITATION_RESOLUTION",
+                        category,
                         "WARNING",
                         f"{mark.type} mark in node {node.id} targets "
                         f"{mark.targetNodeId} of unexpected kind",
@@ -188,10 +205,11 @@ def _reference_issues(
             continue
         target = nodes_by_id.get(relation.target)
         if target is None or target.kind not in allowed:
+            category = "CITATION_RESOLUTION" if relation.type == "CITES" else "SOURCE_MAPPING"
             issues.append(
                 _issue(
                     semantic.id,
-                    "CITATION_RESOLUTION",
+                    category,
                     "WARNING",
                     f"relation {relation.type} {relation.source} -> {relation.target} "
                     "has an unexpected target kind",
@@ -205,17 +223,25 @@ def _caption_issues(semantic: generated.SemanticDocument) -> list[generated.Issu
     caption_targets = {
         relation.source for relation in semantic.relations if relation.type == "CAPTION_OF"
     }
-    return [
-        _issue(
-            semantic.id,
-            "FIGURE_RECOVERY",
-            "WARNING",
-            f"caption node {node.id} has no CAPTION_OF relation",
-            [node.id],
+    issues: list[generated.Issue] = []
+    for node in semantic.nodes:
+        if node.kind not in {"FIGURE_CAPTION", "TABLE_CAPTION"}:
+            continue
+        if node.id in caption_targets:
+            continue
+        category: generated.IssueCategory = (
+            "TABLE_RECOVERY" if node.kind == "TABLE_CAPTION" else "FIGURE_RECOVERY"
         )
-        for node in semantic.nodes
-        if node.kind in {"FIGURE_CAPTION", "TABLE_CAPTION"} and node.id not in caption_targets
-    ]
+        issues.append(
+            _issue(
+                semantic.id,
+                category,
+                "WARNING",
+                f"caption node {node.id} has no CAPTION_OF relation",
+                [node.id],
+            )
+        )
+    return issues
 
 
 def _coverage_issues(

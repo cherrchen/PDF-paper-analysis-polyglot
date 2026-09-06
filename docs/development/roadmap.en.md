@@ -13,7 +13,7 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-06
-**Current position:** M4 Semantic Recovery Engine is complete (all of Phase 4.1–4.9, exit gate verified mechanically via the paper-anatomy fixture and the semantic benchmark); M5 (Translation & Rendering) is next.
+**Current position:** M4 Semantic Recovery Engine is complete (Phases 4.1–4.9; exit gate met after review repairs, verified mechanically via paper-anatomy and the semantic/layout benchmarks); M5 (Translation & Rendering) is next.
 
 README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery Engine.
 
@@ -25,7 +25,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M1 Core Document Contracts | Done | Six schemas at `0.1.0`; generated bindings + cross-language roundtrip |
 | M2 Walking Skeleton | Done | All 11 Tier-1 fixtures pass end to end; independent Translation/Render IR, rotated coordinates, and the bidirectional viewer passed renewed acceptance |
 | M3 Layout Recovery Engine | Done | Evidence adapter boundary + mock provider, XY-cut band/column detection, structure-driven ReadingFlowGraph, continuation/caption/footnote recovery; exit gate met after review repairs |
-| M4 Semantic Recovery Engine | Done | CONTINUATION paragraph merging (multi-fragment SourceAnchors), numbered headings + SECTION tree + FRONT_MATTER, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery, CITATION/FOOTNOTE_REFERENCE marks, SemanticValidator; exit-gate fixture paper-anatomy |
+| M4 Semantic Recovery Engine | Done | CONTINUATION paragraph merging (multi-fragment SourceAnchors), numbered headings + SECTION tree + FRONT_MATTER, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery, CITATION/FOOTNOTE_REFERENCE marks, SemanticValidator; exit gate met after review repairs |
 | M5 Translation & Rendering | Not started | — |
 | M6 Bidirectional Reader | Not started | — |
 | M7 Parser Ensemble & Quality | Not started | — |
@@ -78,9 +78,9 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | 3.3 Page Band Detection | Done | recursive XY-cut in `pdf_pipeline.page_structure`: mixed-bands/spanning-figure assert SPANNING bands; title → 2 columns → wide figure → 2 columns holds |
 | 3.4 Column Recovery | Done | XY-cut vertical cuts + narrow-island merge + unbalanced-column order preserved; lengthened synthetic fixtures assert `MULTI_COLUMN`; BERT / Attention are `@pytest.mark.slow` |
 | 3.5 ReadingFlowGraph | Done | primary order driven by band/column structure, geometric (y, x) within a column; every edge carries reason+confidence; pairwise ≥ 0.95, all sequences exact |
-| 3.6 Paragraph Continuation | Done | CONTINUATION edges across column/page breaks and figure interruptions; asserted on the cross-page-paragraph fixture |
+| 3.6 Paragraph Continuation | Done | CONTINUATION edges across column/page breaks and figure interruptions; `cross-page-paragraph` asserts a **cross-page** CONTINUATION |
 | 3.7 Caption Association | Done | layout-level scoring (distance/alignment/font/prefix/width) + FIGURE_BLOCK/TABLE_BLOCK groups; consumed by the semantic layer |
-| 3.8 Footnote Recovery | Done | bottom zone + font size + marker prefix; separate FOOTNOTE_FLOW chains outside primaryFlow; reference evidence deferred to M4 |
+| 3.8 Footnote Recovery | Done | bottom zone + font size + marker prefix; separate FOOTNOTE_FLOW chains outside primaryFlow; body-text reference recovery landed in M4 |
 
 **M3 exit gate:** Met after review repairs. See [`.agents/notes/implemented/bug-fix/2026-09-05-m3-review-repairs.en.md`](../../.agents/notes/implemented/bug-fix/2026-09-05-m3-review-repairs.en.md); architecture decisions remain in [the M3 implementation note](../../.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.en.md).
 
@@ -88,17 +88,17 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| 4.1 Paragraph Recovery | Done | `pdf_pipeline.sem_paragraphs` consumes CONTINUATION edges; 1→1 / N→1 (column, page, figure interruption); hyphenation de-break; `test_semantic.py` + benchmark |
-| 4.2 Heading & Section Recovery | Done | `sem_sections`: numbering pattern → level (`1.1` = 2), nested SECTION tree, FRONT_MATTER (title/author/date/abstract); paper-anatomy asserts headingLevels [1,2] |
-| 4.3 Figure Recovery | Done | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; subfigures (Roadmap: optional) not implemented |
-| 4.4 Table Recovery | Done | `sem_tables`: TABLE_STRUCTURE evidence preferred, line fallback (never empty cells); benchmark `tableCellsMin` |
+| 4.1 Paragraph Recovery | Done | `pdf_pipeline.sem_paragraphs` consumes CONTINUATION edges; N→1 (column, page, figure interruption); hyphenation de-break; `cross-page-paragraph` asserts merge; 1 Layout→N Semantic is not implemented |
+| 4.2 Heading & Section Recovery | Done | `sem_sections`: numbering pattern → level (`1.1` = 2), nested SECTION tree, FRONT_MATTER (title/author/date/abstract); paper-anatomy asserts `frontMatterRoles` and `sectionParentOf` |
+| 4.3 Figure Recovery | Done | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; `embeddedImageIds` stays empty until a ResourceStore; subfigures (Roadmap: optional) not implemented |
+| 4.4 Table Recovery | Done | `sem_tables`: line fallback by default; structured TABLE_STRUCTURE path has a synthetic unit test; true multi-column tables deferred to an M7 specialist |
 | 4.5 Equation Recovery | Done | `sem_equations`: FORMULA/CONTINUATION chains → EQUATION + `number` (rawText fallback, no content loss); INLINE_EQUATION marks |
-| 4.6 Footnote Semantic Recovery | Done | `sem_footnotes`: FOOTNOTE_OF relations + `FOOTNOTE_REFERENCE` marks (additive schema patch, see M4 note) |
-| 4.7 Bibliography & Citation | Done | `sem_bibliography`: BIBLIOGRAPHY/BIBLIOGRAPHY_ENTRY/CITATION marks/CITES; unresolved numbers keep text + issue |
+| 4.6 Footnote Semantic Recovery | Done | `sem_footnotes`: FOOTNOTE_OF relations + `FOOTNOTE_REFERENCE` marks (post-M2 freeze additive exception; see review-repairs note) |
+| 4.7 Bibliography & Citation | Done | `sem_bibliography`: numeric-bracket citations + closed-range expansion; unresolved numbers keep text + issue; GROBID / author-year deferred to M7 |
 | 4.8 Source Anchoring | Done | `attributes.layoutRegionIds` → multi-fragment SourceAnchor (native N→1); benchmark `multiFragmentAnchors` |
-| 4.9 Semantic Validation | Done | `sem_validate`: orphan/tree/binding/reference/caption/coverage checks wired into `run_pipeline`; `test_semantic_validate.py` verifies each detection fires |
+| 4.9 Semantic Validation | Done | `sem_validate`: orphan / tree-order heading jumps / binding / citation / caption taxonomy / coverage wired into `run_pipeline`; `test_semantic_validate.py` verifies each detection |
 
-**M4 exit gate:** Met—`paper-anatomy` recovers Title/Abstract/Sections/Paragraphs/Figures/Tables/Equations/Footnotes/Bibliography/Citations plus complete Source Mapping in one paper; `tests/benchmark/test_semantic_benchmark.py` mechanically asserts kinds/relations/marks/coverage/zero-ERROR across all 12 fixtures (architecture decisions in [the M4 implementation note](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.en.md)).
+**M4 exit gate:** Met after review repairs—`paper-anatomy` recovers Title/Abstract/Sections/Paragraphs/Figures/Tables/Equations/Footnotes/Bibliography/Citations plus complete Source Mapping in one paper; `cross-page-paragraph` is a short-page single paragraph that paginates; `tests/benchmark/test_semantic_benchmark.py` mechanically asserts kinds/relations/marks/coverage/zero-ERROR across all 12 fixtures (repair decisions in the [M4 review-repairs note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.en.md); architecture decisions in [the M4 implementation note](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.en.md)).
 
 ### Recommended next steps
 

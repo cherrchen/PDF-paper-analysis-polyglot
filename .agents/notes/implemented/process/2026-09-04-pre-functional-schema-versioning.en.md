@@ -27,3 +27,4 @@ This decision defines the wire/schema compatibility boundary; it does not remove
 - Development-stage corrections such as `LayoutDocument.groups` may remain part of `0.1.0` without inventing a migration.
 - Development contract changes must still pass `just schema`, language checks, and `just generate-check`.
 - The first functional vertical slice or an earlier publication creates an explicit, reviewable compatibility freeze.
+- **Fact update (2026-09-06):** the M2 exit gate established that freeze. Adding `FOOTNOTE_REFERENCE` to `InlineMarkType` in M4 without a version bump is a recorded exception; see [M4 review repairs](../bug-fix/2026-09-06-m4-review-repairs.en.md).

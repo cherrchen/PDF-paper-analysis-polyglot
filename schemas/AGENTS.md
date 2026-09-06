@@ -8,7 +8,7 @@ JSON Schema is the document-structure format. OpenAPI is the HTTP format. Do not
 
 ## Versioning
 
-Before the first functional vertical slice establishes the compatibility freeze, `0.1.0` is a development target: breaking corrections may retain that version when schemas, fixtures, generated bindings, and tests change atomically. After the freeze, additive changes should be backward compatible within a major version; breaking changes require a schema version change, language package updates, and an Agent Note.
+Compatibility freeze took effect at the M2 exit gate. Additive changes must bump MINOR; breaking changes require MAJOR, a migration, fixtures, compatibility tests, and an Agent Note. Adding `FOOTNOTE_REFERENCE` in M4 without a version bump is a recorded exception — later additive capabilities must not repeat it. See `docs/contracts/schema-evolution-policy.md` and the M4 review-repairs Agent Note.
 
 ## Generated bindings
 
