@@ -13,9 +13,9 @@
 ## 当前进度追踪
 
 **最后更新：** 2026-09-06
-**当前位置：** M4 Semantic Recovery Engine 完成（Phase 4.1–4.9；Exit Gate 经审查修复后由 paper-anatomy 与 semantic/layout benchmark 机械验证）；下一阶段为 M5（Translation & Rendering）。
+**当前位置：** M4 语义恢复基线已落地（第二轮正确性修复后）；GROBID、1 Layout→N Semantic、真实多列表格与图资源链仍延期。下一阶段为 M5（Translation & Rendering）。
 
-README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery Engine。
+README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线（完整原始 Phase 验收仍有延期项）。
 
 ### Milestone 总览
 
@@ -25,7 +25,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M1 Core Document Contracts | 已完成 | 六套 schema `0.1.0`；生成绑定 + 跨语言 roundtrip |
 | M2 Walking Skeleton | 已完成 | 11 个 Tier-1 fixture 全链通过；独立 Translation/Render IR、旋转坐标与双向 Viewer 已重新验收 |
 | M3 Layout Recovery Engine | 已完成 | Evidence 适配边界 + mock provider、XY-cut band/column、结构驱动 ReadingFlowGraph、continuation/caption/footnote 恢复；Exit Gate 经审查修复后达成 |
-| M4 Semantic Recovery Engine | 已完成 | CONTINUATION 段落合并（多 fragment SourceAnchor）、编号 heading + SECTION 树 + FRONT_MATTER、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复、CITATION/FOOTNOTE_REFERENCE marks、SemanticValidator；Exit Gate 经审查修复后达成 |
+| M4 Semantic Recovery Engine | 基线落地 | CONTINUATION 段落合并、编号 heading + SECTION 树、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复；第二轮正确性修复后表格标题、marks、脚注关联、环状树、多 fragment Viewer 与 provenance 已补。1→N / GROBID / 真实多列表格仍延期 |
 | M5 Translation & Rendering | 未开始 | — |
 | M6 Bidirectional Reader | 未开始 | — |
 | M7 Parser Ensemble & Quality | 未开始 | — |
@@ -88,17 +88,17 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
-| 4.1 Paragraph Recovery | 已完成 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；N→1（跨栏、跨页、figure 打断）；连字符去断；`cross-page-paragraph` 断言 merge；1 Layout→N Semantic 未实现 |
-| 4.2 Heading & Section Recovery | 已完成 | `sem_sections`：编号 pattern → level（`1.1` = 2），SECTION 树嵌套，FRONT_MATTER（title/author/date/abstract）；paper-anatomy 断言 `frontMatterRoles` 与 `sectionParentOf` |
-| 4.3 Figure Recovery | 已完成 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；`embeddedImageIds` 保持空直到 ResourceStore；subfigure 按 Roadmap 标记为 optional 未做 |
-| 4.4 Table Recovery | 已完成 | `sem_tables`：默认行 fallback；结构化 TABLE_STRUCTURE 路径有合成单测；真实多列表格推迟到 M7 specialist |
-| 4.5 Equation Recovery | 已完成 | `sem_equations`：FORMULA/CONTINUATION 链 → EQUATION + `number`（anyOf 兜底 rawText，不丢内容）；INLINE_EQUATION marks |
-| 4.6 Footnote Semantic Recovery | 已完成 | `sem_footnotes`：FOOTNOTE_OF 关系 + `FOOTNOTE_REFERENCE` mark（M2 冻结后 additive 例外，见审查修复 note） |
-| 4.7 Bibliography & Citation | 已完成 | `sem_bibliography`：数字括号引用 + 闭区间展开；未解析编号保留文本 + issue；GROBID / 作者-年推迟到 M7 |
-| 4.8 Source Anchoring | 已完成 | `attributes.layoutRegionIds` → 多 fragment SourceAnchor（N→1 原生）；benchmark `multiFragmentAnchors` |
-| 4.9 Semantic Validation | 已完成 | `sem_validate`：orphan/树序 heading 跳变/绑定/引用/caption taxonomy/覆盖率，接入 `run_pipeline`，`test_semantic_validate.py` 逐项验证 |
+| 4.1 Paragraph Recovery | 基线 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；N→1（跨栏、跨页、figure 打断）；连字符去断；`cross-page-paragraph` 断言 merge；1 Layout→N Semantic 未实现（目标 M5） |
+| 4.2 Heading & Section Recovery | 基线 | `sem_sections`：编号 pattern → level（`1.1` = 2），SECTION 树嵌套，FRONT_MATTER（title/author/date/abstract）；无编号 `Introduction` 不再被吞进作者行；STRUCTURE/METADATA specialist 未落实（目标 M7） |
+| 4.3 Figure Recovery | 基线 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；`embeddedImageIds` 保持空直到 ResourceStore；PDF/SVG/raster 资源链与 subfigure 留给 M5 |
+| 4.4 Table Recovery | 基线 | `sem_tables`：默认行 fallback；结构化 TABLE_STRUCTURE 路径有合成单测；Render 不再丢 TABLE_CAPTION；真实多列表格推迟到 M7 specialist |
+| 4.5 Equation Recovery | 基线 | `sem_equations`：FORMULA/CONTINUATION 链 → EQUATION + `number`（anyOf 兜底 rawText，不丢内容）；INLINE_EQUATION marks；source visual fallback / MathML 留给 M5 |
+| 4.6 Footnote Semantic Recovery | 基线 | `sem_footnotes`：按 (page, label) 关联；排除 `Table 1` 误配；未关联写 Issue；`FOOTNOTE_REFERENCE` mark（M2 冻结后 additive 例外） |
+| 4.7 Bibliography & Citation | 基线 | `sem_bibliography`：数字括号引用 + 闭区间展开；翻译后 marks 偏移随文本重建；GROBID / 作者-年推迟到 M7 |
+| 4.8 Source Anchoring | 基线 | `attributes.layoutRegionIds` → 多 fragment SourceAnchor（N→1 原生）；Viewer 遍历全部 fragment；1→N 恢复路径仍缺失 |
+| 4.9 Semantic Validation | 基线 | `sem_validate`：环/父子一致性/orphan/树序 heading 跳变/绑定/引用/caption/覆盖率；坏树返回 Issue 而非崩溃 |
 
-**M4 Exit Gate：** 审查修复后达成——`paper-anatomy` 夹具单篇恢复 Title/Abstract/Sections/Paragraphs/Figures/Tables/Equations/Footnotes/Bibliography/Citations 与完整 Source Mapping；`cross-page-paragraph` 为短页单段落跨页；`tests/benchmark/test_semantic_benchmark.py` 对 12 个夹具机械断言 kinds/关系/marks/覆盖率/零 ERROR（修复决策见 [M4 Review 修复 Note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.md)；架构决策见 [M4 落地 note](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md)）
+**M4 Exit Gate：** 基线机械门禁仍由 `paper-anatomy` 与 semantic/layout benchmark 覆盖；第二轮正确性项（表格标题、marks 偏移、脚注误配、环状树、多 fragment Viewer、provenance）见 [M4 第二轮审查正确性修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.md)。这不等于原始九个 Phase 全部完成：1 Layout→N Semantic、GROBID、真实多列表格、图资源链与 MathML 仍按记录延期。
 
 ### 建议下一步
 

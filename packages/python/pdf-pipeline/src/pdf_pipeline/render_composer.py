@@ -17,11 +17,21 @@ from pdf_pipeline.ids import stable_uuid
 def _walk_nodes(semantic: generated.SemanticDocument) -> list[generated.SemanticNode]:
     by_id = {node.id: node for node in semantic.nodes}
     ordered: list[generated.SemanticNode] = []
+    seen: set[str] = set()
 
     def walk(node_id: str) -> None:
-        node = by_id[node_id]
+        if node_id in seen:
+            return
+        seen.add(node_id)
+        node = by_id.get(node_id)
+        if node is None:
+            return
         for child_id in node.children:
-            child = by_id[child_id]
+            if child_id in seen:
+                continue
+            child = by_id.get(child_id)
+            if child is None:
+                continue
             ordered.append(child)
             walk(child.id)
 
@@ -125,21 +135,27 @@ def compose_render_document(
         if entry.semanticNodeId in translations:
             raise ValueError(f"duplicate translation entry for node {entry.semanticNodeId}")
         translations[entry.semanticNodeId] = entry.content
-    caption_by_figure = {
+    caption_by_host = {
         relation.target: nodes_by_id[relation.source]
         for relation in semantic.relations
         if relation.type == "CAPTION_OF"
         and relation.source in nodes_by_id
         and relation.target in nodes_by_id
     }
-    bound_caption_ids = {caption.id for caption in caption_by_figure.values()}
+    # FIGURE blocks consume their caption; TABLE captions emit as their own
+    # paragraph so the title is never dropped from the target.
+    bound_figure_caption_ids = {
+        caption.id
+        for host_id, caption in caption_by_host.items()
+        if nodes_by_id[host_id].kind == "FIGURE"
+    }
     blocks: list[generated.RenderBlock] = []
 
     for node in _walk_nodes(semantic):
-        if node.id in bound_caption_ids:
+        if node.id in bound_figure_caption_ids:
             continue
         content = translations.get(node.id, node.content)
-        caption_node = caption_by_figure.get(node.id)
+        caption_node = caption_by_host.get(node.id)
         caption: generated.RichText | None = None
         caption_id: str | None = None
         if caption_node is not None:

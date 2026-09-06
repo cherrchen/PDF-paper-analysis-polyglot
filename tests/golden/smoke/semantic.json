@@ -1,17 +1,17 @@
 {
   "schemaVersion": "0.1.0",
-  "id": "f6f2ab93-a59a-6cc6-c087-e4984c206cc1",
-  "layoutDocumentId": "6f0f6500-761c-3fff-013c-dc6b1e5cf38a",
-  "rootId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
+  "id": "9cb87ea8-ebc6-9406-ac7e-33ab19a4c406",
+  "layoutDocumentId": "d22467a3-7404-4f06-b19a-64972e36c1d9",
+  "rootId": "f53f1ea7-6b27-9b78-0be3-c8259088b7d2",
   "nodes": [
     {
-      "id": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
+      "id": "f53f1ea7-6b27-9b78-0be3-c8259088b7d2",
       "kind": "DOCUMENT",
       "parentId": null,
       "children": [
-        "59058cac-b9d2-87ec-a813-95df90648576",
-        "ac12457b-0273-8382-a65a-b70a5f9b6a04",
-        "23a1e206-2457-b112-61a5-c3c71007209f"
+        "22567273-0dec-ee00-599c-6a1626a8f399",
+        "572163e4-c025-b93c-ee29-60febb63bef9",
+        "2e8d0710-76df-42ab-56af-baf2b3981d06"
       ],
       "content": {
         "text": "",
@@ -24,16 +24,16 @@
         "score": 1.0,
         "reason": "document root"
       },
-      "provenanceIds": []
+      "provenanceIds": ["ae30f9a8-8b11-a8db-acab-ac8b3523824b"]
     },
     {
-      "id": "59058cac-b9d2-87ec-a813-95df90648576",
+      "id": "22567273-0dec-ee00-599c-6a1626a8f399",
       "kind": "FRONT_MATTER",
-      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
+      "parentId": "f53f1ea7-6b27-9b78-0be3-c8259088b7d2",
       "children": [
-        "20a7f0c2-39ce-0f49-5d92-02c0d30c1921",
-        "8c51b15e-3db3-2818-4d8a-550e55dd58be",
-        "0eb343fb-d43e-1dfc-6e1e-05f394151117"
+        "d36fa1d0-f05f-02ce-59c8-5f3941da4cc1",
+        "445f20cb-3908-56d3-9606-b9b1dc1c9aea",
+        "218ff812-1158-e86a-5ff3-b646fe2e1087"
       ],
       "content": {
         "text": "",
@@ -46,19 +46,19 @@
         "score": 0.65,
         "reason": "page-1 title block"
       },
-      "provenanceIds": []
+      "provenanceIds": ["ccfa6610-2b7e-e840-40fe-0015c80717aa"]
     },
     {
-      "id": "20a7f0c2-39ce-0f49-5d92-02c0d30c1921",
+      "id": "d36fa1d0-f05f-02ce-59c8-5f3941da4cc1",
       "kind": "HEADING",
-      "parentId": "59058cac-b9d2-87ec-a813-95df90648576",
+      "parentId": "22567273-0dec-ee00-599c-6a1626a8f399",
       "children": [],
       "content": {
         "text": "Smoke Fixture",
         "marks": []
       },
       "attributes": {
-        "layoutRegionIds": ["14d4099f-c2af-7632-4a93-a66cd3ea6e06"],
+        "layoutRegionIds": ["012abe65-714d-591f-2ed2-4e4797373ea1"],
         "level": 1,
         "role": "title"
       },
@@ -66,83 +66,155 @@
         "score": 0.6,
         "reason": "front matter title"
       },
-      "provenanceIds": []
+      "provenanceIds": ["836829e6-84de-3647-6c79-9289c164cd63"]
     },
     {
-      "id": "8c51b15e-3db3-2818-4d8a-550e55dd58be",
+      "id": "445f20cb-3908-56d3-9606-b9b1dc1c9aea",
       "kind": "PARAGRAPH",
-      "parentId": "59058cac-b9d2-87ec-a813-95df90648576",
+      "parentId": "22567273-0dec-ee00-599c-6a1626a8f399",
       "children": [],
       "content": {
         "text": "Repository fixture",
         "marks": []
       },
       "attributes": {
-        "layoutRegionIds": ["3b0c320e-d6f2-b25c-6414-8b0c9c4d31ca"],
+        "layoutRegionIds": ["9055f921-3383-c4f3-0c5e-0e065581fd44"],
         "role": "author"
       },
       "confidence": {
         "score": 0.8,
         "reason": "front matter author"
       },
-      "provenanceIds": []
+      "provenanceIds": ["aa9c492f-2f61-e992-7224-c6be1e984269"]
     },
     {
-      "id": "0eb343fb-d43e-1dfc-6e1e-05f394151117",
+      "id": "218ff812-1158-e86a-5ff3-b646fe2e1087",
       "kind": "PARAGRAPH",
-      "parentId": "59058cac-b9d2-87ec-a813-95df90648576",
+      "parentId": "22567273-0dec-ee00-599c-6a1626a8f399",
       "children": [],
       "content": {
         "text": "2026-09-03",
         "marks": []
       },
       "attributes": {
-        "layoutRegionIds": ["0b43a49c-bb87-b60b-1df1-634ed30f8b6f"],
+        "layoutRegionIds": ["6b9df2e8-e44e-223b-61ca-9eb5aaa734a3"],
         "role": "date"
       },
       "confidence": {
         "score": 0.8,
         "reason": "front matter date"
       },
-      "provenanceIds": []
+      "provenanceIds": ["4131158e-aee5-e508-1e81-4b147532750c"]
     },
     {
-      "id": "ac12457b-0273-8382-a65a-b70a5f9b6a04",
+      "id": "572163e4-c025-b93c-ee29-60febb63bef9",
       "kind": "PARAGRAPH",
-      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
+      "parentId": "f53f1ea7-6b27-9b78-0be3-c8259088b7d2",
       "children": [],
       "content": {
         "text": "This fixture is the minimum LuaLaTeX regression document. Unicode: Café, naïve, Zürich. Math:",
         "marks": []
       },
       "attributes": {
-        "layoutRegionIds": ["88bcd3ba-31a1-914c-5e90-2e2b5d2f7e07"]
+        "layoutRegionIds": ["941c4f9d-a829-0e2d-54c5-1aa724075877"]
       },
       "confidence": {
         "score": 0.8,
         "reason": "layout text region"
       },
-      "provenanceIds": []
+      "provenanceIds": ["af97d9a0-17a8-df4f-7c53-c08a75e9eb9a"]
     },
     {
-      "id": "23a1e206-2457-b112-61a5-c3c71007209f",
+      "id": "2e8d0710-76df-42ab-56af-baf2b3981d06",
       "kind": "EQUATION",
-      "parentId": "cbf5a87c-3210-6e32-b931-f9d28b0cea7b",
+      "parentId": "f53f1ea7-6b27-9b78-0be3-c8259088b7d2",
       "children": [],
       "content": {
         "unicodeText": "E = mc2 .",
         "rawText": "E = mc2 ."
       },
       "attributes": {
-        "layoutRegionIds": ["eb3e1277-8a51-cb6d-ed6b-df427ea02ed6"]
+        "layoutRegionIds": ["af751cad-ca69-1b7f-bdc2-cb5aebaa789f"]
       },
       "confidence": {
         "score": 0.55,
         "reason": "display equation: 1 regions"
       },
-      "provenanceIds": []
+      "provenanceIds": ["b8d88cdf-cb41-ac94-d317-7af09a3e7be5"]
     }
   ],
   "relations": [],
-  "provenanceIds": []
+  "provenanceIds": ["9ee03a5e-fadf-dd28-9f7a-c81782bb0323"],
+  "provenance": {
+    "records": [
+      {
+        "id": "9ee03a5e-fadf-dd28-9f7a-c81782bb0323",
+        "producer": "pdf-pipeline.semantic",
+        "producerVersion": "0.1.0",
+        "operation": "semantic-recovery",
+        "inputRefs": ["d22467a3-7404-4f06-b19a-64972e36c1d9"]
+      },
+      {
+        "id": "ae30f9a8-8b11-a8db-acab-ac8b3523824b",
+        "producer": "pdf-pipeline.semantic",
+        "producerVersion": "0.1.0",
+        "operation": "document-root",
+        "inputRefs": ["d22467a3-7404-4f06-b19a-64972e36c1d9"]
+      },
+      {
+        "id": "ccfa6610-2b7e-e840-40fe-0015c80717aa",
+        "producer": "pdf-pipeline.semantic",
+        "producerVersion": "0.1.0",
+        "operation": "front-matter",
+        "inputRefs": ["d22467a3-7404-4f06-b19a-64972e36c1d9"]
+      },
+      {
+        "id": "836829e6-84de-3647-6c79-9289c164cd63",
+        "producer": "pdf-pipeline.semantic",
+        "producerVersion": "0.1.0",
+        "operation": "heading-recovery",
+        "inputRefs": [
+          "012abe65-714d-591f-2ed2-4e4797373ea1",
+          "59d71ba0-2c1c-082d-0681-d79b8b681208"
+        ]
+      },
+      {
+        "id": "aa9c492f-2f61-e992-7224-c6be1e984269",
+        "producer": "pdf-pipeline.semantic",
+        "producerVersion": "0.1.0",
+        "operation": "paragraph-recovery",
+        "inputRefs": [
+          "9055f921-3383-c4f3-0c5e-0e065581fd44",
+          "7cf68354-7576-28e2-b172-4757a0efb4fe"
+        ]
+      },
+      {
+        "id": "4131158e-aee5-e508-1e81-4b147532750c",
+        "producer": "pdf-pipeline.semantic",
+        "producerVersion": "0.1.0",
+        "operation": "paragraph-recovery",
+        "inputRefs": [
+          "6b9df2e8-e44e-223b-61ca-9eb5aaa734a3",
+          "85498f94-266f-3f5e-323e-b381c1e91ee4"
+        ]
+      },
+      {
+        "id": "af97d9a0-17a8-df4f-7c53-c08a75e9eb9a",
+        "producer": "pdf-pipeline.semantic",
+        "producerVersion": "0.1.0",
+        "operation": "paragraph-recovery",
+        "inputRefs": [
+          "941c4f9d-a829-0e2d-54c5-1aa724075877",
+          "9d0a3f02-93b9-c557-9b7f-fd627d52f0ec"
+        ]
+      },
+      {
+        "id": "b8d88cdf-cb41-ac94-d317-7af09a3e7be5",
+        "producer": "pdf-pipeline.semantic",
+        "producerVersion": "0.1.0",
+        "operation": "equation-recovery",
+        "inputRefs": ["af751cad-ca69-1b7f-bdc2-cb5aebaa789f"]
+      }
+    ]
+  }
 }

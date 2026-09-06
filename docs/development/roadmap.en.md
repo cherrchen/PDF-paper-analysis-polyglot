@@ -13,9 +13,9 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-06
-**Current position:** M4 Semantic Recovery Engine is complete (Phases 4.1–4.9; exit gate met after review repairs, verified mechanically via paper-anatomy and the semantic/layout benchmarks); M5 (Translation & Rendering) is next.
+**Current position:** The M4 semantic-recovery baseline has landed (after second-round correctness repairs); GROBID, 1 Layout→N Semantic, true multi-column tables, and figure asset chains remain deferred. M5 (Translation & Rendering) is next.
 
-README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery Engine.
+README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery baseline (the original phases are not fully closed).
 
 ### Milestone overview
 
@@ -25,7 +25,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M1 Core Document Contracts | Done | Six schemas at `0.1.0`; generated bindings + cross-language roundtrip |
 | M2 Walking Skeleton | Done | All 11 Tier-1 fixtures pass end to end; independent Translation/Render IR, rotated coordinates, and the bidirectional viewer passed renewed acceptance |
 | M3 Layout Recovery Engine | Done | Evidence adapter boundary + mock provider, XY-cut band/column detection, structure-driven ReadingFlowGraph, continuation/caption/footnote recovery; exit gate met after review repairs |
-| M4 Semantic Recovery Engine | Done | CONTINUATION paragraph merging (multi-fragment SourceAnchors), numbered headings + SECTION tree + FRONT_MATTER, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery, CITATION/FOOTNOTE_REFERENCE marks, SemanticValidator; exit gate met after review repairs |
+| M4 Semantic Recovery Engine | Baseline landed | CONTINUATION paragraph merging, numbered headings + SECTION tree, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery; second-round repairs restored table titles, marks, footnote linking, cyclic trees, multi-fragment Viewer, and provenance. 1→N / GROBID / true multi-column tables remain deferred |
 | M5 Translation & Rendering | Not started | — |
 | M6 Bidirectional Reader | Not started | — |
 | M7 Parser Ensemble & Quality | Not started | — |
@@ -88,17 +88,17 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| 4.1 Paragraph Recovery | Done | `pdf_pipeline.sem_paragraphs` consumes CONTINUATION edges; N→1 (column, page, figure interruption); hyphenation de-break; `cross-page-paragraph` asserts merge; 1 Layout→N Semantic is not implemented |
-| 4.2 Heading & Section Recovery | Done | `sem_sections`: numbering pattern → level (`1.1` = 2), nested SECTION tree, FRONT_MATTER (title/author/date/abstract); paper-anatomy asserts `frontMatterRoles` and `sectionParentOf` |
-| 4.3 Figure Recovery | Done | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; `embeddedImageIds` stays empty until a ResourceStore; subfigures (Roadmap: optional) not implemented |
-| 4.4 Table Recovery | Done | `sem_tables`: line fallback by default; structured TABLE_STRUCTURE path has a synthetic unit test; true multi-column tables deferred to an M7 specialist |
-| 4.5 Equation Recovery | Done | `sem_equations`: FORMULA/CONTINUATION chains → EQUATION + `number` (rawText fallback, no content loss); INLINE_EQUATION marks |
-| 4.6 Footnote Semantic Recovery | Done | `sem_footnotes`: FOOTNOTE_OF relations + `FOOTNOTE_REFERENCE` marks (post-M2 freeze additive exception; see review-repairs note) |
-| 4.7 Bibliography & Citation | Done | `sem_bibliography`: numeric-bracket citations + closed-range expansion; unresolved numbers keep text + issue; GROBID / author-year deferred to M7 |
-| 4.8 Source Anchoring | Done | `attributes.layoutRegionIds` → multi-fragment SourceAnchor (native N→1); benchmark `multiFragmentAnchors` |
-| 4.9 Semantic Validation | Done | `sem_validate`: orphan / tree-order heading jumps / binding / citation / caption taxonomy / coverage wired into `run_pipeline`; `test_semantic_validate.py` verifies each detection |
+| 4.1 Paragraph Recovery | Baseline | `pdf_pipeline.sem_paragraphs` consumes CONTINUATION edges; N→1 (column, page, figure interruption); hyphenation de-break; `cross-page-paragraph` asserts merge; 1 Layout→N Semantic is not implemented (target M5) |
+| 4.2 Heading & Section Recovery | Baseline | `sem_sections`: numbering pattern → level (`1.1` = 2), nested SECTION tree, FRONT_MATTER (title/author/date/abstract); unnumbered `Introduction` is no longer swallowed as an author; STRUCTURE/METADATA specialist not landed (target M7) |
+| 4.3 Figure Recovery | Baseline | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; `embeddedImageIds` stays empty until a ResourceStore; PDF/SVG/raster asset chain and subfigures wait for M5 |
+| 4.4 Table Recovery | Baseline | `sem_tables`: line fallback by default; structured TABLE_STRUCTURE path has a synthetic unit test; render no longer drops TABLE_CAPTION; true multi-column tables deferred to an M7 specialist |
+| 4.5 Equation Recovery | Baseline | `sem_equations`: FORMULA/CONTINUATION chains → EQUATION + `number` (rawText fallback, no content loss); INLINE_EQUATION marks; source visual fallback / MathML wait for M5 |
+| 4.6 Footnote Semantic Recovery | Baseline | `sem_footnotes`: match by (page, label); reject `Table 1` false positives; unlinked footnotes report Issues; `FOOTNOTE_REFERENCE` marks (post-M2 freeze additive exception) |
+| 4.7 Bibliography & Citation | Baseline | `sem_bibliography`: numeric-bracket citations + closed-range expansion; translation rebuilds mark offsets with the new text; GROBID / author-year deferred to M7 |
+| 4.8 Source Anchoring | Baseline | `attributes.layoutRegionIds` → multi-fragment SourceAnchor (native N→1); Viewer walks every fragment; 1→N recovery path still missing |
+| 4.9 Semantic Validation | Baseline | `sem_validate`: cycles / parent-child consistency / orphan / tree-order heading jumps / binding / citation / caption / coverage; a bad tree returns Issues instead of crashing |
 
-**M4 exit gate:** Met after review repairs—`paper-anatomy` recovers Title/Abstract/Sections/Paragraphs/Figures/Tables/Equations/Footnotes/Bibliography/Citations plus complete Source Mapping in one paper; `cross-page-paragraph` is a short-page single paragraph that paginates; `tests/benchmark/test_semantic_benchmark.py` mechanically asserts kinds/relations/marks/coverage/zero-ERROR across all 12 fixtures (repair decisions in the [M4 review-repairs note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.en.md); architecture decisions in [the M4 implementation note](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.en.md)).
+**M4 exit gate:** The mechanical baseline gate remains `paper-anatomy` plus the semantic/layout benchmarks. Second-round correctness items (table titles, mark offsets, footnote mismatches, cyclic trees, multi-fragment Viewer, provenance) are in the [M4 correctness-repairs note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.en.md). That is not the same as completing all nine original phases: 1 Layout→N Semantic, GROBID, true multi-column tables, figure asset chains, and MathML stay deferred as recorded.
 
 ### Recommended next steps
 

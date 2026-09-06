@@ -35,3 +35,4 @@ Status: implemented
 
 - M4 Exit Gate 在审查修复后关闭：跨页段落、Abstract、L2 嵌套、引用区间、Source Mapping 与 validator 跳变均有机械断言。
 - 已知限制仍在 M4 落地 note：1 Layout → N Semantic、真实多列表格、GROBID 作者-年引用、图资源 PDF/SVG/raster、MathML 留给 M5/M7。
+- 第二轮正确性缺口（静默丢表格标题、失效 marks、错误脚注关联、环状树崩溃、Viewer 截断、空 provenance）见 [M4 第二轮审查正确性修复](2026-09-06-m4-correctness-repairs.md)。

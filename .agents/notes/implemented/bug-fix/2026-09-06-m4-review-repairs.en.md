@@ -35,3 +35,4 @@ Repair against the original exit gate and Review C:
 
 - The M4 exit gate closes after these review repairs: cross-page paragraphs, Abstract, L2 nesting, citation ranges, Source Mapping, and validator level-jumps have mechanical assertions.
 - Known limits remain on the M4 implementation note: 1 Layout → N Semantic, true multi-column tables, GROBID author-year citations, figure PDF/SVG/raster resources, and MathML stay with M5/M7.
+- Second-round correctness gaps (dropped table titles, stale marks, wrong footnote links, cyclic-tree crashes, truncated viewer mapping, empty provenance) are covered in the [M4 correctness-repairs note](2026-09-06-m4-correctness-repairs.en.md).

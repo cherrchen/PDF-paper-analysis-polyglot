@@ -41,4 +41,4 @@ LLM 生成内容 ≠ 论文原文。AnalysisLayer 不得污染 Source SemanticDo
 
 ## Recovery 可观测性
 
-Recovery Engine 输出 confidence、provenance、reason、issues。禁止“黑盒”推断而无来源链。
+Recovery Engine 输出 confidence、provenance、reason、issues。禁止“黑盒”推断而无来源链。语义恢复为每个节点与关系写入 `ProvenanceRecord`（`pdf-pipeline.semantic` / `0.1.0` / 操作名 / layout region 与 fusion 输入）。

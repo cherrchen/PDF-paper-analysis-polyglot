@@ -71,6 +71,9 @@ def _tree_issues(
     nodes_by_id: Mapping[str, generated.SemanticNode],
 ) -> list[generated.Issue]:
     issues: list[generated.Issue] = []
+    issues.extend(_membership_issues(semantic, nodes_by_id))
+    issues.extend(_cycle_issues(semantic, nodes_by_id))
+
     reachable: set[str] = set()
     stack = [semantic.rootId]
     while stack:
@@ -80,7 +83,7 @@ def _tree_issues(
         reachable.add(node_id)
         node = nodes_by_id.get(node_id)
         if node is not None:
-            stack.extend(node.children)
+            stack.extend(child for child in node.children if child not in reachable)
 
     issues.extend(
         _issue(
@@ -109,14 +112,126 @@ def _tree_issues(
     return issues
 
 
+def _membership_issues(
+    semantic: generated.SemanticDocument,
+    nodes_by_id: Mapping[str, generated.SemanticNode],
+) -> list[generated.Issue]:
+    """Parent/child consistency and duplicate membership."""
+    issues: list[generated.Issue] = []
+    listed_children = {child for parent in semantic.nodes for child in parent.children}
+    parents_of: dict[str, list[str]] = {}
+    for node in semantic.nodes:
+        seen_children: set[str] = set()
+        for child_id in node.children:
+            if child_id in seen_children:
+                issues.append(
+                    _issue(
+                        semantic.id,
+                        "SECTION_STRUCTURE",
+                        "ERROR",
+                        f"node {node.id} lists child {child_id} more than once",
+                        [node.id, child_id],
+                    )
+                )
+            seen_children.add(child_id)
+            parents_of.setdefault(child_id, []).append(node.id)
+            child = nodes_by_id.get(child_id)
+            if child is None:
+                issues.append(
+                    _issue(
+                        semantic.id,
+                        "SECTION_STRUCTURE",
+                        "ERROR",
+                        f"node {node.id} lists unknown child {child_id}",
+                        [node.id, child_id],
+                    )
+                )
+                continue
+            if child.parentId != node.id:
+                issues.append(
+                    _issue(
+                        semantic.id,
+                        "SECTION_STRUCTURE",
+                        "ERROR",
+                        f"child {child_id} parentId {child.parentId} "
+                        f"does not match parent {node.id}",
+                        [node.id, child_id],
+                    )
+                )
+        if node.parentId is not None and node.id not in listed_children:
+            issues.append(
+                _issue(
+                    semantic.id,
+                    "SECTION_STRUCTURE",
+                    "ERROR",
+                    f"node {node.id} parentId {node.parentId} is not listed as a child",
+                    [node.id, node.parentId],
+                )
+            )
+    for child_id, parent_ids in parents_of.items():
+        if len(parent_ids) > 1:
+            issues.append(
+                _issue(
+                    semantic.id,
+                    "SECTION_STRUCTURE",
+                    "ERROR",
+                    f"node {child_id} belongs to multiple parents {parent_ids}",
+                    [child_id, *parent_ids],
+                )
+            )
+    return issues
+
+
+def _cycle_issues(
+    semantic: generated.SemanticDocument,
+    nodes_by_id: Mapping[str, generated.SemanticNode],
+) -> list[generated.Issue]:
+    """Report a cycle instead of recursing until RecursionError."""
+    visiting: set[str] = set()
+    visited: set[str] = set()
+    cyclic: list[str] = []
+
+    def walk(node_id: str) -> bool:
+        if node_id in visiting:
+            cyclic.append(node_id)
+            return True
+        if node_id in visited:
+            return False
+        visiting.add(node_id)
+        node = nodes_by_id.get(node_id)
+        found = False
+        if node is not None:
+            found = any(walk(child_id) for child_id in node.children)
+        visiting.remove(node_id)
+        visited.add(node_id)
+        return found
+
+    walk(semantic.rootId)
+    if not cyclic:
+        return []
+    return [
+        _issue(
+            semantic.id,
+            "SECTION_STRUCTURE",
+            "ERROR",
+            f"section tree contains a cycle at {cyclic[0]}",
+            cyclic,
+        )
+    ]
+
+
 def _headings_in_tree_order(
     semantic: generated.SemanticDocument,
     nodes_by_id: Mapping[str, generated.SemanticNode],
 ) -> list[tuple[int, str]]:
     """HEADING levels in document-tree order, including nested SECTION trees."""
     headings: list[tuple[int, str]] = []
+    seen: set[str] = set()
 
     def walk(node_id: str) -> None:
+        if node_id in seen:
+            return
+        seen.add(node_id)
         node = nodes_by_id.get(node_id)
         if node is None:
             return

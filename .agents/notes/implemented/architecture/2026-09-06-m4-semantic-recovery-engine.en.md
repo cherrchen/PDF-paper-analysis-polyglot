@@ -4,7 +4,7 @@ Status: implemented
 
 [中文](./2026-09-06-m4-semantic-recovery-engine.md) | [English](./2026-09-06-m4-semantic-recovery-engine.en.md)
 
-> The 2026-09-06 review reopened the M4 exit gate. This note keeps the original landing and rationale; corrected contracts, fixtures, and verification live in the [M4 review-repairs note](../bug-fix/2026-09-06-m4-review-repairs.en.md).
+> The 2026-09-06 review reopened the M4 exit gate. This note keeps the original landing and rationale; first-round fixture and verification repairs live in the [M4 review-repairs note](../bug-fix/2026-09-06-m4-review-repairs.en.md); second-round correctness repairs live in the [M4 correctness-repairs note](../bug-fix/2026-09-06-m4-correctness-repairs.en.md).
 
 ## Problem
 

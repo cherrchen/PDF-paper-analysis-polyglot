@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from paper_llm import TRANSLATION_MARKER, DummyTranslationProvider, translate_document
+from paper_llm.translation import translate_rich_text
 
 if TYPE_CHECKING:
     from document_model.generated import schema_models as generated
@@ -84,3 +85,47 @@ def test_translation_layer_validates() -> None:
     translation = translate_document(semantic)
     data = load_document("translation-layer", dump_document(translation))
     assert data == translation
+
+
+def test_dummy_translation_shifts_mark_offsets() -> None:
+    from document_model.generated import schema_models as generated
+
+    mark = generated.InlineMark(
+        type="CITATION", start=4, end=7, targetNodeId="entry-1", label="[1]"
+    )
+    translated, marks = translate_rich_text("see [1] now", [mark], DummyTranslationProvider())
+    assert translated.startswith(f"{TRANSLATION_MARKER} ")
+    assert len(marks) == 1
+    assert translated[marks[0].start : marks[0].end] == "[1]"
+
+
+def test_non_prefix_translation_rebuilds_marks_via_placeholders() -> None:
+    from document_model.generated import schema_models as generated
+
+    class SurroundProvider:
+        def translate(self, text: str) -> str:
+            return f"<<{text}>>"
+
+    mark = generated.InlineMark(
+        type="FOOTNOTE_REFERENCE", start=4, end=5, targetNodeId="fn-1", label="1"
+    )
+    translated, marks = translate_rich_text("see 1 now", [mark], SurroundProvider())
+    assert translated.startswith("<<")
+    assert len(marks) == 1
+    assert translated[marks[0].start : marks[0].end] == "1"
+
+
+def test_rewritten_text_without_placeholders_drops_stale_marks() -> None:
+    from document_model.generated import schema_models as generated
+
+    class ReplaceProvider:
+        def translate(self, text: str) -> str:
+            del text
+            return "fully rewritten without markers"
+
+    mark = generated.InlineMark(
+        type="CITATION", start=4, end=7, targetNodeId="entry-1", label="[1]"
+    )
+    translated, marks = translate_rich_text("see [1] now", [mark], ReplaceProvider())
+    assert translated == "fully rewritten without markers"
+    assert marks == []

@@ -6,6 +6,7 @@ from paper_llm.translation import (
     TRANSLATION_MARKER,
     DummyTranslationProvider,
     translate_document,
+    translate_rich_text,
 )
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "DummyTranslationProvider",
     "provider_status",
     "translate_document",
+    "translate_rich_text",
 ]
 
 

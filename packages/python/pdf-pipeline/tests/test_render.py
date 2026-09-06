@@ -117,6 +117,26 @@ def test_end_to_end_pipeline_runs_and_validates(tmp_path: Path) -> None:
     assert viewer_mapping["sourceRegions"]
 
 
+def test_viewer_mapping_keeps_all_cross_page_source_fragments(tmp_path: Path) -> None:
+    run_pipeline(_fixture_path("cross-page-paragraph"), tmp_path / "out")
+    mapping = json.loads((tmp_path / "out/viewer/data/mapping.json").read_text(encoding="utf-8"))
+    region_ids = {region["id"] for region in mapping["sourceRegions"]}
+    multi = [anchor for anchor in mapping["sourceAnchors"] if len(anchor["fragments"]) > 1]
+    assert multi, "cross-page paragraph must expose every source fragment to the viewer"
+    for anchor in multi:
+        pages = {
+            next(
+                region["pageIndex"]
+                for region in mapping["sourceRegions"]
+                if region["id"] == fragment["layoutRegionId"]
+            )
+            for fragment in anchor["fragments"]
+        }
+        assert len(pages) > 1
+        for fragment in anchor["fragments"]:
+            assert fragment["layoutRegionId"] in region_ids
+
+
 def test_figure_and_caption_share_one_float() -> None:
     physical = extract_physical_document(_fixture("figure-caption"))
     layout = recover_layout_document(physical)

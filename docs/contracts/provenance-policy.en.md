@@ -41,4 +41,4 @@ These objects should carry `provenance_ids` (or equivalent references):
 
 ## Recovery observability
 
-Recovery engines emit confidence, provenance, reason, and issues. Opaque inference without a provenance chain is forbidden.
+Recovery engines emit confidence, provenance, reason, and issues. Opaque inference without a provenance chain is forbidden. Semantic recovery writes a `ProvenanceRecord` per node and relation (`pdf-pipeline.semantic` / `0.1.0` / operation name / layout region and fusion inputs).

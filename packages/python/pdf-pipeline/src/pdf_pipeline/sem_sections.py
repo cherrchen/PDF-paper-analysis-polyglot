@@ -31,8 +31,25 @@ ABSTRACT_HEADING = re.compile(r"^Abstract\s*:?\s*$", re.IGNORECASE)
 # ISO-ish date lines (\date in scholarly front matter).
 DATE_LINE = re.compile(r"^\d{4}[-/]\d{1,2}[-/]\d{1,2}$")
 
-# Author-ish short capitalized lines in front matter.
-AUTHOR_LINE = re.compile(r"^(?:[A-Z][A-Za-z.\-]+\s+){0,4}[A-Za-z][A-Za-z.\-]+[.,]?$")
+# Author-ish short capitalized lines in front matter: at least two name tokens
+# so a lone section title like ``Introduction`` is not an author.
+AUTHOR_LINE = re.compile(r"^(?:[A-Z][A-Za-z.\-]+\s+|[A-Z]\.\s+){1,4}[A-Za-z][A-Za-z.\-]+[.,]?$")
+
+# Unnumbered body headings that must end the title block even without Abstract.
+BODY_SECTION_HEADINGS = re.compile(
+    r"^(?:Introduction|Background|Related Works?|Methods?|Methodology|"
+    r"Results?|Discussion|Conclusions?|Acknowledgemen?ts|"
+    r"References|Bibliography|Appendix|Appendices|Future Work|"
+    r"Limitations|Experiments?|Evaluation)\s*:?\s*$",
+    re.IGNORECASE,
+)
+
+# Affiliation lines that stay in the title block.
+AFFILIATION_LINE = re.compile(
+    r"(University|Universität|Institute|Department|Dept\.|Laboratory|\bLab\b|"
+    r"College|School of|Faculty|Center|Centre|Inc\.|Ltd\.|GmbH|ORCID)",
+    re.IGNORECASE,
+)
 
 # A heading line is visually short; long capitalized strings are prose.
 HEADING_MAX_CHARS = 80
@@ -106,6 +123,21 @@ def is_abstract_heading(text: str) -> bool:
     return bool(ABSTRACT_HEADING.match(text.strip()))
 
 
+def is_body_section_heading(text: str) -> bool:
+    """Whether a line is an unnumbered body heading such as ``Introduction``."""
+    return bool(BODY_SECTION_HEADINGS.match(text.strip()))
+
+
+def _is_front_matter_line(text: str) -> bool:
+    """Author, affiliation, or date — not a body section heading."""
+    stripped = text.strip()
+    if is_body_section_heading(stripped):
+        return False
+    if DATE_LINE.match(stripped) or AFFILIATION_LINE.search(stripped):
+        return True
+    return bool(AUTHOR_LINE.match(stripped) and len(stripped.split()) <= 6)
+
+
 def classify_front_matter(
     flow_texts: Sequence[tuple[str, str]],
     labels: Mapping[str, str | None],
@@ -153,10 +185,10 @@ def _front_matter_boundary(
 ) -> tuple[int, int, int] | None:
     """(title index, abstract index, stop) for the page-1 title block.
 
-    The block ends at the first numbered heading, at the first body
-    sentence after the title, or right after the abstract body; an
-    unnumbered ``HEADING_LIKE`` line (an equation label, a lead-in) does
-    not end it. ``None`` when no title line exists at all.
+    The block ends at the first numbered heading, at a real unnumbered
+    body heading (``Introduction``), at the first body sentence after
+    the title, or right after the abstract body. Author, affiliation,
+    and date lines do not end it. ``None`` when no title line exists.
     """
     title_index = -1
     abstract_index = -1
@@ -169,9 +201,9 @@ def _front_matter_boundary(
             if is_abstract_heading(stripped):
                 abstract_index = index
                 continue
-            if label == "HEADING_LIKE" and not NUMBERED_HEADING.match(stripped):
-                continue
-            return (title_index, abstract_index, index)
+            if NUMBERED_HEADING.match(stripped) or not _is_front_matter_line(stripped):
+                return (title_index, abstract_index, index)
+            continue
         if title_index < 0 and label == "HEADING_LIKE":
             title_index = index
             continue

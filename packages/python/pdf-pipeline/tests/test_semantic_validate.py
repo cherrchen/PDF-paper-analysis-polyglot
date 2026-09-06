@@ -164,3 +164,16 @@ def test_table_caption_without_relation_uses_table_recovery() -> None:
         }
     )
     assert ("TABLE_RECOVERY", "WARNING") in _categories(layout, broken, texts)
+
+
+def test_cyclic_section_tree_reports_error_instead_of_crashing() -> None:
+    _physical, layout, semantic, texts = _recover("smoke")
+    root = next(node for node in semantic.nodes if node.id == semantic.rootId)
+    broken = _replace_node(semantic, root.id, children=[*root.children, root.id])
+    issues = validate_semantic_recovery(broken, layout, texts)
+    assert any(
+        issue.category == "SECTION_STRUCTURE"
+        and issue.severity == "ERROR"
+        and "cycle" in issue.message
+        for issue in issues
+    )

@@ -30,6 +30,17 @@ test("mapping data covers heading, paragraph, and caption pairs", async ({ reque
   );
   const intersection = [...anchoredNodes].filter((id) => boundNodes.has(id));
   expect(intersection.length).toBeGreaterThan(0);
+
+  const sourceRegionIds = new Set(
+    mappings.sourceRegions.map((region: { id: string }) => region.id),
+  );
+  for (const anchor of mappings.sourceAnchors as {
+    fragments: { layoutRegionId: string }[];
+  }[]) {
+    for (const fragment of anchor.fragments) {
+      expect(sourceRegionIds.has(fragment.layoutRegionId)).toBe(true);
+    }
+  }
 });
 
 test("viewer loads both PDF panes with navigation data", async ({ page }) => {

@@ -20,8 +20,9 @@ M4 恢复引擎（`pdf_pipeline.semantic` + `sem_*` 模块）的产出形态：
 - 段落合并消费 CONTINUATION 边；`attributes.layoutRegionIds` 驱动 N Layout → 1 Semantic 的多 fragment SourceAnchor。1 Layout → N Semantic 尚未实现
 - 行内 marks：`CITATION` / `FOOTNOTE_REFERENCE` / `INLINE_EQUATION`
 - 识别失败不丢内容：TABLE 默认行 fallback；EQUATION 保留 rawText；未解析引用保留文本并以 Issue 记录。`FigureResource.embeddedImageIds` 保持空直到 ResourceStore
-- 恢复后由 `pdf_pipeline.sem_validate` 按文档树序审计，结果写入 `SemanticDocument.issues`
-- 落地决策：[M4 Semantic Recovery Engine](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md)；审查修复：[M4 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.md)
+- 每个节点与关系带恢复 `ProvenanceRecord`（producer / version / operation / layout region 与 fusion 输入）
+- 恢复后由 `pdf_pipeline.sem_validate` 按文档树序审计（含环与父子一致性），结果写入 `SemanticDocument.issues`
+- 落地决策：[M4 Semantic Recovery Engine](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md)；审查修复：[M4 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.md)；正确性修复：[M4 第二轮审查正确性修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.md)
 
 契约见已落地 note [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md)。
 

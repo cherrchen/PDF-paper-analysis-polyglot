@@ -95,6 +95,32 @@ def test_figure_caption_detected_and_related() -> None:
     assert not set(figure.content.resources.embeddedImageIds) & physical_ids
 
 
+def test_table_caption_survives_render() -> None:
+    from paper_llm import translate_document
+    from pdf_pipeline.render_composer import compose_render_document
+
+    _, _layout, semantic = _recover("table-heavy")
+    caption = _node(semantic, "TABLE_CAPTION")
+    assert isinstance(caption.content, generated.RichText)
+    assert "Synthetic metrics for table-structure recovery" in caption.content.text
+    render = compose_render_document(semantic, translate_document(semantic))
+    texts: list[str] = []
+    node_ids: list[str] = []
+    for block in render.blocks:
+        node_ids.extend(block.semanticNodeIds)
+        content = getattr(block, "content", None)
+        text = getattr(content, "text", None) if content is not None else None
+        if isinstance(text, str):
+            texts.append(text)
+        figure_caption = getattr(block, "caption", None)
+        caption_text = getattr(figure_caption, "text", None) if figure_caption is not None else None
+        if isinstance(caption_text, str):
+            texts.append(caption_text)
+    blob = "\n".join(texts)
+    assert "Synthetic metrics for table-structure recovery" in blob
+    assert caption.id in node_ids
+
+
 def test_table_caption_is_not_figure_caption() -> None:
     _, layout, semantic = _recover("table-heavy")
     assert any(group.kind == "TABLE_BLOCK" for group in layout.groups)
@@ -201,6 +227,8 @@ def test_footnote_references_link_bodies_to_paragraphs() -> None:
                 assert mark.targetNodeId in {f.id for f in footnotes}
                 assert node.id in targets
                 assert mark.end > mark.start
+                assert isinstance(node.content, generated.RichText)
+                assert node.content.text[mark.start : mark.end] == mark.label
 
 
 def test_bibliography_entries_and_citations() -> None:
@@ -224,6 +252,12 @@ def test_bibliography_entries_and_citations() -> None:
     ]
     assert len(citation_marks) == 2
     assert {m.targetNodeId for m in citation_marks} == entry_ids
+    for node in semantic.nodes:
+        if not isinstance(node.content, generated.RichText):
+            continue
+        for mark in node.content.marks:
+            if mark.type == "CITATION":
+                assert node.content.text[mark.start : mark.end] in {"[1]", "[2]"}
 
 
 def test_semantic_carries_no_geometry() -> None:
@@ -335,3 +369,44 @@ def test_duplicate_bibliography_entry_reports_issue() -> None:
     broken = recover_semantic_document(layout, texts, lines=region_lines_from(physical, layout))
     messages = [issue.message for issue in (broken.issues.issues if broken.issues else [])]
     assert any("duplicate bibliography entry" in message for message in messages)
+
+
+def test_translated_citation_marks_still_cover_bracket_tokens() -> None:
+    from paper_llm import translate_document
+
+    _, _, semantic = _recover("bibliography")
+    translation = translate_document(semantic)
+    covered = [
+        entry.content.text[mark.start : mark.end]
+        for entry in translation.entries
+        if isinstance(entry.content, generated.RichText)
+        for mark in entry.content.marks
+        if mark.type == "CITATION"
+    ]
+    assert covered
+    assert set(covered) <= {"[1]", "[2]"}
+
+
+def test_semantic_nodes_and_relations_carry_provenance() -> None:
+    _, layout, semantic = _recover("footnote-multicolumn")
+    assert semantic.provenance is not None
+    record_ids = {record.id for record in semantic.provenance.records}
+    assert semantic.provenanceIds
+    assert set(semantic.provenanceIds) <= record_ids
+    for node in semantic.nodes:
+        assert node.provenanceIds
+        assert set(node.provenanceIds) <= record_ids
+        record = next(item for item in semantic.provenance.records if item.id in node.provenanceIds)
+        assert record.producer == "pdf-pipeline.semantic"
+        assert record.producerVersion
+        assert record.operation
+        assert record.inputRefs
+    for relation in semantic.relations:
+        assert relation.provenanceIds
+        assert set(relation.provenanceIds) <= record_ids
+    layout_ids = {region.id for region in layout.regions}
+    footnote = _node(semantic, "FOOTNOTE")
+    footnote_record = next(
+        item for item in semantic.provenance.records if item.id in footnote.provenanceIds
+    )
+    assert set(footnote_record.inputRefs) & layout_ids

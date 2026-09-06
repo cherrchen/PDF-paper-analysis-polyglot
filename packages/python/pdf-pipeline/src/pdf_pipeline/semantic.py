@@ -18,14 +18,19 @@ post-recovery audit lives in :mod:`pdf_pipeline.sem_validate`.
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.ids import stable_uuid
 from pdf_pipeline.sem_bibliography import citation_spans, entry_label
 from pdf_pipeline.sem_equations import display_groups, equation_content, inline_equation_marks
-from pdf_pipeline.sem_footnotes import body_reference_spans, footnote_marker_label
+from pdf_pipeline.sem_footnotes import (
+    FootnoteBody,
+    ParagraphWindow,
+    assign_footnote_references,
+    footnote_marker_label,
+)
 from pdf_pipeline.sem_paragraphs import (
     clean_text,
     continuation_pairs,
@@ -47,6 +52,7 @@ if TYPE_CHECKING:
     from pdf_pipeline.fusion import RegionLine
 
 SEMANTIC_PRODUCER = "pdf-pipeline.semantic"
+SEMANTIC_PRODUCER_VERSION = "0.1.0"
 
 CONFIDENCE_HEADING = 0.6
 CONFIDENCE_PARAGRAPH = 0.8
@@ -104,8 +110,7 @@ class _Claims:
         self.group_starts: dict[str, tuple[str, list[str]]] = {}
         self.skipped: set[str] = set()
         self.entries_by_label: dict[str, str] = {}
-        self.footnotes_by_label: dict[str, str] = {}
-        self.footnote_pages: dict[str, set[str]] = {}
+        self.footnotes: list[FootnoteBody] = []
         self.parents: dict[str, str] = {}
         self.region_nodes: dict[str, str] = {}
 
@@ -146,6 +151,7 @@ class _Recovery:
         self.relations: list[generated.SemanticRelation] = []
         self.issues: list[generated.Issue] = []
         self._relation_keys: set[tuple[str, str, str]] = set()
+        self._provenance_records: list[generated.ProvenanceRecord] = []
 
     # ------------------------------------------------------------ plumbing
     def _node_id(self, *parts: object) -> str:
@@ -251,6 +257,7 @@ class _Recovery:
         self._apply_marks(claims)
         self._wire_children()
         document_id = stable_uuid(layout.id, "semantic-document")
+        provenance_ids, provenance = self._attach_provenance(document_id)
         document = generated.SemanticDocument(
             schemaVersion="0.1.0",
             id=document_id,
@@ -258,7 +265,8 @@ class _Recovery:
             rootId=root_id,
             nodes=self.nodes,
             relations=self.relations,
-            provenanceIds=[],
+            provenanceIds=provenance_ids,
+            provenance=provenance,
         )
         if not self.issues:
             return document
@@ -637,14 +645,15 @@ class _Recovery:
             )
             self._bind_regions(node_id, [region.id])
             label = footnote_marker_label(text)
-            if label is not None and label not in claims.footnotes_by_label:
-                claims.footnotes_by_label[label] = node_id
-                claims.footnote_pages[label] = {region.pageId}
+            if label is not None:
+                claims.footnotes.append(
+                    FootnoteBody(node_id=node_id, label=label, page_id=region.pageId)
+                )
 
     # --------------------------------------------------------------- marks
     def _apply_marks(self, claims: _Claims) -> None:
         """Attach inline-math, citation, and footnote-reference marks."""
-        used_footnotes: set[str] = set()
+        footnote_by_paragraph = self._footnote_assignments(claims)
         for index, node in enumerate(self.nodes):
             content = node.content
             if not isinstance(content, generated.RichText) or not content.text:
@@ -654,7 +663,7 @@ class _Recovery:
             marks = list(content.marks)
             marks.extend(inline_equation_marks(content.text))
             marks.extend(self._citation_marks(node, content.text, claims))
-            marks.extend(self._footnote_marks(node, content.text, claims, used_footnotes))
+            marks.extend(footnote_by_paragraph.get(node.id, []))
             if marks:
                 ordered = sorted(marks, key=lambda item: (item.start, item.end, item.type))
                 self.nodes[index] = node.model_copy(
@@ -701,40 +710,39 @@ class _Recovery:
             parent = claims.parents.get(parent)
         return node.parentId in self._bibliography_ids
 
-    def _footnote_marks(
-        self,
-        node: generated.SemanticNode,
-        text: str,
-        claims: _Claims,
-        used: set[str],
-    ) -> list[generated.InlineMark]:
-        if not claims.footnotes_by_label:
-            return []
-        pages = {
-            region.pageId
-            for region_id in node.attributes.get("layoutRegionIds", [])
-            if (region := self._regions_by_id.get(str(region_id))) is not None
-        }
-        marks: list[generated.InlineMark] = []
-        for start, end, label in body_reference_spans(text, set(claims.footnotes_by_label)):
-            if label in used:
+    def _footnote_assignments(self, claims: _Claims) -> dict[str, list[generated.InlineMark]]:
+        """Best-span footnote marks grouped by host paragraph."""
+        paragraphs: list[ParagraphWindow] = []
+        for node in self.nodes:
+            if node.kind != "PARAGRAPH" or not isinstance(node.content, generated.RichText):
                 continue
-            footnote_pages = claims.footnote_pages[label]
-            if pages and footnote_pages and not (pages & footnote_pages):
-                continue  # same marker, different page
-            used.add(label)
-            target = claims.footnotes_by_label[label]
-            marks.append(
+            pages = {
+                region.pageId
+                for region_id in node.attributes.get("layoutRegionIds", [])
+                if (region := self._regions_by_id.get(str(region_id))) is not None
+            }
+            paragraphs.append(
+                ParagraphWindow(node_id=node.id, text=node.content.text, page_ids=frozenset(pages))
+            )
+        assignments, messages = assign_footnote_references(paragraphs, claims.footnotes)
+        for message in messages:
+            mentioned = [body.node_id for body in claims.footnotes if body.node_id in message]
+            if not mentioned:
+                mentioned = [body.node_id for body in claims.footnotes if body.label in message]
+            self.issue("SOURCE_MAPPING", message, mentioned)
+        marks_by_paragraph: dict[str, list[generated.InlineMark]] = {}
+        for assignment in assignments:
+            marks_by_paragraph.setdefault(assignment.paragraph_id, []).append(
                 generated.InlineMark(
                     type="FOOTNOTE_REFERENCE",
-                    start=start,
-                    end=end,
-                    targetNodeId=target,
-                    label=label,
+                    start=assignment.start,
+                    end=assignment.end,
+                    targetNodeId=assignment.footnote_id,
+                    label=assignment.label,
                 )
             )
-            self.relation("FOOTNOTE_OF", target, node.id)
-        return marks
+            self.relation("FOOTNOTE_OF", assignment.footnote_id, assignment.paragraph_id)
+        return marks_by_paragraph
 
     # ------------------------------------------------------------ finalize
     def _wire_children(self) -> None:
@@ -744,6 +752,91 @@ class _Recovery:
                 children.setdefault(node.parentId, []).append(node.id)
         for index, node in enumerate(self.nodes):
             self.nodes[index] = node.model_copy(update={"children": children.get(node.id, [])})
+
+    def _attach_provenance(self, document_id: str) -> tuple[list[str], generated.ProvenanceStore]:
+        """Write recovery records for every node and relation."""
+        records: list[generated.ProvenanceRecord] = []
+        document_record_id = stable_uuid(self._layout.id, "sem-prov", "document", document_id)
+        records.append(
+            generated.ProvenanceRecord(
+                id=document_record_id,
+                producer=SEMANTIC_PRODUCER,
+                producerVersion=SEMANTIC_PRODUCER_VERSION,
+                operation="semantic-recovery",
+                inputRefs=[self._layout.id],
+            )
+        )
+        nodes: list[generated.SemanticNode] = []
+        for node in self.nodes:
+            record_id = stable_uuid(self._layout.id, "sem-prov", "node", node.id)
+            records.append(
+                generated.ProvenanceRecord(
+                    id=record_id,
+                    producer=SEMANTIC_PRODUCER,
+                    producerVersion=SEMANTIC_PRODUCER_VERSION,
+                    operation=_operation_for(node),
+                    inputRefs=self._input_refs(node),
+                )
+            )
+            nodes.append(node.model_copy(update={"provenanceIds": [record_id]}))
+        self.nodes = nodes
+        relations: list[generated.SemanticRelation] = []
+        for relation in self.relations:
+            record_id = stable_uuid(self._layout.id, "sem-prov", "rel", relation.id)
+            records.append(
+                generated.ProvenanceRecord(
+                    id=record_id,
+                    producer=SEMANTIC_PRODUCER,
+                    producerVersion=SEMANTIC_PRODUCER_VERSION,
+                    operation=f"relation-{relation.type.lower().replace('_', '-')}",
+                    inputRefs=[relation.source, relation.target],
+                )
+            )
+            relations.append(relation.model_copy(update={"provenanceIds": [record_id]}))
+        self.relations = relations
+        self._provenance_records = records
+        return [document_record_id], generated.ProvenanceStore(records=records)
+
+    def _input_refs(self, node: generated.SemanticNode) -> list[str]:
+        raw = node.attributes.get("layoutRegionIds")
+        region_ids = (
+            [item for item in cast("list[object]", raw) if isinstance(item, str)]
+            if isinstance(raw, list)
+            else []
+        )
+        refs: list[str] = []
+        for region_id in region_ids:
+            refs.append(region_id)
+            region = self._regions_by_id.get(region_id)
+            if region is not None:
+                refs.extend(region.provenanceIds)
+        return refs or [self._layout.id]
+
+
+def _operation_for(node: generated.SemanticNode) -> str:
+    """Stable operation name for one recovered node."""
+    reason = node.confidence.reason or ""
+    if node.kind == "DOCUMENT":
+        return "document-root"
+    if node.kind == "FRONT_MATTER":
+        return "front-matter"
+    if node.kind == "SECTION":
+        return "section-open"
+    if node.kind == "BIBLIOGRAPHY":
+        return "bibliography-recovery"
+    if "merge" in reason:
+        return "paragraph-merge"
+    return {
+        "HEADING": "heading-recovery",
+        "PARAGRAPH": "paragraph-recovery",
+        "FIGURE": "figure-recovery",
+        "FIGURE_CAPTION": "caption-recovery",
+        "TABLE": "table-recovery",
+        "TABLE_CAPTION": "caption-recovery",
+        "EQUATION": "equation-recovery",
+        "FOOTNOTE": "footnote-recovery",
+        "BIBLIOGRAPHY_ENTRY": "bibliography-entry",
+    }.get(node.kind, "semantic-recovery")
 
 
 def _chain_runs(

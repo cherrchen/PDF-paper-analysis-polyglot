@@ -41,7 +41,8 @@ _SCALAR_ID_KEYS = frozenset(
     }
 )
 # Region-id lists (multi-fragment anchors) canonicalize element-wise.
-_LIST_ID_KEYS = frozenset({"children", "provenanceIds", "layoutRegionIds"})
+# Provenance inputRefs are layout region / record IDs derived from the PDF.
+_LIST_ID_KEYS = frozenset({"children", "provenanceIds", "layoutRegionIds", "inputRefs"})
 
 
 def _canonicalize_semantic(payload: object) -> object:
