@@ -14,7 +14,7 @@ LaTeX source → latexmk / LuaLaTeX → PDF
 
 ## Tier 1 合成语料
 
-仓库内首批 10 篇 Tier 1 benchmark 文档，源文件位于 `tests/fixtures/source/latex/`：
+仓库内 Tier 1 benchmark 文档（12 篇），源文件位于 `tests/fixtures/source/latex/`：
 
 ```text
 smoke                  — 单栏基线
@@ -27,6 +27,8 @@ bibliography           — Bibliography
 cross-page-paragraph   — 跨页 Paragraph
 mixed-bands            — 全宽 band + 双栏
 tikz-vector            — 复杂 Vector Figure
+figure-caption         — 栅格 Figure + caption
+paper-anatomy          — 论文解剖综合夹具（M4 Exit Gate：标题块、Abstract、嵌套 section、Figure、Table、编号 Equation、Footnote、Bibliography + 引用）
 ```
 
 Tier 4 扫描 PDF 不提交进仓库；占位元数据见 `tests/fixtures/metadata/scanned-external.yaml`。

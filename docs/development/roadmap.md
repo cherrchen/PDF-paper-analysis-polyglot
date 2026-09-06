@@ -12,10 +12,10 @@
 
 ## 当前进度追踪
 
-**最后更新：** 2026-09-05
-**当前位置：** M3 Layout Recovery Engine 完成（Phase 3.1–3.8 全部完成，Exit Gate 经审查修复后达成）；下一阶段为 M4（Semantic Recovery Engine）。
+**最后更新：** 2026-09-06
+**当前位置：** M4 Semantic Recovery Engine 完成（Phase 4.1–4.9 全部完成，Exit Gate 经 paper-anatomy 夹具与 semantic benchmark 机械验证）；下一阶段为 M5（Translation & Rendering）。
 
-README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine。
+README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery Engine。
 
 ### Milestone 总览
 
@@ -25,7 +25,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M1 Core Document Contracts | 已完成 | 六套 schema `0.1.0`；生成绑定 + 跨语言 roundtrip |
 | M2 Walking Skeleton | 已完成 | 11 个 Tier-1 fixture 全链通过；独立 Translation/Render IR、旋转坐标与双向 Viewer 已重新验收 |
 | M3 Layout Recovery Engine | 已完成 | Evidence 适配边界 + mock provider、XY-cut band/column、结构驱动 ReadingFlowGraph、continuation/caption/footnote 恢复；Exit Gate 经审查修复后达成 |
-| M4 Semantic Recovery Engine | 未开始 | — |
+| M4 Semantic Recovery Engine | 已完成 | CONTINUATION 段落合并（多 fragment SourceAnchor）、编号 heading + SECTION 树 + FRONT_MATTER、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复、CITATION/FOOTNOTE_REFERENCE marks、SemanticValidator；exit-gate 夹具 paper-anatomy |
 | M5 Translation & Rendering | 未开始 | — |
 | M6 Bidirectional Reader | 未开始 | — |
 | M7 Parser Ensemble & Quality | 未开始 | — |
@@ -84,9 +84,25 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 **M3 Exit Gate：** 审查修复后达成（见 [`.agents/notes/implemented/bug-fix/2026-09-05-m3-review-repairs.md`](../../.agents/notes/implemented/bug-fix/2026-09-05-m3-review-repairs.md)；架构决策见 [M3 落地 note](../../.agents/notes/implemented/architecture/2026-09-05-m3-layout-recovery-engine.md)）
 
+### M4 明细
+
+| Phase | 状态 | 证据 |
+| --- | --- | --- |
+| 4.1 Paragraph Recovery | 已完成 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；1→1 / N→1（跨栏、跨页、figure 打断）；连字符去断；`test_semantic.py::test_merged_paragraphs_carry_all_source_regions` + benchmark |
+| 4.2 Heading & Section Recovery | 已完成 | `sem_sections`：编号 pattern → level（`1.1` = 2），SECTION 树嵌套，FRONT_MATTER（title/author/date/abstract）；paper-anatomy 断言 headingLevels [1,2] |
+| 4.3 Figure Recovery | 已完成 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；subfigure 按 Roadmap 标记为 optional 未做 |
+| 4.4 Table Recovery | 已完成 | `sem_tables`：TABLE_STRUCTURE evidence 优先，行 fallback（永不为空 cells）；benchmark `tableCellsMin` |
+| 4.5 Equation Recovery | 已完成 | `sem_equations`：FORMULA/CONTINUATION 链 → EQUATION + `number`（anyOf 兜底 rawText，不丢内容）；INLINE_EQUATION marks |
+| 4.6 Footnote Semantic Recovery | 已完成 | `sem_footnotes`：FOOTNOTE_OF 关系 + `FOOTNOTE_REFERENCE` mark（schema additive patch，见 M4 note） |
+| 4.7 Bibliography & Citation | 已完成 | `sem_bibliography`：BIBLIOGRAPHY/BIBLIOGRAPHY_ENTRY/CITATION marks/CITES；未解析编号保留文本 + issue |
+| 4.8 Source Anchoring | 已完成 | `attributes.layoutRegionIds` → 多 fragment SourceAnchor（N→1 原生）；benchmark `multiFragmentAnchors` |
+| 4.9 Semantic Validation | 已完成 | `sem_validate`：orphan/树/绑定/引用/caption/覆盖率检查，接入 `run_pipeline`，`test_semantic_validate.py` 逐项验证检测生效 |
+
+**M4 Exit Gate：** 达成——`paper-anatomy` 夹具单篇恢复 Title/Abstract/Sections/Paragraphs/Figures/Tables/Equations/Footnotes/Bibliography/Citations 与完整 Source Mapping；`tests/benchmark/test_semantic_benchmark.py` 对 12 个夹具机械断言 kinds/关系/marks/覆盖率/零 ERROR（架构决策见 [M4 落地 note](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md)）
+
 ### 建议下一步
 
-1. 进入 M4：Semantic Recovery Engine——段落合并（消费 CONTINUATION evidence）、表格/公式节点、FOOTNOTE_OF 关系、章节层级。
+1. 进入 M5：Translation & Rendering——真实翻译 provider 接入、RenderDocument 的表格/公式排版、RenderProfile/RenderPolicy 与 SourceDerivedProfile。
 
 ### 维护说明
 
