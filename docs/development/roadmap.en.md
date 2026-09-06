@@ -8,6 +8,10 @@ Status: Master development roadmap after architecture freeze
 Scope: From project initialization through core IR, PDF Recovery, Semantic Recovery, Translation, LaTeX Rendering, bidirectional PDF Viewer, to productionization
 Audience: Project maintainers, developers, coding agents, reviewers
 
+Product requirements authority: [`docs/product/requirements.en.md`](../product/requirements.en.md) (PRD v0.2, supersedes v0.1; change record in [`.agents/notes/implemented/process/2026-09-06-product-requirements-v02.en.md`](../../.agents/notes/implemented/process/2026-09-06-product-requirements-v02.en.md)).
+
+Initial Product constraints (from PRD v0.2): born-digital PDF only; default single-column translation-only Target PDF; references and figure in-image text not translated; local-first; Source/Target dual-document viewer.
+
 Authoritative architecture contract: [`docs/architecture/document-architecture.en.md`](../architecture/document-architecture.en.md) (Document Architecture v0.1, frozen).
 
 ## Current Progress
@@ -102,7 +106,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 ### Recommended next steps
 
-1. Enter M5: Translation & Rendering—real translation provider wiring, table/equation typesetting in RenderDocument, RenderProfile/RenderPolicy and SourceDerivedProfile.
+1. Enter M5: Translation & Rendering—real translation provider wiring, table/equation typesetting in RenderDocument, default `readable-single-column` RenderProfile/RenderPolicy (`SourceDerivedProfile` is Post-Initial R2 per PRD §23), references not translated (PRD FR-CITE-004).
 
 ### Maintenance
 

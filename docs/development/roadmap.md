@@ -8,6 +8,10 @@
 适用范围：项目从初始化、核心 IR、PDF Recovery、Semantic Recovery、Translation、LaTeX Rendering、双向 PDF Viewer，直到生产化
 目标读者：项目维护者、开发者、Coding Agent、Reviewer
 
+产品需求权威：[`docs/product/requirements.md`](../product/requirements.md)（PRD v0.2，取代 v0.1；变更记录见 [`.agents/notes/implemented/process/2026-09-06-product-requirements-v02.md`](../../.agents/notes/implemented/process/2026-09-06-product-requirements-v02.md)）。
+
+Initial Product 关键约束（摘自 PRD v0.2）：仅 Born-digital PDF；Target PDF 默认单栏纯译文；References 与 Figure 内文字不翻译；Local-first；Source/Target 双文档 Viewer。
+
 权威架构契约：[`docs/architecture/document-architecture.md`](../architecture/document-architecture.md)（Document Architecture v0.1，已冻结）。
 
 ## 当前进度追踪
@@ -102,7 +106,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 ### 建议下一步
 
-1. 进入 M5：Translation & Rendering——真实翻译 provider 接入、RenderDocument 的表格/公式排版、RenderProfile/RenderPolicy 与 SourceDerivedProfile。
+1. 进入 M5：Translation & Rendering——真实翻译 provider 接入、RenderDocument 的表格/公式排版、默认 `readable-single-column` 的 RenderProfile/RenderPolicy（`SourceDerivedProfile` 属 Post-Initial R2，见 PRD §23）、References 不翻译（PRD FR-CITE-004）。
 
 ### 维护说明
 
