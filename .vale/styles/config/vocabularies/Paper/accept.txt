@@ -117,3 +117,16 @@ rawText
 subfigures
 thebibliography
 unicodeText
+composable
+deduplicated
+deserializable
+diagnosability
+docstring
+inputRefs
+inspectable
+persistable
+repaginated
+repagination
+unbumped
+unprocessable
+versionable
