@@ -4,31 +4,31 @@
 
 渲染架构见 [`document-architecture.md`](document-architecture.md) 第 25–32 节。
 
-当前实现路径（M2–M4）：
+当前实现路径（M5）：
 
 ```text
 SemanticDocument
 +
 TranslationLayer
       ↓
-compose_render_document(semantic, translation)
+compose_render_document(semantic, translation, profile, policy, resources)
       ↓
-RenderDocument
+RenderDocument  (HEADING / PARAGRAPH / FIGURE / TABLE / EQUATION / BIBLIOGRAPHY)
       ↓
-LaTeX Backend
+LaTeX Backend  (generic-academic.tex + profile 参数)
       ↓
 LuaLaTeX
       ↓
 PDF
 ```
 
-冻结架构第 26–32 节中的 RenderProfile / RenderPolicy 是 M5 的目标接口。现行 `compose_render_document` 只接受 SemanticDocument 与 TranslationLayer，内部写死 `generic-academic` profile 与 `floatFigures=True`。TABLE / EQUATION / BIBLIOGRAPHY_ENTRY 投影为段落，TABLE_CAPTION 独立输出，避免静默丢内容；真实表格与公式排版属于 M5。
+默认 Profile 为 `readable-single-column`（A4、11pt、1.25 行距、单栏）。`RenderPolicy` 控制图表浮动、宽内容降级与 caption 位置。图块可引用 `ResourceDocument` 提取的嵌入图像；表格与公式使用 `tabular` / `equation` 环境；书目条目合并为 `thebibliography`。每个内容块在目标 PDF 中生成起始与结束 hypertarget（`<nodeId>` / `<nodeId>:end`），`recover_render_anchors` 恢复为多 fragment。
 
-- 模板：`templates/latex/`
-- 翻译层契约：[`schemas/translation-layer/schema.json`](../../schemas/translation-layer/schema.json)
-- 渲染文档契约：[`schemas/render-document/schema.json`](../../schemas/render-document/schema.json)
-- 引擎策略：`tex/README.md` 与 [`docs/development/latex.md`](../development/latex.md)
-- LaTeX 后端决策：[`.agents/notes/implemented/architecture/2026-09-03-latex-as-initial-rendering-backend.md`](../../.agents/notes/implemented/architecture/2026-09-03-latex-as-initial-rendering-backend.md)
-- 文档架构 v0.1：[`.agents/notes/implemented/architecture/2026-09-03-document-architecture.md`](../../.agents/notes/implemented/architecture/2026-09-03-document-architecture.md)
+- 模板：`templates/latex/generic-academic.tex`
+- 资源提取：`pdf_pipeline.resource_store`
+- 翻译层契约：[`schemas/translation-layer/schema.json`](../../schemas/translation-layer/schema.json)（0.2.0）
+- 渲染文档契约：[`schemas/render-document/schema.json`](../../schemas/render-document/schema.json)（0.2.0）
+- 资源契约：[`schemas/resources/schema.json`](../../schemas/resources/schema.json)
+- M5 落地说明：[`.agents/notes/implemented/architecture/2026-09-08-m5-translation-rendering-pipeline.md`](../../.agents/notes/implemented/architecture/2026-09-08-m5-translation-rendering-pipeline.md)
 
-RenderComposer 把语义节点与可选译文合成为 RenderDocument；图像与 FIGURE 的 `CAPTION_OF` 标题在此阶段绑定为同一个渲染块，TABLE_CAPTION 保持独立块。LaTeX Backend 只消费 RenderDocument，不直接从 SemanticDocument 生成出版社特定 LaTeX。没有多渲染器接口；Typst 为未来扩展。
+RenderComposer 把语义节点与译文合成为 RenderDocument；FIGURE 与 `CAPTION_OF` 标题绑定为同一浮动块，TABLE_CAPTION 可绑定到 `RenderTableBlock`。LaTeX Backend 只消费 RenderDocument。没有多渲染器接口；Typst 为未来扩展。

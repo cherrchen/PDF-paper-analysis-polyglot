@@ -96,6 +96,11 @@ arXiv
 gitignored
 hyperref
 hypertarget
+hypertargets
+httpx
+SDKs
+env
+unicode
 primaryFlow
 pypdfium2
 pdfjs

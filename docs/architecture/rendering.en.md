@@ -4,31 +4,31 @@
 
 Rendering architecture: [`document-architecture.en.md`](document-architecture.en.md) sections 25–32.
 
-Live path (M2–M4):
+Live path (M5):
 
 ```text
 SemanticDocument
 +
 TranslationLayer
       ↓
-compose_render_document(semantic, translation)
+compose_render_document(semantic, translation, profile, policy, resources)
       ↓
-RenderDocument
+RenderDocument  (HEADING / PARAGRAPH / FIGURE / TABLE / EQUATION / BIBLIOGRAPHY)
       ↓
-LaTeX Backend
+LaTeX Backend  (generic-academic.tex + profile parameters)
       ↓
 LuaLaTeX
       ↓
 PDF
 ```
 
-RenderProfile / RenderPolicy in frozen architecture §§26–32 are the M5 target interface. The live `compose_render_document` takes only SemanticDocument and TranslationLayer, and hard-codes the `generic-academic` profile with `floatFigures=True`. TABLE / EQUATION / BIBLIOGRAPHY_ENTRY project to paragraphs and TABLE_CAPTION emits on its own so content is never dropped; real table and equation typesetting belongs to M5.
+The default profile is `readable-single-column` (A4, 11pt, 1.25 line spacing, single column). `RenderPolicy` controls float behavior, wide-content degradation, and caption placement. Figure blocks may reference embedded images from `ResourceDocument`; tables and equations use `tabular` / `equation` environments; bibliography entries are merged into `thebibliography`. Each content block emits start and end hypertargets (`<nodeId>` / `<nodeId>:end`); `recover_render_anchors` recovers multi-fragment anchors.
 
-- Templates: `templates/latex/`
-- Translation contract: [`schemas/translation-layer/schema.json`](../../schemas/translation-layer/schema.json)
-- Render-document contract: [`schemas/render-document/schema.json`](../../schemas/render-document/schema.json)
-- Engine policy: `tex/README.md` and [`docs/development/latex.md`](../development/latex.en.md)
-- LaTeX backend decision: [`.agents/notes/implemented/architecture/2026-09-03-latex-as-initial-rendering-backend.en.md`](../../.agents/notes/implemented/architecture/2026-09-03-latex-as-initial-rendering-backend.en.md)
-- Document Architecture v0.1: [`.agents/notes/implemented/architecture/2026-09-03-document-architecture.en.md`](../../.agents/notes/implemented/architecture/2026-09-03-document-architecture.en.md)
+- Template: `templates/latex/generic-academic.tex`
+- Resource extraction: `pdf_pipeline.resource_store`
+- Translation contract: [`schemas/translation-layer/schema.json`](../../schemas/translation-layer/schema.json) (0.2.0)
+- Render-document contract: [`schemas/render-document/schema.json`](../../schemas/render-document/schema.json) (0.2.0)
+- Resources contract: [`schemas/resources/schema.json`](../../schemas/resources/schema.json)
+- M5 landing note: [`.agents/notes/implemented/architecture/2026-09-08-m5-translation-rendering-pipeline.en.md`](../../.agents/notes/implemented/architecture/2026-09-08-m5-translation-rendering-pipeline.en.md)
 
-RenderComposer combines semantic nodes and optional translated content into a RenderDocument; it also binds a figure and its `CAPTION_OF` caption into one render block, while TABLE_CAPTION stays an independent block. The LaTeX Backend consumes RenderDocument only. It does not generate publisher-specific LaTeX directly from SemanticDocument. There is no multi-renderer interface; Typst remains a future extension.
+RenderComposer combines semantic nodes and translated content into a RenderDocument; a figure and its `CAPTION_OF` caption share one float block, and a `TABLE_CAPTION` may bind to `RenderTableBlock`. The LaTeX backend consumes RenderDocument only. There is no multi-renderer interface; Typst remains a future extension.
