@@ -86,10 +86,10 @@ def _blocks_for_node(
         ]
     if node.kind in _PARAGRAPH_KINDS and isinstance(content, generated.RichText):
         return [_paragraph(block_id, node.id, content)]
-    if node.kind == "TABLE" and isinstance(node.content, generated.TableContent):
-        # M5 renders real tables; until then project every cell so no
-        # table content is ever silently dropped from the target.
-        return [_paragraph(block_id, node.id, _table_text(node.content))]
+    if node.kind == "TABLE":
+        table_content = content if isinstance(content, generated.TableContent) else node.content
+        if isinstance(table_content, generated.TableContent):
+            return [_paragraph(block_id, node.id, _table_text(table_content))]
     if node.kind == "EQUATION" and isinstance(node.content, generated.EquationContent):
         return [_paragraph(block_id, node.id, _equation_text(node.content))]
     if node.kind == "FIGURE" and isinstance(node.content, generated.FigureContent):

@@ -1,4 +1,4 @@
-"""Phase 2.4 dummy TranslationLayer tests."""
+"""Phase 2.4 + M5 structured translation layer tests."""
 
 from __future__ import annotations
 
@@ -70,10 +70,14 @@ def test_translation_rewrites_only_text_nodes() -> None:
         for node in semantic.nodes
         if node.kind in TEXT_NODE_KINDS and isinstance(getattr(node.content, "text", None), str)
     }
-    assert {entry.semanticNodeId for entry in translation.entries} == expected_ids
+    table_ids = {node.id for node in semantic.nodes if node.kind == "TABLE"}
+    assert {entry.semanticNodeId for entry in translation.entries} == expected_ids | table_ids
     for entry in translation.entries:
+        node = original_by_id[entry.semanticNodeId]
+        if node.kind == "TABLE":
+            continue
         text = getattr(entry.content, "text", None)
-        source_text = getattr(original_by_id[entry.semanticNodeId].content, "text", None)
+        source_text = getattr(node.content, "text", None)
         assert isinstance(text, str)
         assert isinstance(source_text, str)
         assert text == f"{TRANSLATION_MARKER} {source_text}"
@@ -87,6 +91,15 @@ def test_translation_layer_validates() -> None:
     translation = translate_document(semantic)
     data = load_document("translation-layer", dump_document(translation))
     assert data == translation
+
+
+def test_translation_entries_carry_cache_keys() -> None:
+    semantic = _smoke_semantic()
+    translation = translate_document(semantic)
+    assert translation.entries
+    for entry in translation.entries:
+        assert entry.cacheKey
+        assert len(entry.cacheKey) == 16
 
 
 def test_bibliography_entries_are_not_translated() -> None:
@@ -106,11 +119,32 @@ def test_bibliography_entries_are_not_translated() -> None:
     for entry in translation.entries:
         node = by_id[entry.semanticNodeId]
         assert node.kind != "BIBLIOGRAPHY_ENTRY"
+        if node.kind == "TABLE":
+            continue
         text = getattr(entry.content, "text", None)
         source_text = getattr(node.content, "text", None)
         assert isinstance(text, str)
         assert isinstance(source_text, str)
         assert text == f"{TRANSLATION_MARKER} {source_text}"
+
+
+def test_table_cells_are_translated() -> None:
+    pytest.importorskip("document_model")
+    from document_model.generated import schema_models as generated
+
+    semantic = generated.SemanticDocument.model_validate(
+        json.loads(SEMANTIC_FIXTURE.read_text(encoding="utf-8"))
+    )
+    translation = translate_document(semantic)
+    table_node = next(node for node in semantic.nodes if node.kind == "TABLE")
+    entry = next(item for item in translation.entries if item.semanticNodeId == table_node.id)
+    assert isinstance(entry.content, generated.TableContent)
+    assert isinstance(table_node.content, generated.TableContent)
+    assert len(entry.content.cells) == len(table_node.content.cells)
+    for translated_cell, source_cell in zip(
+        entry.content.cells, table_node.content.cells, strict=True
+    ):
+        assert translated_cell.content.text == f"{TRANSLATION_MARKER} {source_cell.content.text}"
 
 
 def test_recovered_bibliography_entries_are_not_translated() -> None:
@@ -150,10 +184,16 @@ def test_dummy_translation_shifts_mark_offsets() -> None:
 
 def test_non_prefix_translation_rebuilds_marks_via_placeholders() -> None:
     from document_model.generated import schema_models as generated
+    from paper_llm.translation import TranslationRequest, TranslationResult
 
     class SurroundProvider:
-        def translate(self, text: str) -> str:
-            return f"<<{text}>>"
+        def translate_request(self, request: TranslationRequest) -> TranslationResult:
+            from paper_llm.translation import _translate_rich_text_body
+
+            text, marks = _translate_rich_text_body(
+                request.text, request.marks, lambda value: f"<<{value}>>"
+            )
+            return TranslationResult(text=text, marks=marks)
 
     mark = generated.InlineMark(
         type="FOOTNOTE_REFERENCE", start=4, end=5, targetNodeId="fn-1", label="1"
@@ -166,11 +206,16 @@ def test_non_prefix_translation_rebuilds_marks_via_placeholders() -> None:
 
 def test_rewritten_text_without_placeholders_drops_stale_marks() -> None:
     from document_model.generated import schema_models as generated
+    from paper_llm.translation import TranslationRequest, TranslationResult
 
     class ReplaceProvider:
-        def translate(self, text: str) -> str:
-            del text
-            return "fully rewritten without markers"
+        def translate_request(self, request: TranslationRequest) -> TranslationResult:
+            from paper_llm.translation import _translate_rich_text_body
+
+            text, marks = _translate_rich_text_body(
+                request.text, request.marks, lambda _value: "fully rewritten without markers"
+            )
+            return TranslationResult(text=text, marks=marks)
 
     mark = generated.InlineMark(
         type="CITATION", start=4, end=7, targetNodeId="entry-1", label="[1]"

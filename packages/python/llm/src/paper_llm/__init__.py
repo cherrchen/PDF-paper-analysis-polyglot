@@ -5,6 +5,10 @@ from __future__ import annotations
 from paper_llm.translation import (
     TRANSLATION_MARKER,
     DummyTranslationProvider,
+    TranslationContext,
+    TranslationProvider,
+    TranslationRequest,
+    TranslationResult,
     translate_document,
     translate_rich_text,
 )
@@ -12,6 +16,10 @@ from paper_llm.translation import (
 __all__ = [
     "TRANSLATION_MARKER",
     "DummyTranslationProvider",
+    "TranslationContext",
+    "TranslationProvider",
+    "TranslationRequest",
+    "TranslationResult",
     "provider_status",
     "translate_document",
     "translate_rich_text",

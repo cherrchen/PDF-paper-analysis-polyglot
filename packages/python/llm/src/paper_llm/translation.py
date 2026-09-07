@@ -1,61 +1,134 @@
-"""Phase 2.4 dummy translation layer.
+"""M5 translation layer: structured provider protocol and TranslationLayer builder.
 
-Minimal TranslationLayer implementation: prefixes every translatable entry
-with ``[TRANSLATED]`` while leaving SemanticDocument untouched.
-
-Rich-text contract: marks are never copied at source offsets after the
-text changes. A fixed prefix shifts offsets; any other rewrite protects
-marked spans with placeholders and rebuilds them at the new locations.
-Lost placeholders drop the marks rather than pointing at the wrong
-characters.
+Rich-text contract: marks are never copied at source offsets after the text
+changes. Providers receive a ``TranslationRequest`` with marks and context;
+the engine protects marked spans with placeholders before delegating plain
+text to the provider, then rebuilds marks at the new offsets. Lost
+placeholders drop the marks rather than pointing at the wrong characters.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
-from typing import Protocol
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from document_model import stable_uuid
 from document_model.generated import schema_models as generated
 
 TRANSLATION_MARKER = "[TRANSLATED]"
 
-# Node kinds whose text content is translated. BIBLIOGRAPHY_ENTRY is
+# Node kinds whose RichText content is translated. BIBLIOGRAPHY_ENTRY is
 # excluded (PRD FR-CITE-004): reference entries stay in the source
 # language. RenderComposer falls back to SemanticDocument text.
-TEXT_NODE_KINDS = frozenset({"HEADING", "PARAGRAPH", "FIGURE_CAPTION", "TABLE_CAPTION"})
+TEXT_NODE_KINDS = frozenset({"HEADING", "PARAGRAPH", "FIGURE_CAPTION", "TABLE_CAPTION", "FOOTNOTE"})
+
+# Marks whose spans must survive translation via placeholder protection.
+_PROTECTED_MARK_TYPES = frozenset(
+    {
+        "CITATION",
+        "FIGURE_REFERENCE",
+        "TABLE_REFERENCE",
+        "EQUATION_REFERENCE",
+        "SECTION_REFERENCE",
+        "INLINE_EQUATION",
+        "FOOTNOTE_REFERENCE",
+        "LINK",
+    }
+)
 
 # Placeholders must survive a dummy prefix and not appear in papers.
 _PLACEHOLDER = "⟦{index}⟧"
 _PLACEHOLDER_PATTERN = re.compile(r"⟦(\d+)⟧")
 
 
-class TranslationProvider(Protocol):
-    """Minimal translation interface for the Walking Skeleton."""
+@dataclass(frozen=True)
+class TranslationContext:
+    """Structured context passed to providers (expanded in Phase 5.2)."""
 
-    def translate(self, text: str) -> str: ...
+    target_locale: str = ""
+    source_locale: str | None = None
+    document_title: str | None = None
+    section_path: tuple[str, ...] = ()
+    preceding_text: str | None = None
+    following_text: str | None = None
+
+
+@dataclass(frozen=True)
+class TranslationRequest:
+    """One translatable text segment with marks and context."""
+
+    text: str
+    marks: list[generated.InlineMark] = field(default_factory=list)
+    context: TranslationContext = field(default_factory=TranslationContext)
+    terminology: tuple[generated.Term, ...] = ()
+    node_kind: str | None = None
+    semantic_node_id: str | None = None
+
+
+@dataclass(frozen=True)
+class TranslationResult:
+    """Provider output for one translated segment."""
+
+    text: str
+    marks: list[generated.InlineMark] = field(default_factory=list)
+    confidence: float = 1.0
+
+
+class TranslationProvider(Protocol):
+    """Structured translation interface for M5 providers."""
+
+    def translate_request(self, request: TranslationRequest) -> TranslationResult: ...
 
 
 class DummyTranslationProvider:
     """Prefixes text with the marker; no real translation happens."""
 
-    def translate(self, text: str) -> str:
+    def translate_request(self, request: TranslationRequest) -> TranslationResult:
+        text, marks = _translate_rich_text_body(request.text, request.marks, self._translate_text)
+        return TranslationResult(text=text, marks=marks, confidence=1.0)
+
+    def _translate_text(self, text: str) -> str:
         return f"{TRANSLATION_MARKER} {text}"
+
+    def translate(self, text: str) -> str:
+        """Legacy convenience for tests that call the provider directly."""
+        return self._translate_text(text)
 
 
 def translate_rich_text(
     text: str,
     marks: list[generated.InlineMark],
     provider: TranslationProvider,
+    *,
+    context: TranslationContext | None = None,
 ) -> tuple[str, list[generated.InlineMark]]:
     """Translate ``text`` and rebuild marks at the translated offsets."""
+    request = TranslationRequest(text=text, marks=marks, context=context or TranslationContext())
+    result = provider.translate_request(request)
+    return result.text, result.marks
+
+
+def _translate_rich_text_body(
+    text: str,
+    marks: list[generated.InlineMark],
+    translate_text: Callable[[str], str],
+) -> tuple[str, list[generated.InlineMark]]:
+    """Core rich-text engine: protect marks, translate, rebuild offsets."""
     if not marks:
-        return provider.translate(text), []
-    translated = provider.translate(text)
-    prefix_shift = _prefix_shift(text, translated)
-    if prefix_shift is not None:
-        return translated, _shift_marks(marks, prefix_shift, len(translated))
-    return _translate_with_placeholders(text, marks, provider)
+        return translate_text(text), []
+    protected_marks = [mark for mark in marks if mark.type in _PROTECTED_MARK_TYPES]
+    if not protected_marks:
+        translated = translate_text(text)
+        prefix_shift = _prefix_shift(text, translated)
+        if prefix_shift is not None:
+            return translated, _shift_marks(marks, prefix_shift, len(translated))
+        return _translate_with_placeholders(text, marks, translate_text)
+    return _translate_with_placeholders(text, protected_marks, translate_text)
 
 
 def _prefix_shift(source: str, translated: str) -> int | None:
@@ -82,7 +155,7 @@ def _shift_marks(
 def _translate_with_placeholders(
     text: str,
     marks: list[generated.InlineMark],
-    provider: TranslationProvider,
+    translate_text: Callable[[str], str],
 ) -> tuple[str, list[generated.InlineMark]]:
     """Protect marked spans, translate, then restore marks at new offsets."""
     spans = _merged_mark_spans(marks)
@@ -92,7 +165,7 @@ def _translate_with_placeholders(
         originals.append(text[start:end])
         protected = protected[:start] + _PLACEHOLDER.format(index=index) + protected[end:]
     originals.reverse()
-    translated_protected = provider.translate(protected)
+    translated_protected = translate_text(protected)
     rebuilt, new_marks = _restore_placeholders(translated_protected, originals, marks, spans)
     return rebuilt, new_marks
 
@@ -155,42 +228,155 @@ def _span_index_for_mark(mark: generated.InlineMark, spans: list[tuple[int, int]
     return None
 
 
+def _cache_key(
+    *,
+    semantic_node_id: str,
+    content_digest: str,
+    target_locale: str,
+    provider_model: str,
+    terminology_revision: str,
+) -> str:
+    payload = (
+        f"{semantic_node_id}:{content_digest}:{target_locale}:"
+        f"{provider_model}:{terminology_revision}"
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+
+def _content_digest(content: generated.NodeContent) -> str:
+    return hashlib.sha256(content.model_dump_json().encode()).hexdigest()[:16]
+
+
+def _translate_table_content(
+    content: generated.TableContent,
+    provider: TranslationProvider,
+    context: TranslationContext,
+    *,
+    node_kind: str,
+    semantic_node_id: str,
+) -> generated.TableContent:
+    """Translate every table cell while preserving grid shape (FR-TRANS-002)."""
+    cells: list[generated.TableCell] = []
+    for cell in content.cells:
+        request = TranslationRequest(
+            text=cell.content.text,
+            marks=list(cell.content.marks),
+            context=context,
+            node_kind=node_kind,
+            semantic_node_id=semantic_node_id,
+        )
+        result = provider.translate_request(request)
+        cells.append(
+            cell.model_copy(
+                update={
+                    "content": cell.content.model_copy(
+                        update={"text": result.text, "marks": result.marks}
+                    )
+                }
+            )
+        )
+    return content.model_copy(update={"cells": cells})
+
+
 def translate_document(
     semantic: generated.SemanticDocument,
     provider: TranslationProvider | None = None,
+    *,
+    target_locale: str = "und-x-dummy",
+    source_locale: str | None = None,
+    terminology: list[generated.Term] | None = None,
+    terminology_revision: str = "rev-0",
+    provider_model: str = "dummy",
 ) -> generated.TranslationLayer:
-    """Build an independent dummy TranslationLayer for ``semantic``.
-
-    SemanticDocument remains untouched. Entries reference stable node IDs and
-    contain only locale-specific generated content.
-    """
+    """Build a TranslationLayer for ``semantic`` without mutating it."""
     provider = provider or DummyTranslationProvider()
+    terminology_tuple = tuple(terminology or ())
+    base_context = TranslationContext(
+        target_locale=target_locale,
+        source_locale=source_locale,
+    )
     entries: list[generated.TranslationEntry] = []
     for node in semantic.nodes:
+        if node.kind == "TABLE" and isinstance(node.content, generated.TableContent):
+            translated = _translate_table_content(
+                node.content,
+                provider,
+                base_context,
+                node_kind=node.kind,
+                semantic_node_id=node.id,
+            )
+            entries.append(
+                _make_entry(
+                    node.id,
+                    translated,
+                    provider_model=provider_model,
+                    terminology_revision=terminology_revision,
+                    target_locale=target_locale,
+                )
+            )
+            continue
         text = getattr(node.content, "text", None)
         if node.kind in TEXT_NODE_KINDS and isinstance(text, str):
             source = node.content
             if not isinstance(source, generated.RichText):
                 continue
-            translated_text, marks = translate_rich_text(source.text, list(source.marks), provider)
-            content = source.model_copy(update={"text": translated_text, "marks": marks})
+            request = TranslationRequest(
+                text=source.text,
+                marks=list(source.marks),
+                context=base_context,
+                terminology=terminology_tuple,
+                node_kind=node.kind,
+                semantic_node_id=node.id,
+            )
+            result = provider.translate_request(request)
+            content = source.model_copy(update={"text": result.text, "marks": result.marks})
             entries.append(
-                generated.TranslationEntry(
-                    semanticNodeId=node.id,
-                    content=content,
-                    confidence=1.0,
-                    providerModel="dummy",
-                    provenanceIds=[],
+                _make_entry(
+                    node.id,
+                    content,
+                    confidence=result.confidence,
+                    provider_model=provider_model,
+                    terminology_revision=terminology_revision,
+                    target_locale=target_locale,
                 )
             )
-    target_locale = "und-x-dummy"
-    return generated.TranslationLayer(
-        schemaVersion="0.2.0",
-        id=stable_uuid(semantic.id, "translation-layer", target_locale),
-        semanticDocumentId=semantic.id,
-        targetLocale=target_locale,
-        providerModel="dummy",
-        terminologyRevision="rev-0",
-        entries=entries,
+    layer_kwargs: dict[str, object] = {
+        "schemaVersion": "0.2.0",
+        "id": stable_uuid(semantic.id, "translation-layer", target_locale),
+        "semanticDocumentId": semantic.id,
+        "targetLocale": target_locale,
+        "providerModel": provider_model,
+        "terminologyRevision": terminology_revision,
+        "entries": entries,
+        "provenanceIds": [],
+    }
+    if source_locale is not None:
+        layer_kwargs["sourceLocale"] = source_locale
+    if terminology_tuple:
+        layer_kwargs["terminology"] = list(terminology_tuple)
+    return generated.TranslationLayer(**layer_kwargs)
+
+
+def _make_entry(
+    semantic_node_id: str,
+    content: generated.NodeContent,
+    *,
+    confidence: float = 1.0,
+    provider_model: str,
+    terminology_revision: str,
+    target_locale: str,
+) -> generated.TranslationEntry:
+    return generated.TranslationEntry(
+        semanticNodeId=semantic_node_id,
+        content=content,
+        confidence=confidence,
+        providerModel=provider_model,
+        cacheKey=_cache_key(
+            semantic_node_id=semantic_node_id,
+            content_digest=_content_digest(content),
+            target_locale=target_locale,
+            provider_model=provider_model,
+            terminology_revision=terminology_revision,
+        ),
         provenanceIds=[],
     )
