@@ -135,3 +135,10 @@ repagination
 unbumped
 unprocessable
 versionable
+beamer
+Fandol
+FandolSong
+luatexja
+stdlib
+uplatex
+xetex
