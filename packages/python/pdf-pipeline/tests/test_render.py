@@ -104,6 +104,7 @@ def test_end_to_end_pipeline_runs_and_validates(tmp_path: Path) -> None:
         "translation.json",
         "render.json",
         "mapping.json",
+        "resources.json",
     ):
         path = tmp_path / "out" / name
         assert path.exists(), name
@@ -152,14 +153,14 @@ def test_bibliography_entries_render_in_source_language() -> None:
     entry_ids = {node.id for node in entries}
     assert entry_ids.isdisjoint({item.semanticNodeId for item in translation.entries})
     source_by_id = {node.id: node for node in entries}
-    rendered = [block for block in render.blocks if entry_ids.intersection(block.semanticNodeIds)]
-    assert len(rendered) == len(entries)
-    for block in rendered:
-        content = getattr(block, "content", None)
-        text = getattr(content, "text", None)
-        assert isinstance(text, str)
+    bibliography_blocks = [block for block in render.blocks if block.renderKind == "BIBLIOGRAPHY"]
+    assert bibliography_blocks
+    rendered_entries = bibliography_blocks[0].entries
+    assert len(rendered_entries) == len(entries)
+    for entry in rendered_entries:
+        text = entry.content.text
         assert TRANSLATION_MARKER not in text
-        source = source_by_id[block.semanticNodeIds[0]]
+        source = source_by_id[entry.semanticNodeId]
         source_text = getattr(source.content, "text", None)
         assert isinstance(source_text, str)
         assert text == source_text
@@ -210,4 +211,5 @@ def _kind(name: str) -> str:
         "translation.json": "translation-layer",
         "render.json": "render-document",
         "mapping.json": "mapping",
+        "resources.json": "resources",
     }[name]

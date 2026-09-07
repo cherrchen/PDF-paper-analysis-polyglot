@@ -21,6 +21,9 @@ import pypdfium2 as pdfium
 from document_model import dump_document, validate_bundle_references
 from document_model.generated import schema_models as generated
 from paper_llm import translate_document
+from paper_llm.cache import TranslationCache
+from paper_llm.config import TranslationConfig, load_translation_config
+from paper_llm.translation import create_provider
 
 from pdf_pipeline.evidence.providers import MockLayoutEvidenceProvider
 from pdf_pipeline.fusion import RegionLine
@@ -32,12 +35,13 @@ from pdf_pipeline.render_anchor import (
     build_mapping_bundle,
     recover_render_anchors,
 )
-from pdf_pipeline.render_composer import compose_render_document
+from pdf_pipeline.render_composer import DEFAULT_POLICY, DEFAULT_PROFILE, compose_render_document
 from pdf_pipeline.render_latex import (
     compile_latex,
     project_to_latex,
     render_target_document_id,
 )
+from pdf_pipeline.resource_store import extract_resource_document
 from pdf_pipeline.sem_validate import validate_semantic_recovery
 from pdf_pipeline.semantic import recover_semantic_document
 
@@ -209,10 +213,15 @@ def run_pipeline(
     out_dir: Path,
     *,
     viewer_data_dir: Path | None = None,
+    translation_config: TranslationConfig | None = None,
 ) -> dict[str, Path]:
     """Run the full Walking Skeleton pipeline; return produced artifact paths."""
     data = source_pdf.read_bytes()
     out_dir.mkdir(parents=True, exist_ok=True)
+    config = translation_config or load_translation_config()
+    cache = None
+    if config.cache_dir is not None:
+        cache = TranslationCache(config.cache_dir / "translation-cache.jsonl")
 
     capability = probe_input_capability(data)
     if not capability.usable:
@@ -238,10 +247,31 @@ def run_pipeline(
                 "issues": store.model_copy(update={"issues": [*store.issues, *recovery_issues]})
             }
         )
-    translation = translate_document(semantic)
-    render = compose_render_document(semantic, translation)
+    provider = None
+    provider_model = "dummy"
+    if config.provider is not None:
+        provider = create_provider(provider_model="openai-compat")
+        provider_model = f"openai-compat:{config.provider.model}"
+    translation = translate_document(
+        semantic,
+        provider,
+        target_locale=config.target_locale,
+        source_locale=config.source_locale,
+        terminology_file=config.terminology_file,
+        provider_model=provider_model,
+        cache=cache,
+    )
+    resource_dir = out_dir / "resources"
+    resources = extract_resource_document(data, resource_dir=resource_dir)
+    render = compose_render_document(
+        semantic,
+        translation,
+        profile=DEFAULT_PROFILE,
+        policy=DEFAULT_POLICY,
+        resources=resources.resources,
+    )
 
-    tex = project_to_latex(render)
+    tex = project_to_latex(render, resource_dir=resource_dir)
     target_pdf = compile_latex(tex, out_dir / "build")
 
     render_anchors = recover_render_anchors(target_pdf, semantic)
@@ -263,6 +293,7 @@ def run_pipeline(
         "translation.json": translation,
         "render.json": render,
         "mapping.json": mapping,
+        "resources.json": resources,
     }
     paths: dict[str, Path] = {}
     for name, document in outputs.items():

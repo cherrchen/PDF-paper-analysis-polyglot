@@ -1,19 +1,18 @@
-% generic-academic.tex — Minimal LaTeX template for the M2 Walking Skeleton.
-% Projection code fills the body; the template owns presentation only.
-% Supported node kinds: heading (\section), paragraph, figure, caption.
+% generic-academic.tex — M5 readable-single-column LaTeX template.
+% Projection code fills profile settings and the body.
 \documentclass[11pt,a4paper]{article}
-
+% PROFILE
 \usepackage{fontspec}
 \usepackage{graphicx}
 \usepackage{geometry}
+\usepackage{amsmath}
 \usepackage{hyperref}
 
 \geometry{margin=25mm}
 \setmainfont{Latin Modern Roman}
 
-% RenderAnchor markers: invisible zero-size hooks with a PDF destination per
-% semantic node. The projection layer emits one per node.
-\newcommand{\renderanchor}[1]{\raisebox{\baselineskip}[0pt][0pt]{\hypertarget{#1}{}}}
+\newcommand{\renderanchor}[1]{\hypertarget{#1}{}}
+\newcommand{\renderanchorend}[1]{\hypertarget{#1:end}{}}
 
 \setcounter{secnumdepth}{0}
 

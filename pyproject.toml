@@ -89,6 +89,7 @@ ignore = ["ISC001", "PLR0913", "PLR2004", "TRY003"]
 ]
 # NormalizedCandidate mirrors the canonical Evidence schema field names
 # (camelCase) so candidates round-trip through the contract untouched.
+"packages/python/pdf-pipeline/src/pdf_pipeline/math_latex.py" = ["RUF001"]
 "packages/python/pdf-pipeline/src/pdf_pipeline/evidence/normalize.py" = ["N815"]
 "scripts/**/*.py" = [
   "INP001",

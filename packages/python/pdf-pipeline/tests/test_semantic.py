@@ -107,6 +107,9 @@ def test_table_caption_survives_render() -> None:
     texts: list[str] = []
     node_ids: list[str] = []
     for block in render.blocks:
+        if block.renderKind == "BIBLIOGRAPHY":
+            node_ids.extend(entry.semanticNodeId for entry in block.entries)
+            continue
         node_ids.extend(block.semanticNodeIds)
         content = getattr(block, "content", None)
         text = getattr(content, "text", None) if content is not None else None

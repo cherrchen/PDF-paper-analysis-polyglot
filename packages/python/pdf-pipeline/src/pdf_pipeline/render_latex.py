@@ -1,28 +1,23 @@
-"""Phase 2.5 + 2.6: generated.RenderDocument -> LaTeX projection and compile.
-
-The projection layer is the dedicated boundary between the semantic model
-and ``templates/latex/generic-academic.tex`` (see the LaTeX render-model
-Agent Note): the template owns presentation, the projection owns structure,
-and no TeX ever leaks into canonical semantic or translation content.
-
-RenderAnchor support (Phase 2.6): every block's body is preceded by a
-``\\renderanchor{<nodeId>}`` marker whose hypertarget lands in the compiled
-PDF, so targets can be recovered from the target PDF's link annotations.
-"""
+"""Phase 2.5 + M5: generated.RenderDocument -> LaTeX projection and compile."""
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import unicodedata
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pdf_pipeline.math_latex import equation_to_latex
+
 if TYPE_CHECKING:
     from document_model.generated import schema_models as generated
 
 TEMPLATE_BODY_MARKER = "% BODY"
+TEMPLATE_PROFILE_MARKER = "% PROFILE"
 LATEX_PRODUCER = "pdf-pipeline.render-latex"
+_ANCHOR_END_SUFFIX = ":end"
 
 _TEX_SPECIALS = {
     "\\": r"\textbackslash{}",
@@ -45,28 +40,53 @@ def escape_latex(text: str) -> str:
         if char in "\r\n\t":
             escaped.append(" ")
         elif unicodedata.category(char) == "Cc":
-            # PDFium may emit non-rendering extraction markers such as U+0002
-            # at line-end hyphenation boundaries. They are not valid TeX text.
             continue
         else:
             escaped.append(_TEX_SPECIALS.get(char, char))
     return "".join(escaped)
 
 
-def project_to_latex(render: generated.RenderDocument) -> str:
+def project_to_latex(
+    render: generated.RenderDocument,
+    *,
+    resource_dir: Path | None = None,
+) -> str:
     """Project a canonical RenderDocument into a generic-academic document."""
     template_path = _template_path()
     template = template_path.read_text(encoding="utf-8")
-    body = _project_body(render)
+    template = _apply_profile(template, render.profile)
+    body = _project_body(render, resource_dir=resource_dir)
     if TEMPLATE_BODY_MARKER not in template:
         raise ValueError(f"template missing {TEMPLATE_BODY_MARKER!r} marker")
     return template.replace(TEMPLATE_BODY_MARKER, body)
 
 
-def _project_body(render: generated.RenderDocument) -> str:
+def _apply_profile(template: str, profile: generated.RenderProfile) -> str:
+    paper = (profile.paperSize or "A4").lower()
+    paper_option = "letterpaper" if paper == "letter" else "a4paper"
+    font_size = profile.fontSizePt or 11.0
+    line_spacing = profile.lineSpacingFactor or 1.25
+    profile_block = f"\\linespread{{{line_spacing:g}}}\n"
+    if TEMPLATE_PROFILE_MARKER not in template:
+        return template
+    documentclass_line = "\\" + f"documentclass[{font_size:g}pt,{paper_option}]{{article}}"
+    template = re.sub(
+        r"[\\]documentclass\[[^\]]*\]\{article\}",
+        lambda _match: documentclass_line,
+        template,
+        count=1,
+    )
+    return template.replace(TEMPLATE_PROFILE_MARKER, profile_block)
+
+
+def _project_body(render: generated.RenderDocument, *, resource_dir: Path | None) -> str:
     lines: list[str] = []
     for block in render.blocks:
-        lines.append(f"\\renderanchor{{{block.semanticNodeIds[0]}}}%")
+        if block.renderKind == "BIBLIOGRAPHY":
+            lines.extend(_project_bibliography(block))
+            continue
+        node_id = block.semanticNodeIds[0]
+        lines.append(f"\\renderanchor{{{node_id}}}%")
         if block.renderKind == "HEADING":
             command = ("section", "subsection", "subsubsection")[block.level - 1]
             lines.append(f"\\{command}{{{escape_latex(block.content.text)}}}")
@@ -74,17 +94,92 @@ def _project_body(render: generated.RenderDocument) -> str:
             lines.append(escape_latex(block.content.text))
             lines.append("")
         elif block.renderKind == "FIGURE":
-            lines.append("\\begin{figure}[htbp]\\centering")
-            lines.append("\\fbox{\\rule{0.6\\textwidth}{4cm}}")
-            if block.caption is not None:
-                lines.append(f"\\renderanchor{{{block.semanticNodeIds[1]}}}%")
-                lines.append(f"\\caption{{{escape_latex(block.caption.text)}}}")
-            lines.append("\\end{figure}")
+            lines.extend(_project_figure(block, resource_dir=resource_dir))
+        elif block.renderKind == "TABLE":
+            lines.extend(_project_table(block, render.policy))
+        elif block.renderKind == "EQUATION":
+            lines.extend(_project_equation(block))
+        lines.append(f"\\renderanchorend{{{node_id}}}%")
     return "\n".join(lines)
 
 
+def _project_figure(
+    block: generated.RenderFigureBlock,
+    *,
+    resource_dir: Path | None,
+) -> list[str]:
+    lines = ["\\begin{figure}[htbp]\\centering"]
+    graphic = "\\fbox{\\rule{0.6\\textwidth}{4cm}}"
+    if resource_dir is not None and block.resourceIds:
+        resource_id = block.resourceIds[0]
+        for extension in (".png", ".jpg", ".jpeg", ".webp", ".bin"):
+            candidate = resource_dir / f"{resource_id}{extension}"
+            if candidate.is_file():
+                graphic = f"\\includegraphics[width=0.8\\textwidth]{{{candidate.as_posix()}}}"
+                break
+    lines.append(graphic)
+    if block.caption is not None and len(block.semanticNodeIds) > 1:
+        caption_id = block.semanticNodeIds[1]
+        lines.append(f"\\renderanchor{{{caption_id}}}%")
+        lines.append(f"\\caption{{{escape_latex(block.caption.text)}}}")
+        lines.append(f"\\renderanchorend{{{caption_id}}}%")
+    lines.append("\\end{figure}")
+    return lines
+
+
+def _project_table(block: generated.RenderTableBlock, policy: generated.RenderPolicy) -> list[str]:
+    table = block.table
+    columns = max(table.columns, 1)
+    alignments = block.columnAlignments or (["LEFT"] * columns)
+    align_char = {"LEFT": "l", "CENTER": "c", "RIGHT": "r"}
+    spec = "".join(align_char.get(align, "l") for align in alignments)
+    lines = ["\\begin{table}[htbp]\\centering"] if policy.floatTables else ["\\begin{center}"]
+    if block.caption is not None and policy.captionPosition == "ABOVE":
+        caption_id = block.semanticNodeIds[-1] if len(block.semanticNodeIds) > 1 else None
+        if caption_id is not None:
+            lines.append(f"\\renderanchor{{{caption_id}}}%")
+        lines.append(f"\\caption{{{escape_latex(block.caption.text)}}}")
+        if caption_id is not None:
+            lines.append(f"\\renderanchorend{{{caption_id}}}%")
+    lines.append(f"\\begin{{tabular}}{{{spec}}}")
+    rows: dict[int, list[generated.TableCell]] = {}
+    for cell in table.cells:
+        rows.setdefault(cell.row, []).append(cell)
+    for row_index in sorted(rows):
+        row_cells = sorted(rows[row_index], key=lambda item: item.column)
+        lines.append(
+            " & ".join(f"{{{escape_latex(cell.content.text)}}}" for cell in row_cells) + " \\\\"
+        )
+    lines.append("\\end{tabular}")
+    if block.caption is not None and policy.captionPosition != "ABOVE":
+        caption_id = block.semanticNodeIds[-1] if len(block.semanticNodeIds) > 1 else None
+        if caption_id is not None:
+            lines.append(f"\\renderanchor{{{caption_id}}}%")
+        lines.append(f"\\caption{{{escape_latex(block.caption.text)}}}")
+        if caption_id is not None:
+            lines.append(f"\\renderanchorend{{{caption_id}}}%")
+    lines.append("\\end{table}" if policy.floatTables else "\\end{center}")
+    return lines
+
+
+def _project_equation(block: generated.RenderEquationBlock) -> list[str]:
+    body = equation_to_latex(block.equation)
+    if block.equation.number:
+        return ["\\begin{equation}", body, "\\end{equation}"]
+    return [f"\\[{body}\\]"]
+
+
+def _project_bibliography(block: generated.RenderBibliographyBlock) -> list[str]:
+    lines = ["\\begin{thebibliography}{99}"]
+    for index, entry in enumerate(block.entries, start=1):
+        lines.append(f"\\renderanchor{{{entry.semanticNodeId}}}%")
+        lines.append(f"\\bibitem{{{index}}} {escape_latex(entry.content.text)}")
+        lines.append(f"\\renderanchorend{{{entry.semanticNodeId}}}%")
+    lines.append("\\end{thebibliography}")
+    return lines
+
+
 def _repo_root() -> Path:
-    # packages/python/pdf-pipeline/src/pdf_pipeline/render_latex.py -> repo root
     return Path(__file__).resolve().parents[5]
 
 
@@ -101,7 +196,7 @@ def compile_latex(tex_source: str, out_dir: Path, job_name: str = "target") -> P
     out_dir.mkdir(parents=True, exist_ok=True)
     tex_path = out_dir / f"{job_name}.tex"
     tex_path.write_text(tex_source, encoding="utf-8")
-    completed = subprocess.run(  # noqa: S603 - fixed argv, no shell, path from caller
+    completed = subprocess.run(  # noqa: S603
         [
             lualatex,
             "-interaction=nonstopmode",
@@ -126,5 +221,8 @@ def compile_latex(tex_source: str, out_dir: Path, job_name: str = "target") -> P
 
 
 def render_target_document_id(render: generated.RenderDocument) -> str:
-    """Return the canonical RenderDocument id bound into render mappings."""
     return render.id
+
+
+def anchor_end_name(node_id: str) -> str:
+    return f"{node_id}{_ANCHOR_END_SUFFIX}"
