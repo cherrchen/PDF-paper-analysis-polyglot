@@ -60,6 +60,12 @@ tex-ini-files
 lua-uni-algos
 lualatex-math
 unicode-math
+luatexbase
+ctablestack
+luatexja
+fandol
+caption
+multirow
 amscls
 colortbl
 graphics-cfg

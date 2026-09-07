@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import unicodedata
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from pdf_pipeline.math_latex import equation_to_latex
 
@@ -18,6 +18,9 @@ TEMPLATE_BODY_MARKER = "% BODY"
 TEMPLATE_PROFILE_MARKER = "% PROFILE"
 LATEX_PRODUCER = "pdf-pipeline.render-latex"
 _ANCHOR_END_SUFFIX = ":end"
+_MISSING_FIGURE = (
+    r"\fbox{\parbox{0.6\textwidth}{\centering\vspace{1.2cm}[figure unavailable]\vspace{1.2cm}}}"
+)
 
 _TEX_SPECIALS = {
     "\\": r"\textbackslash{}",
@@ -81,9 +84,16 @@ def _apply_profile(template: str, profile: generated.RenderProfile) -> str:
 
 def _project_body(render: generated.RenderDocument, *, resource_dir: Path | None) -> str:
     lines: list[str] = []
+    policy = render.policy
     for block in render.blocks:
         if block.renderKind == "BIBLIOGRAPHY":
             lines.extend(_project_bibliography(block))
+            continue
+        if block.renderKind == "FIGURE":
+            lines.extend(_project_figure(block, resource_dir=resource_dir, policy=policy))
+            continue
+        if block.renderKind == "TABLE":
+            lines.extend(_project_table(block, policy))
             continue
         node_id = block.semanticNodeIds[0]
         lines.append(f"\\renderanchor{{{node_id}}}%")
@@ -93,12 +103,8 @@ def _project_body(render: generated.RenderDocument, *, resource_dir: Path | None
         elif block.renderKind == "PARAGRAPH":
             lines.append(escape_latex(block.content.text))
             lines.append("")
-        elif block.renderKind == "FIGURE":
-            lines.extend(_project_figure(block, resource_dir=resource_dir))
-        elif block.renderKind == "TABLE":
-            lines.extend(_project_table(block, render.policy))
         elif block.renderKind == "EQUATION":
-            lines.extend(_project_equation(block))
+            lines.extend(_project_equation(block, policy))
         lines.append(f"\\renderanchorend{{{node_id}}}%")
     return "\n".join(lines)
 
@@ -107,66 +113,147 @@ def _project_figure(
     block: generated.RenderFigureBlock,
     *,
     resource_dir: Path | None,
+    policy: generated.RenderPolicy,
 ) -> list[str]:
-    lines = ["\\begin{figure}[htbp]\\centering"]
-    graphic = "\\fbox{\\rule{0.6\\textwidth}{4cm}}"
+    node_id = block.semanticNodeIds[0]
+    inner = [f"\\renderanchor{{{node_id}}}%"]
+    graphic = _MISSING_FIGURE
     if resource_dir is not None and block.resourceIds:
         resource_id = block.resourceIds[0]
         for extension in (".png", ".jpg", ".jpeg", ".webp", ".bin"):
             candidate = resource_dir / f"{resource_id}{extension}"
             if candidate.is_file():
-                graphic = f"\\includegraphics[width=0.8\\textwidth]{{{candidate.as_posix()}}}"
+                image_path = candidate.resolve().as_posix()
+                graphic = f"\\includegraphics[width=0.8\\textwidth]{{{image_path}}}"
                 break
-    lines.append(graphic)
+    inner.append(graphic)
     if block.caption is not None and len(block.semanticNodeIds) > 1:
-        caption_id = block.semanticNodeIds[1]
-        lines.append(f"\\renderanchor{{{caption_id}}}%")
-        lines.append(f"\\caption{{{escape_latex(block.caption.text)}}}")
-        lines.append(f"\\renderanchorend{{{caption_id}}}%")
-    lines.append("\\end{figure}")
-    return lines
+        inner.extend(
+            _caption_lines(
+                "figure",
+                block.caption.text,
+                block.semanticNodeIds[1],
+                floating=bool(policy.floatFigures),
+            )
+        )
+    inner.append(f"\\renderanchorend{{{node_id}}}%")
+    if policy.floatFigures:
+        return ["\\begin{figure}[htbp]\\centering", *inner, "\\end{figure}"]
+    return ["\\begin{center}", *inner, "\\end{center}"]
 
 
 def _project_table(block: generated.RenderTableBlock, policy: generated.RenderPolicy) -> list[str]:
     table = block.table
     columns = max(table.columns, 1)
-    alignments = block.columnAlignments or (["LEFT"] * columns)
-    align_char = {"LEFT": "l", "CENTER": "c", "RIGHT": "r"}
-    spec = "".join(align_char.get(align, "l") for align in alignments)
-    lines = ["\\begin{table}[htbp]\\centering"] if policy.floatTables else ["\\begin{center}"]
+    alignments = cast(
+        "list[generated.ColumnAlignment]",
+        list(block.columnAlignments) if block.columnAlignments else ["LEFT"] * columns,
+    )
+    floating = bool(policy.floatTables)
+    node_id = block.semanticNodeIds[0]
+    caption_id = block.semanticNodeIds[-1] if len(block.semanticNodeIds) > 1 else None
+    lines = ["\\begin{table}[htbp]\\centering"] if floating else ["\\begin{center}"]
+    lines.append(f"\\renderanchor{{{node_id}}}%")
     if block.caption is not None and policy.captionPosition == "ABOVE":
-        caption_id = block.semanticNodeIds[-1] if len(block.semanticNodeIds) > 1 else None
-        if caption_id is not None:
-            lines.append(f"\\renderanchor{{{caption_id}}}%")
-        lines.append(f"\\caption{{{escape_latex(block.caption.text)}}}")
-        if caption_id is not None:
-            lines.append(f"\\renderanchorend{{{caption_id}}}%")
-    lines.append(f"\\begin{{tabular}}{{{spec}}}")
-    rows: dict[int, list[generated.TableCell]] = {}
-    for cell in table.cells:
-        rows.setdefault(cell.row, []).append(cell)
-    for row_index in sorted(rows):
-        row_cells = sorted(rows[row_index], key=lambda item: item.column)
-        lines.append(
-            " & ".join(f"{{{escape_latex(cell.content.text)}}}" for cell in row_cells) + " \\\\"
-        )
-    lines.append("\\end{tabular}")
+        lines.extend(_caption_lines("table", block.caption.text, caption_id, floating=floating))
+    tabular = _tabular_lines(table, alignments, columns)
+    if policy.tableOverflowHandling == "SCALE_FONT":
+        lines.append("\\fitbox{%")
+        lines.extend(tabular)
+        lines.append("}")
+    else:
+        lines.extend(tabular)
     if block.caption is not None and policy.captionPosition != "ABOVE":
-        caption_id = block.semanticNodeIds[-1] if len(block.semanticNodeIds) > 1 else None
-        if caption_id is not None:
-            lines.append(f"\\renderanchor{{{caption_id}}}%")
-        lines.append(f"\\caption{{{escape_latex(block.caption.text)}}}")
-        if caption_id is not None:
-            lines.append(f"\\renderanchorend{{{caption_id}}}%")
-    lines.append("\\end{table}" if policy.floatTables else "\\end{center}")
+        lines.extend(_caption_lines("table", block.caption.text, caption_id, floating=floating))
+    lines.append(f"\\renderanchorend{{{node_id}}}%")
+    lines.append("\\end{table}" if floating else "\\end{center}")
     return lines
 
 
-def _project_equation(block: generated.RenderEquationBlock) -> list[str]:
+def _tabular_lines(
+    table: generated.TableContent,
+    alignments: list[generated.ColumnAlignment] | tuple[generated.ColumnAlignment, ...],
+    columns: int,
+) -> list[str]:
+    inferred_columns = max(
+        (cell.column + cell.colSpan for cell in table.cells),
+        default=columns,
+    )
+    columns = max(columns, inferred_columns, 1)
+    rows = max(table.rows, 0)
+    inferred_rows = max((cell.row + cell.rowSpan for cell in table.cells), default=0)
+    rows = max(rows, inferred_rows)
+    align_char = {"LEFT": "l", "CENTER": "c", "RIGHT": "r"}
+    padded = list(alignments[:columns])
+    while len(padded) < columns:
+        padded.append("LEFT")
+    spec = "".join(align_char.get(align, "l") for align in padded)
+    origins: dict[tuple[int, int], generated.TableCell] = {}
+    covered: set[tuple[int, int]] = set()
+    for cell in table.cells:
+        origins[(cell.row, cell.column)] = cell
+        for row_delta in range(cell.rowSpan):
+            for col_delta in range(cell.colSpan):
+                if row_delta == 0 and col_delta == 0:
+                    continue
+                covered.add((cell.row + row_delta, cell.column + col_delta))
+    lines = [f"\\begin{{tabular}}{{{spec}}}"]
+    for row_index in range(rows):
+        parts: list[str] = []
+        column = 0
+        while column < columns:
+            if (row_index, column) in covered:
+                parts.append("{}")
+                column += 1
+                continue
+            cell = origins.get((row_index, column))
+            if cell is None:
+                parts.append("{}")
+                column += 1
+                continue
+            text = escape_latex(cell.content.text)
+            if cell.rowSpan > 1:
+                text = rf"\multirow{{{cell.rowSpan}}}{{*}}{{{text}}}"
+            if cell.colSpan > 1:
+                align = align_char.get(padded[column], "l")
+                text = rf"\multicolumn{{{cell.colSpan}}}{{{align}}}{{{text}}}"
+                parts.append(text)
+                column += cell.colSpan
+                continue
+            parts.append(f"{{{text}}}")
+            column += 1
+        lines.append(" & ".join(parts) + " \\\\")
+    lines.append("\\end{tabular}")
+    return lines
+
+
+def _caption_lines(
+    kind: str,
+    text: str,
+    caption_id: str | None,
+    *,
+    floating: bool,
+) -> list[str]:
+    command = r"\caption" if floating else rf"\captionof{{{kind}}}"
+    lines: list[str] = []
+    if caption_id is not None:
+        lines.append(f"\\renderanchor{{{caption_id}}}%")
+    lines.append(f"{command}{{{escape_latex(text)}}}")
+    if caption_id is not None:
+        lines.append(f"\\renderanchorend{{{caption_id}}}%")
+    return lines
+
+
+def _project_equation(
+    block: generated.RenderEquationBlock, policy: generated.RenderPolicy
+) -> list[str]:
     body = equation_to_latex(block.equation)
+    if policy.longEquationHandling == "SCALE_DOWN":
+        body = rf"\fitmath{{{body}}}"
     if block.equation.number:
-        return ["\\begin{equation}", body, "\\end{equation}"]
-    return [f"\\[{body}\\]"]
+        tagged = rf"{body} \tag{{{escape_latex(block.equation.number)}}}"
+        return ["\\begin{equation}", tagged, "\\end{equation}"]
+    return [rf"\[{body}\]"]
 
 
 def _project_bibliography(block: generated.RenderBibliographyBlock) -> list[str]:

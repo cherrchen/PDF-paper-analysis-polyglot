@@ -40,6 +40,11 @@ _MATH_SYMBOLS = {
     "∈": r"\in",
 }
 
+# ASCII math punctuation plus letters/digits. Curly braces are excluded so a
+# stray `{` cannot produce an unmatched group after symbol substitution.
+_SAFE_MATH_CHARS = set(" \t0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+_SAFE_MATH_CHARS.update("=+-*/()[].,:;^_'<>|")
+
 
 def equation_to_latex(content: generated.EquationContent) -> str:
     """Return the best LaTeX math body for an equation block."""
@@ -49,7 +54,7 @@ def equation_to_latex(content: generated.EquationContent) -> str:
     if not source.strip():
         return r"\text{}"
     converted = _unicode_to_latex(source.strip())
-    if _looks_like_latex(converted):
+    if converted is not None and (_looks_like_latex(converted) or converted != source.strip()):
         return converted
     escaped = _escape_text_math(source.strip())
     return rf"\text{{{escaped}}}"
@@ -59,9 +64,18 @@ def _looks_like_latex(text: str) -> bool:
     return bool(re.search(r"\\[a-zA-Z]+|[\^_]", text))
 
 
-def _unicode_to_latex(text: str) -> str:
-    parts = [_MATH_SYMBOLS.get(char, char) for char in text]
-    return re.sub(r"([A-Za-z0-9]+)\s*=\s*([^=]+)", r"\1 = \2", "".join(parts))
+def _unicode_to_latex(text: str) -> str | None:
+    parts: list[str] = []
+    for char in text:
+        replacement = _MATH_SYMBOLS.get(char)
+        if replacement is not None:
+            parts.append(replacement + "{}")
+            continue
+        if char in _SAFE_MATH_CHARS:
+            parts.append(char)
+            continue
+        return None
+    return re.sub(r"([A-Za-z0-9{}\\]+)\s*=\s*([^=]+)", r"\1 = \2", "".join(parts))
 
 
 def _escape_text_math(text: str) -> str:

@@ -41,7 +41,7 @@ from pdf_pipeline.render_latex import (
     project_to_latex,
     render_target_document_id,
 )
-from pdf_pipeline.resource_store import extract_resource_document
+from pdf_pipeline.resource_store import bind_figure_image_resources, extract_resource_document
 from pdf_pipeline.sem_validate import validate_semantic_recovery
 from pdf_pipeline.semantic import recover_semantic_document
 
@@ -250,7 +250,10 @@ def run_pipeline(
     provider = None
     provider_model = "dummy"
     if config.provider is not None:
-        provider = create_provider(provider_model="openai-compat")
+        provider = create_provider(
+            provider_model="openai-compat",
+            provider_config=config.provider,
+        )
         provider_model = f"openai-compat:{config.provider.model}"
     translation = translate_document(
         semantic,
@@ -263,6 +266,7 @@ def run_pipeline(
     )
     resource_dir = out_dir / "resources"
     resources = extract_resource_document(data, resource_dir=resource_dir)
+    semantic = bind_figure_image_resources(semantic, layout, resources.resources)
     render = compose_render_document(
         semantic,
         translation,

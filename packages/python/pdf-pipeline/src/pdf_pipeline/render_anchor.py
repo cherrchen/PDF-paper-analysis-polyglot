@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 ANCHOR_HIT_SIZE_PT = 12.0
+# generic-academic.tex uses 25mm margins.
+_MARGIN_PT = 25.0 * 72.0 / 25.4
 _END_SUFFIX = ":end"
 
 
@@ -27,16 +29,21 @@ def _decode_names() -> str:
 def recover_render_anchors(
     target_pdf: bytes | Path, semantic: generated.SemanticDocument
 ) -> list[generated.RenderAnchor]:
-    """Recover per-node target regions from named destinations."""
+    """Recover per-node target regions from named destinations.
+
+    Start and end hypertargets bound a content region. Same-page nodes become
+    one rectangle covering the text; cross-page nodes emit one fragment per
+    page spanning the content area, not just 12pt hit boxes at the endpoints.
+    """
     path = target_pdf if isinstance(target_pdf, bytes | str) else str(target_pdf)
     pdf = pdfium.PdfDocument(path)
     try:
-        page_heights = [page.get_size()[1] for page in pdf]
+        page_sizes = [page.get_size() for page in pdf]
         node_ids = {node.id for node in semantic.nodes}
         points: dict[str, tuple[int, float, float]] = {}
         total = pdfium_c.FPDF_CountNamedDests(pdf.raw)
         for index in range(total):
-            name, page_index, x, y = _read_named_dest(pdf, index, page_heights)
+            name, page_index, x, y = _read_named_dest(pdf, index, [size[1] for size in page_sizes])
             if name is None:
                 continue
             base_id = name.removesuffix(_END_SUFFIX)
@@ -48,15 +55,9 @@ def recover_render_anchors(
         for node_id in sorted(node_ids):
             start = points.get(node_id)
             end = points.get(anchor_end_name(node_id))
-            if start is None and end is None:
+            fragments = _fragments_between(start, end, page_sizes)
+            if not fragments:
                 continue
-            fragments: list[generated.PDFRenderFragment] = []
-            if start is not None:
-                fragments.append(_fragment(start))
-            if end is not None:
-                fragments.append(_fragment(end))
-            if not fragments and start is not None:
-                fragments.append(_fragment(start))
             anchors.append(
                 generated.RenderAnchor(
                     id=node_id,
@@ -68,6 +69,48 @@ def recover_render_anchors(
         return anchors
     finally:
         pdf.close()
+
+
+def _fragments_between(
+    start: tuple[int, float, float] | None,
+    end: tuple[int, float, float] | None,
+    page_sizes: list[tuple[float, float]],
+) -> list[generated.PDFRenderFragment]:
+    if start is None and end is None:
+        return []
+    if start is None:
+        return [_point_fragment(end)] if end is not None else []
+    if end is None:
+        return [_point_fragment(start)]
+    start_page, start_x, start_y = start
+    end_page, end_x, end_y = end
+    if start_page > end_page:
+        start_page, end_page = end_page, start_page
+        start_x, end_x = end_x, start_x
+        start_y, end_y = end_y, start_y
+    fragments: list[generated.PDFRenderFragment] = []
+    for page_index in range(start_page, end_page + 1):
+        width, height = page_sizes[page_index]
+        left = min(start_x, end_x, _MARGIN_PT)
+        left = max(0.0, left)
+        frag_width = max(width - left - _MARGIN_PT, ANCHOR_HIT_SIZE_PT)
+        if start_page == end_page:
+            top = min(start_y, end_y)
+            bottom = max(start_y, end_y) + ANCHOR_HIT_SIZE_PT
+            frag_height = max(bottom - top, ANCHOR_HIT_SIZE_PT)
+            fragments.append(_rect_fragment(page_index, left, top, frag_width, frag_height))
+            continue
+        if page_index == start_page:
+            top = start_y
+            frag_height = max(height - _MARGIN_PT - top, ANCHOR_HIT_SIZE_PT)
+        elif page_index == end_page:
+            top = _MARGIN_PT
+            frag_height = max(end_y + ANCHOR_HIT_SIZE_PT - top, ANCHOR_HIT_SIZE_PT)
+        else:
+            top = _MARGIN_PT
+            frag_height = max(height - 2 * _MARGIN_PT, ANCHOR_HIT_SIZE_PT)
+        fragments.append(_rect_fragment(page_index, left, top, frag_width, frag_height))
+    return fragments
 
 
 def _read_named_dest(
@@ -109,16 +152,22 @@ def _read_named_dest(
     return name, page_index, x.value, point_y
 
 
-def _fragment(point: tuple[int, float, float]) -> generated.PDFRenderFragment:
+def _point_fragment(point: tuple[int, float, float]) -> generated.PDFRenderFragment:
     page_index, x, y = point
+    return _rect_fragment(page_index, x, y, ANCHOR_HIT_SIZE_PT, ANCHOR_HIT_SIZE_PT)
+
+
+def _rect_fragment(
+    page_index: int, x: float, y: float, width: float, height: float
+) -> generated.PDFRenderFragment:
     return generated.PDFRenderFragment(
         pageIndex=page_index,
         geometry=generated.Rect(
             kind="rect",
             x=round(x, 2),
             y=round(y, 2),
-            width=ANCHOR_HIT_SIZE_PT,
-            height=ANCHOR_HIT_SIZE_PT,
+            width=round(width, 2),
+            height=round(height, 2),
         ),
     )
 

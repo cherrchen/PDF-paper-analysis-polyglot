@@ -17,3 +17,18 @@ def test_equation_prefers_existing_latex() -> None:
 def test_equation_unicode_fallback_uses_text() -> None:
     content = generated.EquationContent(unicodeText="plain words", number="2")
     assert equation_to_latex(content) == r"\text{plain words}"
+
+
+@pytest.mark.unit
+def test_equation_unicode_symbols_keep_command_boundaries() -> None:
+    content = generated.EquationContent(unicodeText="\u03b1x = \u03b2y")
+    assert equation_to_latex(content) == r"\alpha{}x = \beta{}y"
+
+
+@pytest.mark.unit
+def test_equation_unsafe_unicode_falls_back_to_text() -> None:
+    content = generated.EquationContent(unicodeText="\u03b1 \U0001f600 \u03b2")
+    latex = equation_to_latex(content)
+    assert latex.startswith(r"\text{")
+    assert r"\alphax" not in latex
+    assert r"\alpha{}" not in latex

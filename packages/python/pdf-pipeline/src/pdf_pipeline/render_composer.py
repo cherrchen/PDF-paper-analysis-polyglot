@@ -104,7 +104,6 @@ def compose_render_document(
     }
 
     blocks: list[generated.RenderBlock] = []
-    figure_index = 0
     bibliography_entries: list[generated.BibliographyEntryContent] = []
     bibliography_block_id: str | None = None
 
@@ -152,11 +151,8 @@ def compose_render_document(
                 caption_id=caption_id,
                 policy=policy,
                 resources=resource_store,
-                figure_index=figure_index,
             )
         )
-        if node.kind == "FIGURE":
-            figure_index += 1
 
     if bibliography_entries and bibliography_block_id is not None:
         blocks.append(
@@ -188,7 +184,6 @@ def _blocks_for_node(
     caption_id: str | None,
     policy: generated.RenderPolicy,
     resources: generated.ResourceStore,
-    figure_index: int,
 ) -> list[generated.RenderBlock]:
     if node.kind == "HEADING" and isinstance(content, generated.RichText):
         level = node.attributes.get("level")
@@ -242,7 +237,8 @@ def _blocks_for_node(
         semantic_node_ids = [node.id]
         if caption is not None and caption_id is not None:
             semantic_node_ids.append(caption_id)
-        resource_ids = figure_resource_ids(node.content, resources, figure_index=figure_index)
+        available = {record.id for record in resources.resources if record.kind == "EMBEDDED_IMAGE"}
+        resource_ids = [rid for rid in figure_resource_ids(node.content) if rid in available]
         figure_kwargs: dict[str, Any] = {
             "renderKind": "FIGURE",
             "id": block_id,

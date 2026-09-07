@@ -3,16 +3,40 @@
 \documentclass[11pt,a4paper]{article}
 % PROFILE
 \usepackage{fontspec}
+\usepackage{luatexja-fontspec}
 \usepackage{graphicx}
 \usepackage{geometry}
 \usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{caption}
 \usepackage{hyperref}
 
 \geometry{margin=25mm}
 \setmainfont{Latin Modern Roman}
+\setmainjfont{FandolSong}[
+  BoldFont=FandolSong-Bold,
+  ItalicFont=FandolKai-Regular
+]
 
 \newcommand{\renderanchor}[1]{\hypertarget{#1}{}}
 \newcommand{\renderanchorend}[1]{\hypertarget{#1:end}{}}
+\newsavebox{\fitcontentbox}
+\newcommand{\fitbox}[1]{%
+  \sbox{\fitcontentbox}{#1}%
+  \ifdim\wd\fitcontentbox>\linewidth%
+    \resizebox{\linewidth}{!}{\usebox{\fitcontentbox}}%
+  \else
+    \usebox{\fitcontentbox}%
+  \fi
+}
+\newcommand{\fitmath}[1]{%
+  \sbox{\fitcontentbox}{\ensuremath{\displaystyle #1}}%
+  \ifdim\wd\fitcontentbox>\linewidth%
+    \resizebox{\linewidth}{!}{\usebox{\fitcontentbox}}%
+  \else
+    \usebox{\fitcontentbox}%
+  \fi
+}
 
 \setcounter{secnumdepth}{0}
 
