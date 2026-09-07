@@ -19,7 +19,7 @@ The M4 recovery engine (`pdf_pipeline.semantic` + `sem_*` modules) produces:
 - The DOCUMENT root's first child is FRONT_MATTER; below it a numbering-driven SECTION tree. HEADING level comes from the heading text pattern
 - Paragraph merging consumes CONTINUATION edges; `attributes.layoutRegionIds` drives N Layout → 1 Semantic multi-fragment SourceAnchors. 1 Layout → N Semantic is not implemented
 - Inline marks: `CITATION` / `FOOTNOTE_REFERENCE` / `INLINE_EQUATION`
-- Failed recognition never loses content: tables fall back to line-major cells by default, equations keep rawText, unresolved citations stay as text and report Issues. `FigureResource.embeddedImageIds` stays empty until a ResourceStore exists
+- Failed recognition never loses content: tables fall back to line-major cells by default, equations keep rawText, unresolved citations stay as text and report Issues. Semantic recovery still leaves `FigureResource.embeddedImageIds` empty; `run_pipeline` writes real ResourceIDs after ResourceStore extraction, bound through layout `physicalObjectIds`
 - Every node and relation carries a recovery `ProvenanceRecord` (producer / version / operation / layout region and fusion inputs)
 - After recovery, `pdf_pipeline.sem_validate` audits in document-tree order (including cycles and parent/child consistency); findings land in `SemanticDocument.issues`
 - Landing: [M4 Semantic Recovery Engine](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.en.md); review repairs: [M4 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.en.md); correctness repairs: [M4 correctness repairs](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.en.md)

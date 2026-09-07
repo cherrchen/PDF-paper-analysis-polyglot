@@ -30,7 +30,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M2 Walking Skeleton | 已完成 | 11 个 Tier-1 fixture 全链通过；独立 Translation/Render IR、旋转坐标与双向 Viewer 已重新验收 |
 | M3 Layout Recovery Engine | 已完成 | Evidence 适配边界 + mock provider、XY-cut band/column、结构驱动 ReadingFlowGraph、continuation/caption/footnote 恢复；Exit Gate 经审查修复后达成 |
 | M4 Semantic Recovery Engine | 基线落地 | CONTINUATION 段落合并、编号 heading + SECTION 树、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复；第二轮正确性修复后表格标题、marks、脚注关联、环状树、多 fragment Viewer 与 provenance 已补。1→N / GROBID / 真实多列表格仍延期 |
-| M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；见 [M5 落地 Note](../../.agents/notes/implemented/architecture/2026-09-08-m5-translation-rendering-pipeline.md) |
+| M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；审查修复见 [M5 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.md) |
 | M6 Bidirectional Reader | 未开始 | — |
 | M7 Parser Ensemble & Quality | 未开始 | — |
 | M8 Productionization | 未开始 | — |

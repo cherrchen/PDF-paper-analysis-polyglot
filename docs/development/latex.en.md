@@ -9,7 +9,7 @@
 | Distribution | TeX Live 2026 |
 | Default engine | LuaLaTeX |
 | Driver | latexmk via `tex/latexmkrc` |
-| Package set | `tex/packages.txt` |
+| Package set | `tex/packages.txt` (includes `luatexja`, `fandol`, `caption`, `multirow`) |
 | Templates | `templates/latex/` |
 
 XeLaTeX is allowed only for a documented compatibility need. pdfLaTeX is not the multilingual renderer.

@@ -30,7 +30,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M2 Walking Skeleton | Done | All 11 Tier-1 fixtures pass end to end; independent Translation/Render IR, rotated coordinates, and the bidirectional viewer passed renewed acceptance |
 | M3 Layout Recovery Engine | Done | Evidence adapter boundary + mock provider, XY-cut band/column detection, structure-driven ReadingFlowGraph, continuation/caption/footnote recovery; exit gate met after review repairs |
 | M4 Semantic Recovery Engine | Baseline landed | CONTINUATION paragraph merging, numbered headings + SECTION tree, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery; second-round repairs restored table titles, marks, footnote linking, cyclic trees, multi-fragment Viewer, and provenance. 1→N / GROBID / true multi-column tables remain deferred |
-| M5 Translation & Rendering | Baseline landed | schema 0.2.0, structured TranslationRequest/Result, OpenAI-compatible adapter, terminology/cache, readable-single-column Profile/Policy, table/equation/bibliography/figure-resource LaTeX projection, dual-hypertarget RenderAnchors; see [M5 implemented note](../../.agents/notes/implemented/architecture/2026-09-08-m5-translation-rendering-pipeline.en.md) |
+| M5 Translation & Rendering | Baseline landed | schema 0.2.0, structured TranslationRequest/Result, OpenAI-compatible adapter, terminology/cache, readable-single-column Profile/Policy, table/equation/bibliography/figure-resource LaTeX projection, dual-hypertarget RenderAnchors; review repairs in [M5 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.en.md) |
 | M6 Bidirectional Reader | Not started | — |
 | M7 Parser Ensemble & Quality | Not started | — |
 | M8 Productionization | Not started | — |

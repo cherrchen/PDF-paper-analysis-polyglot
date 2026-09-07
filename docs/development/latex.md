@@ -9,7 +9,7 @@
 | 发行版 | TeX Live 2026 |
 | 默认引擎 | LuaLaTeX |
 | 驱动 | 经 `tex/latexmkrc` 的 latexmk |
-| 宏包集 | `tex/packages.txt` |
+| 宏包集 | `tex/packages.txt`（含 `luatexja`、`fandol`、`caption`、`multirow`） |
 | 模板 | `templates/latex/` |
 
 XeLaTeX 仅在有文档化的兼容需求时允许。pdfLaTeX 不是多语言渲染器。
