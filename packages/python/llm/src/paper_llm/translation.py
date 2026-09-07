@@ -18,13 +18,18 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from paper_llm.cache import TranslationCache
+    from paper_llm.config import ProviderConfig
 
 from document_model import stable_uuid
 from document_model.generated import schema_models as generated
 
 from paper_llm.config import load_translation_config
 from paper_llm.context import build_translation_contexts
-from paper_llm.terminology import derive_dummy_terminology, load_manual_terminology
+from paper_llm.terminology import (
+    build_terminology,
+    derive_dummy_terminology,
+    load_manual_terminology,
+)
 from paper_llm.types import (
     TranslationContext,
     TranslationProvider,
@@ -201,6 +206,19 @@ def _span_index_for_mark(mark: generated.InlineMark, spans: list[tuple[int, int]
     return None
 
 
+def placeholder_indices(text: str) -> set[int]:
+    """Return placeholder indexes present in ``text``."""
+    return {int(match.group(1)) for match in _PLACEHOLDER_PATTERN.finditer(text)}
+
+
+def assert_placeholders_preserved(protected: str, translated: str) -> None:
+    """Raise when the model dropped any placeholder tokens from ``protected``."""
+    missing = placeholder_indices(protected) - placeholder_indices(translated)
+    if missing:
+        dropped = ", ".join(f"⟦{index}⟧" for index in sorted(missing))
+        raise RuntimeError(f"translation dropped protected placeholders: {dropped}")
+
+
 def _cache_key(
     *,
     semantic_node_id: str,
@@ -220,16 +238,27 @@ def _content_digest(content: generated.NodeContent) -> str:
     return hashlib.sha256(content.model_dump_json().encode()).hexdigest()[:16]
 
 
-def create_provider(*, provider_model: str = "dummy") -> TranslationProvider:
-    """Build the configured translation provider."""
+def create_provider(
+    *,
+    provider_model: str = "dummy",
+    provider_config: ProviderConfig | None = None,
+) -> TranslationProvider:
+    """Build the configured translation provider.
+
+    ``provider_config`` wins over environment variables so callers that already
+    constructed a ``TranslationConfig`` do not get a second, possibly different,
+    adapter from ``PAPER_LLM_*``.
+    """
     if provider_model == "dummy":
         return DummyTranslationProvider()
-    config = load_translation_config()
-    if config.provider is None:
-        raise RuntimeError("OpenAI-compatible provider requested but PAPER_LLM_ENDPOINT is unset")
+    config = provider_config
+    if config is None:
+        config = load_translation_config().provider
+    if config is None:
+        raise RuntimeError("OpenAI-compatible provider requested but provider config is unset")
     from paper_llm.openai_compat import OpenAICompatProvider  # noqa: PLC0415
 
-    return OpenAICompatProvider(config.provider)
+    return OpenAICompatProvider(config)
 
 
 def translate_document(
@@ -248,12 +277,18 @@ def translate_document(
     """Build a TranslationLayer for ``semantic`` without mutating it."""
     provider = provider or DummyTranslationProvider()
     manual_terms = load_manual_terminology(terminology_file)
-    if terminology is None and provider_model == "dummy":
-        terminology, auto_revision = derive_dummy_terminology(semantic, manual_terms=manual_terms)
-        terminology_revision = terminology_revision or auto_revision
-    terminology_tuple = tuple(terminology or manual_terms or ())
+    if terminology is None:
+        if provider_model == "dummy":
+            terminology, auto_revision = derive_dummy_terminology(
+                semantic, manual_terms=manual_terms
+            )
+        else:
+            terminology, auto_revision = build_terminology(semantic, manual_terms=manual_terms)
+    else:
+        _, auto_revision = build_terminology(semantic, manual_terms=list(terminology))
+    terminology_tuple = tuple(terminology)
     if terminology_revision is None:
-        terminology_revision = "rev-0"
+        terminology_revision = auto_revision
     contexts = build_translation_contexts(
         semantic,
         target_locale=target_locale,

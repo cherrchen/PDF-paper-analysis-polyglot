@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
-from paper_llm.translation import translate_rich_text_body
+from paper_llm.translation import assert_placeholders_preserved, translate_rich_text_body
 from paper_llm.types import TranslationRequest, TranslationResult
 
 if TYPE_CHECKING:
@@ -33,12 +33,16 @@ class OpenAICompatProvider:
         self._post_json = post_json
 
     def translate_request(self, request: TranslationRequest) -> TranslationResult:
-        prompt = _build_prompt(request)
-        response_text = self._complete(prompt)
+        def complete_protected(protected: str) -> str:
+            prompt = _build_prompt(request, source_text=protected)
+            response_text = self._complete(prompt)
+            assert_placeholders_preserved(protected, response_text)
+            return response_text
+
         text, marks = translate_rich_text_body(
             request.text,
             request.marks,
-            lambda _protected: response_text,
+            complete_protected,
         )
         return TranslationResult(text=text, marks=marks, confidence=0.85)
 
@@ -106,7 +110,7 @@ _SYSTEM_PROMPT = (
 )
 
 
-def _build_prompt(request: TranslationRequest) -> str:
+def _build_prompt(request: TranslationRequest, *, source_text: str | None = None) -> str:
     sections: list[str] = []
     context = request.context
     if context.document_title:
@@ -123,5 +127,5 @@ def _build_prompt(request: TranslationRequest) -> str:
         )
         sections.append(f"Terminology:\n{glossary}")
     sections.append(f"Target locale: {context.target_locale or 'unspecified'}")
-    sections.append(f"Source text:\n{request.text}")
+    sections.append(f"Source text:\n{source_text if source_text is not None else request.text}")
     return "\n\n".join(sections)
