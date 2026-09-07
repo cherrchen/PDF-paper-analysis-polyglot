@@ -184,7 +184,7 @@ def test_dummy_translation_shifts_mark_offsets() -> None:
 
 def test_non_prefix_translation_rebuilds_marks_via_placeholders() -> None:
     from document_model.generated import schema_models as generated
-    from paper_llm.translation import TranslationRequest, TranslationResult
+    from paper_llm.types import TranslationRequest, TranslationResult
 
     class SurroundProvider:
         def translate_request(self, request: TranslationRequest) -> TranslationResult:
@@ -206,7 +206,7 @@ def test_non_prefix_translation_rebuilds_marks_via_placeholders() -> None:
 
 def test_rewritten_text_without_placeholders_drops_stale_marks() -> None:
     from document_model.generated import schema_models as generated
-    from paper_llm.translation import TranslationRequest, TranslationResult
+    from paper_llm.types import TranslationRequest, TranslationResult
 
     class ReplaceProvider:
         def translate_request(self, request: TranslationRequest) -> TranslationResult:

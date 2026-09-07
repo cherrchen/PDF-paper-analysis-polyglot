@@ -11,14 +11,21 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 from document_model import stable_uuid
 from document_model.generated import schema_models as generated
+
+from paper_llm.context import build_translation_contexts
+from paper_llm.types import (
+    TranslationContext,
+    TranslationProvider,
+    TranslationRequest,
+    TranslationResult,
+)
 
 TRANSLATION_MARKER = "[TRANSLATED]"
 
@@ -44,45 +51,6 @@ _PROTECTED_MARK_TYPES = frozenset(
 # Placeholders must survive a dummy prefix and not appear in papers.
 _PLACEHOLDER = "⟦{index}⟧"
 _PLACEHOLDER_PATTERN = re.compile(r"⟦(\d+)⟧")
-
-
-@dataclass(frozen=True)
-class TranslationContext:
-    """Structured context passed to providers (expanded in Phase 5.2)."""
-
-    target_locale: str = ""
-    source_locale: str | None = None
-    document_title: str | None = None
-    section_path: tuple[str, ...] = ()
-    preceding_text: str | None = None
-    following_text: str | None = None
-
-
-@dataclass(frozen=True)
-class TranslationRequest:
-    """One translatable text segment with marks and context."""
-
-    text: str
-    marks: list[generated.InlineMark] = field(default_factory=list)
-    context: TranslationContext = field(default_factory=TranslationContext)
-    terminology: tuple[generated.Term, ...] = ()
-    node_kind: str | None = None
-    semantic_node_id: str | None = None
-
-
-@dataclass(frozen=True)
-class TranslationResult:
-    """Provider output for one translated segment."""
-
-    text: str
-    marks: list[generated.InlineMark] = field(default_factory=list)
-    confidence: float = 1.0
-
-
-class TranslationProvider(Protocol):
-    """Structured translation interface for M5 providers."""
-
-    def translate_request(self, request: TranslationRequest) -> TranslationResult: ...
 
 
 class DummyTranslationProvider:
@@ -291,17 +259,22 @@ def translate_document(
     """Build a TranslationLayer for ``semantic`` without mutating it."""
     provider = provider or DummyTranslationProvider()
     terminology_tuple = tuple(terminology or ())
-    base_context = TranslationContext(
+    contexts = build_translation_contexts(
+        semantic,
         target_locale=target_locale,
         source_locale=source_locale,
     )
     entries: list[generated.TranslationEntry] = []
     for node in semantic.nodes:
+        node_context = contexts.get(
+            node.id,
+            TranslationContext(target_locale=target_locale, source_locale=source_locale),
+        )
         if node.kind == "TABLE" and isinstance(node.content, generated.TableContent):
             translated = _translate_table_content(
                 node.content,
                 provider,
-                base_context,
+                node_context,
                 node_kind=node.kind,
                 semantic_node_id=node.id,
             )
@@ -323,7 +296,7 @@ def translate_document(
             request = TranslationRequest(
                 text=source.text,
                 marks=list(source.marks),
-                context=base_context,
+                context=node_context,
                 terminology=terminology_tuple,
                 node_kind=node.kind,
                 semantic_node_id=node.id,

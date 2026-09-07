@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from paper_llm.context import build_translation_contexts
 from paper_llm.translation import (
     TRANSLATION_MARKER,
     DummyTranslationProvider,
+    translate_document,
+    translate_rich_text,
+)
+from paper_llm.types import (
     TranslationContext,
     TranslationProvider,
     TranslationRequest,
     TranslationResult,
-    translate_document,
-    translate_rich_text,
 )
 
 __all__ = [
@@ -20,6 +23,7 @@ __all__ = [
     "TranslationProvider",
     "TranslationRequest",
     "TranslationResult",
+    "build_translation_contexts",
     "provider_status",
     "translate_document",
     "translate_rich_text",
