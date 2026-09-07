@@ -1,5 +1,7 @@
 """Structured translation protocol types."""
 
+# pyright: reportUnknownVariableType=false
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

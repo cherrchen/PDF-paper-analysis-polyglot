@@ -188,9 +188,9 @@ def test_non_prefix_translation_rebuilds_marks_via_placeholders() -> None:
 
     class SurroundProvider:
         def translate_request(self, request: TranslationRequest) -> TranslationResult:
-            from paper_llm.translation import _translate_rich_text_body
+            from paper_llm.translation import translate_rich_text_body
 
-            text, marks = _translate_rich_text_body(
+            text, marks = translate_rich_text_body(
                 request.text, request.marks, lambda value: f"<<{value}>>"
             )
             return TranslationResult(text=text, marks=marks)
@@ -210,9 +210,9 @@ def test_rewritten_text_without_placeholders_drops_stale_marks() -> None:
 
     class ReplaceProvider:
         def translate_request(self, request: TranslationRequest) -> TranslationResult:
-            from paper_llm.translation import _translate_rich_text_body
+            from paper_llm.translation import translate_rich_text_body
 
-            text, marks = _translate_rich_text_body(
+            text, marks = translate_rich_text_body(
                 request.text, request.marks, lambda _value: "fully rewritten without markers"
             )
             return TranslationResult(text=text, marks=marks)
