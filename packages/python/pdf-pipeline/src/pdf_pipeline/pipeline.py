@@ -27,7 +27,7 @@ from pdf_pipeline.fusion import RegionLine
 from pdf_pipeline.geometry import as_rect
 from pdf_pipeline.ids import stable_uuid
 from pdf_pipeline.layout import recover_layout_document
-from pdf_pipeline.physical import extract_physical_document
+from pdf_pipeline.physical import extract_physical_document, probe_input_capability
 from pdf_pipeline.render_anchor import (
     build_mapping_bundle,
     recover_render_anchors,
@@ -213,6 +213,12 @@ def run_pipeline(
     """Run the full Walking Skeleton pipeline; return produced artifact paths."""
     data = source_pdf.read_bytes()
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    capability = probe_input_capability(data)
+    if not capability.usable:
+        # FR-PDF-002: fail loudly at the entry point rather than silently
+        # producing low-quality recovery output for scanned documents.
+        raise ValueError(f"unsupported input PDF: {capability.reason}")
 
     physical = extract_physical_document(data)
     evidence = MockLayoutEvidenceProvider().collect(physical)

@@ -33,6 +33,56 @@ PRODUCER_VERSION = "0.1.0"
 
 
 @dataclass(frozen=True)
+class InputCapability:
+    """FR-PDF-002 verdict for a source PDF.
+
+    ``usable`` means the document has a real text layer; ``reason`` carries
+    the user-facing explanation when it does not.
+    """
+
+    usable: bool
+    reason: str | None = None
+
+
+# A born-digital page carries extractable characters; a scanned page only
+# images. Pages below this many non-whitespace characters look scanned.
+MIN_CHARS_PER_PAGE = 20
+
+
+def probe_input_capability(source: bytes | Path) -> InputCapability:
+    """Check whether the PDF meets Initial Product processing conditions.
+
+    FR-PDF-002: scanned PDFs or documents without an effective text layer
+    must be rejected up front with a clear message instead of silently
+    producing low-quality recovery results.
+    """
+    data = source if isinstance(source, bytes) else source.read_bytes()
+    # A zero-page PDF is rejected by PDFium itself at load time
+    # (PdfiumError), so every loaded document has at least one page.
+    pdf = pdfium.PdfDocument(data)
+    try:
+        for page_index in range(len(pdf)):
+            page = pdf[page_index]
+            textpage = page.get_textpage()
+            try:
+                char_count = textpage.count_chars()
+                text = textpage.get_text_range(0, char_count) if char_count else ""
+            finally:
+                textpage.close()
+            if len(text.strip()) >= MIN_CHARS_PER_PAGE:
+                return InputCapability(usable=True)
+        return InputCapability(
+            usable=False,
+            reason=(
+                "no effective text layer found on any page "
+                "(scanned PDFs are not supported; the document may need OCR)"
+            ),
+        )
+    finally:
+        pdf.close()
+
+
+@dataclass(frozen=True)
 class ExtractOptions:
     """Tunables for extraction. Defaults keep spans at rect granularity."""
 
