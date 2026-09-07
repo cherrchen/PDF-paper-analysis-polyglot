@@ -42,6 +42,10 @@ def test_semantic_layer_survives_pdf_information_deletion(semantic_data: dict[st
     def walk(value: Json) -> None:
         if isinstance(value, dict):
             for key, child in value.items():
+                # TableCell.column indexes a table grid, not a layout column.
+                if key == "column" and "row" in value and "rowSpan" in value:
+                    walk(child)
+                    continue
                 assert key not in forbidden, key
                 walk(child)
         elif isinstance(value, list):

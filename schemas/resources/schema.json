@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-paper-analysis.local/schemas/resources/v0.json",
+  "title": "ResourceDocument",
+  "description": "Stored binary resources (embedded images, vector fragments) extracted from the source PDF. ResourceRecords carry identity and metadata; the bytes live in an out-of-band resource store keyed by ResourceID.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "sourceFingerprint", "resources", "provenanceIds"],
+  "properties": {
+    "schemaVersion": { "const": "0.1.0" },
+    "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+    "sourceFingerprint": { "type": "string", "minLength": 1 },
+    "resources": { "$ref": "../common/schema.json#/$defs/ResourceStore" },
+    "provenanceIds": {
+      "type": "array",
+      "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
+    },
+    "provenance": { "$ref": "../common/schema.json#/$defs/ProvenanceStore" },
+    "issues": { "$ref": "../common/schema.json#/$defs/IssueStore" }
+  }
+}

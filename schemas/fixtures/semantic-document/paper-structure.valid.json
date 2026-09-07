@@ -16,6 +16,8 @@
         "01J5M1FXTRSF1G00000000000S",
         "01J5M1FXTRF1GC00000000000T",
         "01J5M1FXTRFN0000000000000V",
+        "01J5M1FXTRTAB000000000000A",
+        "01J5M1FXTREQN000000000000B",
         "01J5M1FXTRB1B000000000000W"
       ],
       "content": {
@@ -161,6 +163,52 @@
       "attributes": {},
       "confidence": {
         "score": 0.95
+      },
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTRTAB000000000000A",
+      "kind": "TABLE",
+      "parentId": "01J5M1FXTRR00T00000000000M",
+      "children": [],
+      "content": {
+        "rows": 1,
+        "columns": 2,
+        "cells": [
+          {
+            "row": 0,
+            "column": 0,
+            "rowSpan": 1,
+            "colSpan": 1,
+            "content": { "text": "Method", "marks": [] }
+          },
+          {
+            "row": 0,
+            "column": 1,
+            "rowSpan": 1,
+            "colSpan": 1,
+            "content": { "text": "Score", "marks": [] }
+          }
+        ]
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.9
+      },
+      "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
+    },
+    {
+      "id": "01J5M1FXTREQN000000000000B",
+      "kind": "EQUATION",
+      "parentId": "01J5M1FXTRR00T00000000000M",
+      "children": [],
+      "content": {
+        "latex": "E = mc^2",
+        "number": "1"
+      },
+      "attributes": {},
+      "confidence": {
+        "score": 0.9
       },
       "provenanceIds": ["01J5M1FXTRPR0V00000000001K"]
     },

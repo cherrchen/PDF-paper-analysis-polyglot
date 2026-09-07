@@ -174,12 +174,25 @@ def compose_render_document(
         )
 
     return generated.RenderDocument(
-        schemaVersion="0.1.0",
+        schemaVersion="0.2.0",
         id=stable_uuid(semantic.id, "render-document", translation.id),
         semanticDocumentId=semantic.id,
         translationLayerId=translation.id,
-        profile=generated.RenderProfile(name="generic-academic"),
-        policy=generated.RenderPolicy(floatFigures=True),
+        profile=generated.RenderProfile(
+            name="readable-single-column",
+            columns=1,
+            paperSize="A4",
+            fontSizePt=11.0,
+            lineSpacingFactor=1.25,
+        ),
+        policy=generated.RenderPolicy(
+            floatFigures=True,
+            floatTables=True,
+            wideFigureHandling="SCALE_DOWN",
+            tableOverflowHandling="SCALE_FONT",
+            longEquationHandling="SCALE_DOWN",
+            captionPosition="BELOW",
+        ),
         blocks=blocks,
         provenanceIds=[],
     )

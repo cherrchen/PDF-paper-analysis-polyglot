@@ -15,7 +15,7 @@
     "provenanceIds"
   ],
   "properties": {
-    "schemaVersion": { "const": "0.1.0" },
+    "schemaVersion": { "const": "0.2.0" },
     "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
     "semanticDocumentId": { "$ref": "../common/schema.json#/$defs/DocumentID" },
     "translationLayerId": { "$ref": "../common/schema.json#/$defs/DocumentID" },
@@ -35,19 +35,54 @@
   "$defs": {
     "RenderProfile": {
       "type": "object",
+      "description": "Named visual profile. Initial Product ships readable-single-column as the default.",
       "additionalProperties": false,
       "required": ["name"],
       "properties": {
-        "name": { "type": "string", "minLength": 1 }
+        "name": { "type": "string", "minLength": 1 },
+        "columns": { "type": "integer", "minimum": 1, "maximum": 2 },
+        "paperSize": { "$ref": "#/$defs/PaperSize" },
+        "fontSizePt": { "type": "number", "exclusiveMinimum": 0 },
+        "lineSpacingFactor": { "type": "number", "exclusiveMinimum": 0 }
       }
+    },
+    "PaperSize": {
+      "type": "string",
+      "enum": ["A4", "LETTER"]
     },
     "RenderPolicy": {
       "type": "object",
+      "description": "Behavioral knobs for oversized content; the LaTeX backend degrades gracefully instead of silently dropping content.",
       "additionalProperties": false,
       "required": ["floatFigures"],
       "properties": {
-        "floatFigures": { "type": "boolean" }
+        "floatFigures": { "type": "boolean" },
+        "floatTables": { "type": "boolean" },
+        "wideFigureHandling": { "$ref": "#/$defs/WideContentHandling" },
+        "tableOverflowHandling": { "$ref": "#/$defs/TableOverflowHandling" },
+        "longEquationHandling": { "$ref": "#/$defs/LongEquationHandling" },
+        "captionPosition": { "$ref": "#/$defs/CaptionPosition" }
       }
+    },
+    "WideContentHandling": {
+      "type": "string",
+      "description": "How a figure wider than the text column is placed.",
+      "enum": ["SCALE_DOWN", "WIDE_FLOAT", "INLINE"]
+    },
+    "TableOverflowHandling": {
+      "type": "string",
+      "description": "How a table that exceeds the column width degrades.",
+      "enum": ["SCALE_FONT", "WIDE_FLOAT", "WRAP", "FAIL"]
+    },
+    "LongEquationHandling": {
+      "type": "string",
+      "description": "How an equation that does not fit one line degrades.",
+      "enum": ["SCALE_DOWN", "MULTILINE", "TRUNCATE"]
+    },
+    "CaptionPosition": {
+      "type": "string",
+      "description": "Where float captions are placed relative to their float.",
+      "enum": ["BELOW", "ABOVE", "SOURCE"]
     },
     "RenderHeadingBlock": {
       "type": "object",
@@ -93,14 +128,84 @@
           "items": { "$ref": "../common/schema.json#/$defs/NodeID" }
         },
         "figure": { "$ref": "../semantic-document/schema.json#/$defs/FigureContent" },
-        "caption": { "$ref": "../semantic-document/schema.json#/$defs/RichText" }
+        "caption": { "$ref": "../semantic-document/schema.json#/$defs/RichText" },
+        "resourceIds": {
+          "type": "array",
+          "description": "Stored resources backing the figure graphic, in preference order.",
+          "items": { "$ref": "../common/schema.json#/$defs/ResourceID" }
+        }
+      }
+    },
+    "RenderTableBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["renderKind", "id", "semanticNodeIds", "table"],
+      "properties": {
+        "renderKind": { "const": "TABLE" },
+        "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+        "semanticNodeIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../common/schema.json#/$defs/NodeID" }
+        },
+        "table": { "$ref": "../semantic-document/schema.json#/$defs/TableContent" },
+        "caption": { "$ref": "../semantic-document/schema.json#/$defs/RichText" },
+        "columnAlignments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ColumnAlignment" }
+        }
+      }
+    },
+    "ColumnAlignment": {
+      "type": "string",
+      "enum": ["LEFT", "CENTER", "RIGHT"]
+    },
+    "RenderEquationBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["renderKind", "id", "semanticNodeIds", "equation"],
+      "properties": {
+        "renderKind": { "const": "EQUATION" },
+        "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+        "semanticNodeIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "../common/schema.json#/$defs/NodeID" }
+        },
+        "equation": { "$ref": "../semantic-document/schema.json#/$defs/EquationContent" }
+      }
+    },
+    "RenderBibliographyBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["renderKind", "id", "entries"],
+      "properties": {
+        "renderKind": { "const": "BIBLIOGRAPHY" },
+        "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
+        "entries": {
+          "type": "array",
+          "description": "Reference entries rendered verbatim (FR-CITE-004: never translated).",
+          "items": { "$ref": "#/$defs/BibliographyEntryContent" }
+        }
+      }
+    },
+    "BibliographyEntryContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semanticNodeId", "content"],
+      "properties": {
+        "semanticNodeId": { "$ref": "../common/schema.json#/$defs/NodeID" },
+        "content": { "$ref": "../semantic-document/schema.json#/$defs/RichText" }
       }
     },
     "RenderBlock": {
       "oneOf": [
         { "$ref": "#/$defs/RenderHeadingBlock" },
         { "$ref": "#/$defs/RenderParagraphBlock" },
-        { "$ref": "#/$defs/RenderFigureBlock" }
+        { "$ref": "#/$defs/RenderFigureBlock" },
+        { "$ref": "#/$defs/RenderTableBlock" },
+        { "$ref": "#/$defs/RenderEquationBlock" },
+        { "$ref": "#/$defs/RenderBibliographyBlock" }
       ]
     }
   }

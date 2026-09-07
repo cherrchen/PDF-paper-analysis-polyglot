@@ -449,22 +449,65 @@ export declare namespace SemanticDocument {
 }
 
 export declare namespace TranslationLayer {
+  /** Consistency scope of the term. */
+  export type TermScope = "DOCUMENT" | "SECTION";
+  /** Where the preferred translation came from. */
+  export type TermSource = "MANUAL" | "DERIVED" | "PROVIDER";
+  /** One glossary term with its preferred translation for the target locale. */
+  export interface Term {
+    term: string;
+    preferredTranslation: string;
+    source: TranslationLayer.TermSource;
+    confidence: Common.Confidence;
+    scope: TranslationLayer.TermScope;
+  }
   export interface TranslationEntry {
     semanticNodeId: Common.NodeID;
     content: SemanticDocument.NodeContent;
     confidence?: Common.Confidence;
+    providerModel?: string;
+    /** Hash over node content, target locale, model, translation configuration, and terminology revision. */
+    cacheKey?: string;
     provenanceIds: Common.ProvenanceID[];
   }
 }
 
 export declare namespace RenderDocument {
-  export type RenderBlock = RenderDocument.RenderHeadingBlock | RenderDocument.RenderParagraphBlock | RenderDocument.RenderFigureBlock;
+  /** Where float captions are placed relative to their float. */
+  export type CaptionPosition = "BELOW" | "ABOVE" | "SOURCE";
+  export type ColumnAlignment = "LEFT" | "CENTER" | "RIGHT";
+  /** How an equation that does not fit one line degrades. */
+  export type LongEquationHandling = "SCALE_DOWN" | "MULTILINE" | "TRUNCATE";
+  export type PaperSize = "A4" | "LETTER";
+  /** How a table that exceeds the column width degrades. */
+  export type TableOverflowHandling = "SCALE_FONT" | "WIDE_FLOAT" | "WRAP" | "FAIL";
+  /** How a figure wider than the text column is placed. */
+  export type WideContentHandling = "SCALE_DOWN" | "WIDE_FLOAT" | "INLINE";
+  export interface BibliographyEntryContent {
+    semanticNodeId: Common.NodeID;
+    content: SemanticDocument.RichText;
+  }
+  export interface RenderBibliographyBlock {
+    renderKind: "BIBLIOGRAPHY";
+    id: Common.DocumentID;
+    /** Reference entries rendered verbatim (FR-CITE-004: never translated). */
+    entries: RenderDocument.BibliographyEntryContent[];
+  }
+  export type RenderBlock = RenderDocument.RenderHeadingBlock | RenderDocument.RenderParagraphBlock | RenderDocument.RenderFigureBlock | RenderDocument.RenderTableBlock | RenderDocument.RenderEquationBlock | RenderDocument.RenderBibliographyBlock;
+  export interface RenderEquationBlock {
+    renderKind: "EQUATION";
+    id: Common.DocumentID;
+    semanticNodeIds: Common.NodeID[];
+    equation: SemanticDocument.EquationContent;
+  }
   export interface RenderFigureBlock {
     renderKind: "FIGURE";
     id: Common.DocumentID;
     semanticNodeIds: Common.NodeID[];
     figure: SemanticDocument.FigureContent;
     caption?: SemanticDocument.RichText;
+    /** Stored resources backing the figure graphic, in preference order. */
+    resourceIds?: Common.ResourceID[];
   }
   export interface RenderHeadingBlock {
     renderKind: "HEADING";
@@ -479,12 +522,34 @@ export declare namespace RenderDocument {
     semanticNodeIds: Common.NodeID[];
     content: SemanticDocument.RichText;
   }
+  /** Behavioral knobs for oversized content; the LaTeX backend degrades gracefully instead of silently dropping content. */
   export interface RenderPolicy {
     floatFigures: boolean;
+    floatTables?: boolean;
+    wideFigureHandling?: RenderDocument.WideContentHandling;
+    tableOverflowHandling?: RenderDocument.TableOverflowHandling;
+    longEquationHandling?: RenderDocument.LongEquationHandling;
+    captionPosition?: RenderDocument.CaptionPosition;
   }
+  /** Named visual profile. Initial Product ships readable-single-column as the default. */
   export interface RenderProfile {
     name: string;
+    columns?: number;
+    paperSize?: RenderDocument.PaperSize;
+    fontSizePt?: number;
+    lineSpacingFactor?: number;
   }
+  export interface RenderTableBlock {
+    renderKind: "TABLE";
+    id: Common.DocumentID;
+    semanticNodeIds: Common.NodeID[];
+    table: SemanticDocument.TableContent;
+    caption?: SemanticDocument.RichText;
+    columnAlignments?: RenderDocument.ColumnAlignment[];
+  }
+}
+
+export declare namespace Resources {
 }
 
 export declare namespace Mapping {

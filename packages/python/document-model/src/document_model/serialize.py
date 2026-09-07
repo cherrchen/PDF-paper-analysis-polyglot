@@ -21,6 +21,7 @@ _ROOT_MODELS: dict[str, type[BaseModel]] = {
     "semantic-document": generated.SemanticDocument,
     "translation-layer": generated.TranslationLayer,
     "render-document": generated.RenderDocument,
+    "resources": generated.ResourceDocument,
     "mapping": generated.MappingBundle,
 }
 

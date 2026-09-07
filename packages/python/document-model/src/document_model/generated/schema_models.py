@@ -889,12 +889,26 @@ TextNodeContent = RichText
 # --- translation-layer ---------------------------------------
 
 
+class Term(_CanonicalModel):
+    # One glossary term with its preferred translation for the target locale.
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    term: str = Field(min_length=1)
+    preferredTranslation: str = Field(min_length=1)
+    source: TermSource
+    confidence: Confidence
+    scope: TermScope
+
+
 class TranslationEntry(_CanonicalModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
-    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset({"confidence"})
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset(
+        {"cacheKey", "confidence", "providerModel"}
+    )
     semanticNodeId: NodeID
     content: NodeContent
     confidence: Confidence | None = Field(default=None)
+    providerModel: str | None = Field(default=None)
+    cacheKey: str | None = Field(default=None)
     provenanceIds: list[ProvenanceID]
 
 
@@ -902,30 +916,70 @@ class TranslationLayer(_CanonicalModel):
     # Locale-specific generated content keyed by stable SemanticNode identity. Source SemanticDocument content remains unchanged.
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
     __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset(
-        {"issues", "provenance", "sourceLocale"}
+        {
+            "issues",
+            "provenance",
+            "providerModel",
+            "sourceLocale",
+            "terminology",
+            "terminologyRevision",
+        }
     )
-    schemaVersion: Literal["0.1.0"]
+    schemaVersion: Literal["0.2.0"]
     id: DocumentID
     semanticDocumentId: DocumentID
     sourceLocale: str | None = Field(default=None)
     targetLocale: str = Field(min_length=1)
+    providerModel: str | None = Field(default=None)
+    terminologyRevision: str | None = Field(default=None)
+    terminology: list[Term] | None = Field(default=None)
     entries: list[TranslationEntry]
     provenanceIds: list[ProvenanceID]
     provenance: ProvenanceStore | None = Field(default=None)
     issues: IssueStore | None = Field(default=None)
 
 
+# Consistency scope of the term.
+TermScope = Literal["DOCUMENT", "SECTION"]
+
+# Where the preferred translation came from.
+TermSource = Literal["MANUAL", "DERIVED", "PROVIDER"]
+
 # --- render-document -----------------------------------------
+
+
+class BibliographyEntryContent(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    semanticNodeId: NodeID
+    content: RichText
+
+
+class RenderBibliographyBlock(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    renderKind: Literal["BIBLIOGRAPHY"]
+    id: DocumentID
+    entries: list[BibliographyEntryContent]
+
+
+class RenderEquationBlock(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    renderKind: Literal["EQUATION"]
+    id: DocumentID
+    semanticNodeIds: list[NodeID] = Field(min_length=1)
+    equation: EquationContent
 
 
 class RenderFigureBlock(_CanonicalModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
-    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset({"caption"})
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset(
+        {"caption", "resourceIds"}
+    )
     renderKind: Literal["FIGURE"]
     id: DocumentID
     semanticNodeIds: list[NodeID] = Field(min_length=1)
     figure: FigureContent
     caption: RichText | None = Field(default=None)
+    resourceIds: list[ResourceID] | None = Field(default=None)
 
 
 class RenderHeadingBlock(_CanonicalModel):
@@ -946,13 +1000,49 @@ class RenderParagraphBlock(_CanonicalModel):
 
 
 class RenderPolicy(_CanonicalModel):
+    # Behavioral knobs for oversized content; the LaTeX backend degrades gracefully instead of silently dropping content.
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset(
+        {
+            "captionPosition",
+            "floatTables",
+            "longEquationHandling",
+            "tableOverflowHandling",
+            "wideFigureHandling",
+        }
+    )
     floatFigures: bool
+    floatTables: bool | None = Field(default=None)
+    wideFigureHandling: WideContentHandling | None = Field(default=None)
+    tableOverflowHandling: TableOverflowHandling | None = Field(default=None)
+    longEquationHandling: LongEquationHandling | None = Field(default=None)
+    captionPosition: CaptionPosition | None = Field(default=None)
 
 
 class RenderProfile(_CanonicalModel):
+    # Named visual profile. Initial Product ships readable-single-column as the default.
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset(
+        {"columns", "fontSizePt", "lineSpacingFactor", "paperSize"}
+    )
     name: str = Field(min_length=1)
+    columns: JsonInteger | None = Field(default=None, ge=1, le=2)
+    paperSize: PaperSize | None = Field(default=None)
+    fontSizePt: float | None = Field(default=None, gt=0)
+    lineSpacingFactor: float | None = Field(default=None, gt=0)
+
+
+class RenderTableBlock(_CanonicalModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset(
+        {"caption", "columnAlignments"}
+    )
+    renderKind: Literal["TABLE"]
+    id: DocumentID
+    semanticNodeIds: list[NodeID] = Field(min_length=1)
+    table: TableContent
+    caption: RichText | None = Field(default=None)
+    columnAlignments: list[ColumnAlignment] | None = Field(default=None)
 
 
 class RenderDocument(_CanonicalModel):
@@ -961,7 +1051,7 @@ class RenderDocument(_CanonicalModel):
     __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset(
         {"issues", "provenance", "translationLayerId"}
     )
-    schemaVersion: Literal["0.1.0"]
+    schemaVersion: Literal["0.2.0"]
     id: DocumentID
     semanticDocumentId: DocumentID
     translationLayerId: DocumentID | None = Field(default=None)
@@ -973,7 +1063,46 @@ class RenderDocument(_CanonicalModel):
     issues: IssueStore | None = Field(default=None)
 
 
-RenderBlock = RenderHeadingBlock | RenderParagraphBlock | RenderFigureBlock
+# Where float captions are placed relative to their float.
+CaptionPosition = Literal["BELOW", "ABOVE", "SOURCE"]
+
+ColumnAlignment = Literal["LEFT", "CENTER", "RIGHT"]
+
+# How an equation that does not fit one line degrades.
+LongEquationHandling = Literal["SCALE_DOWN", "MULTILINE", "TRUNCATE"]
+
+PaperSize = Literal["A4", "LETTER"]
+
+# How a table that exceeds the column width degrades.
+TableOverflowHandling = Literal["SCALE_FONT", "WIDE_FLOAT", "WRAP", "FAIL"]
+
+# How a figure wider than the text column is placed.
+WideContentHandling = Literal["SCALE_DOWN", "WIDE_FLOAT", "INLINE"]
+
+RenderBlock = (
+    RenderHeadingBlock
+    | RenderParagraphBlock
+    | RenderFigureBlock
+    | RenderTableBlock
+    | RenderEquationBlock
+    | RenderBibliographyBlock
+)
+
+# --- resources -----------------------------------------------
+
+
+class ResourceDocument(_CanonicalModel):
+    # Stored binary resources (embedded images, vector fragments) extracted from the source PDF. ResourceRecords carry identity and metadata; the bytes live in an out-of-band resource store keyed by ResourceID.
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    __non_nullable_optional_fields__: ClassVar[frozenset[str]] = frozenset({"issues", "provenance"})
+    schemaVersion: Literal["0.1.0"]
+    id: DocumentID
+    sourceFingerprint: str = Field(min_length=1)
+    resources: ResourceStore
+    provenanceIds: list[ProvenanceID]
+    provenance: ProvenanceStore | None = Field(default=None)
+    issues: IssueStore | None = Field(default=None)
+
 
 # --- mapping -------------------------------------------------
 

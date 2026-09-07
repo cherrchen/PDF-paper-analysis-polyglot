@@ -1,9 +1,20 @@
 {
-  "schemaVersion": "0.1.0",
+  "schemaVersion": "0.2.0",
   "id": "00000000-0000-0000-0000-000000000201",
   "semanticDocumentId": "01J5M1FXTRSEMD00000000000K",
   "sourceLocale": "en",
   "targetLocale": "zh-CN-x-dummy",
+  "providerModel": "dummy",
+  "terminologyRevision": "rev-0",
+  "terminology": [
+    {
+      "term": "semantic recovery",
+      "preferredTranslation": "语义恢复",
+      "source": "MANUAL",
+      "confidence": 0.9,
+      "scope": "DOCUMENT"
+    }
+  ],
   "entries": [
     {
       "semanticNodeId": "01J5M1FXTRHEAD00000000000Y",
@@ -12,6 +23,8 @@
         "marks": []
       },
       "confidence": 1.0,
+      "providerModel": "dummy",
+      "cacheKey": "deadbeefdeadbeef",
       "provenanceIds": []
     }
   ],

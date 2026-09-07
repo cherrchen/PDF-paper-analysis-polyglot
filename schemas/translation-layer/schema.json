@@ -14,11 +14,23 @@
     "provenanceIds"
   ],
   "properties": {
-    "schemaVersion": { "const": "0.1.0" },
+    "schemaVersion": { "const": "0.2.0" },
     "id": { "$ref": "../common/schema.json#/$defs/DocumentID" },
     "semanticDocumentId": { "$ref": "../common/schema.json#/$defs/DocumentID" },
     "sourceLocale": { "type": "string" },
     "targetLocale": { "type": "string", "minLength": 1 },
+    "providerModel": {
+      "type": "string",
+      "description": "Identifier of the model that produced the entries, e.g. 'openai-compat:deepseek-chat' or 'dummy'."
+    },
+    "terminologyRevision": {
+      "type": "string",
+      "description": "Revision of the terminology table the entries were translated against; changing it invalidates cache keys."
+    },
+    "terminology": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Term" }
+    },
     "entries": {
       "type": "array",
       "items": { "$ref": "#/$defs/TranslationEntry" }
@@ -39,11 +51,39 @@
         "semanticNodeId": { "$ref": "../common/schema.json#/$defs/NodeID" },
         "content": { "$ref": "../semantic-document/schema.json#/$defs/NodeContent" },
         "confidence": { "$ref": "../common/schema.json#/$defs/Confidence" },
+        "providerModel": { "type": "string" },
+        "cacheKey": {
+          "type": "string",
+          "description": "Hash over node content, target locale, model, translation configuration, and terminology revision."
+        },
         "provenanceIds": {
           "type": "array",
           "items": { "$ref": "../common/schema.json#/$defs/ProvenanceID" }
         }
       }
+    },
+    "Term": {
+      "type": "object",
+      "description": "One glossary term with its preferred translation for the target locale.",
+      "additionalProperties": false,
+      "required": ["term", "preferredTranslation", "source", "confidence", "scope"],
+      "properties": {
+        "term": { "type": "string", "minLength": 1 },
+        "preferredTranslation": { "type": "string", "minLength": 1 },
+        "source": { "$ref": "#/$defs/TermSource" },
+        "confidence": { "$ref": "../common/schema.json#/$defs/Confidence" },
+        "scope": { "$ref": "#/$defs/TermScope" }
+      }
+    },
+    "TermSource": {
+      "type": "string",
+      "description": "Where the preferred translation came from.",
+      "enum": ["MANUAL", "DERIVED", "PROVIDER"]
+    },
+    "TermScope": {
+      "type": "string",
+      "description": "Consistency scope of the term.",
+      "enum": ["DOCUMENT", "SECTION"]
     }
   }
 }

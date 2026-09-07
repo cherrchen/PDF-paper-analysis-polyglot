@@ -179,15 +179,18 @@ def translate_document(
                     semanticNodeId=node.id,
                     content=content,
                     confidence=1.0,
+                    providerModel="dummy",
                     provenanceIds=[],
                 )
             )
     target_locale = "und-x-dummy"
     return generated.TranslationLayer(
-        schemaVersion="0.1.0",
+        schemaVersion="0.2.0",
         id=stable_uuid(semantic.id, "translation-layer", target_locale),
         semanticDocumentId=semantic.id,
         targetLocale=target_locale,
+        providerModel="dummy",
+        terminologyRevision="rev-0",
         entries=entries,
         provenanceIds=[],
     )

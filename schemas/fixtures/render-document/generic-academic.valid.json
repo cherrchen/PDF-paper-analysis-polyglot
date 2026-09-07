@@ -1,13 +1,22 @@
 {
-  "schemaVersion": "0.1.0",
+  "schemaVersion": "0.2.0",
   "id": "00000000-0000-0000-0000-000000000202",
   "semanticDocumentId": "01J5M1FXTRSEMD00000000000K",
   "translationLayerId": "00000000-0000-0000-0000-000000000201",
   "profile": {
-    "name": "generic-academic"
+    "name": "readable-single-column",
+    "columns": 1,
+    "paperSize": "A4",
+    "fontSizePt": 11.0,
+    "lineSpacingFactor": 1.25
   },
   "policy": {
-    "floatFigures": true
+    "floatFigures": true,
+    "floatTables": true,
+    "wideFigureHandling": "SCALE_DOWN",
+    "tableOverflowHandling": "SCALE_FONT",
+    "longEquationHandling": "SCALE_DOWN",
+    "captionPosition": "BELOW"
   },
   "blocks": [
     {
@@ -28,6 +37,55 @@
         "text": "[TRANSLATED] First paragraph.",
         "marks": []
       }
+    },
+    {
+      "renderKind": "TABLE",
+      "id": "00000000-0000-0000-0000-000000000205",
+      "semanticNodeIds": ["01J5M1FXTRTAB000000000000A"],
+      "table": {
+        "rows": 1,
+        "columns": 2,
+        "cells": [
+          {
+            "row": 0,
+            "column": 0,
+            "rowSpan": 1,
+            "colSpan": 1,
+            "content": { "text": "Method", "marks": [] }
+          },
+          {
+            "row": 0,
+            "column": 1,
+            "rowSpan": 1,
+            "colSpan": 1,
+            "content": { "text": "Score", "marks": [] }
+          }
+        ]
+      },
+      "caption": {
+        "text": "[TRANSLATED] Results.",
+        "marks": []
+      },
+      "columnAlignments": ["LEFT", "CENTER"]
+    },
+    {
+      "renderKind": "EQUATION",
+      "id": "00000000-0000-0000-0000-000000000206",
+      "semanticNodeIds": ["01J5M1FXTREQN000000000000B"],
+      "equation": {
+        "latex": "E = mc^2",
+        "number": "1"
+      }
+    },
+    {
+      "renderKind": "BIBLIOGRAPHY",
+      "id": "00000000-0000-0000-0000-000000000207",
+      "entries": [
+        {
+          "semanticNodeId": "01J5M1FXTRB1BE00000000000X",
+          "content": { "text": "Author, Title, 2026.", "marks": [] }
+        }
+      ]
     }
   ],
   "provenanceIds": []

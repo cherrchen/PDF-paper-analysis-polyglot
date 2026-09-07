@@ -34,6 +34,7 @@ DOCUMENT_SCHEMAS = (
     "semantic-document",
     "translation-layer",
     "render-document",
+    "resources",
     "mapping",
 )
 
