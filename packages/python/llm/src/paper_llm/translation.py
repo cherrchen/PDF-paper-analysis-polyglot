@@ -41,6 +41,31 @@ from paper_llm.types import (
 )
 
 TRANSLATION_MARKER = "[TRANSLATED]"
+DUMMY_PROVIDER_MODEL = "dummy"
+
+
+class TranslationProviderNotConfiguredError(RuntimeError):
+    """Raised when a real workspace would be rewritten by the dummy translator."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "workspace was translated with a configured provider, but none is configured now"
+        )
+
+
+def is_dummy_provider_model(model: str | None) -> bool:
+    """Return True when ``model`` is missing or the deterministic dummy identity."""
+    if model is None:
+        return True
+    return model.strip() == "" or model.strip() == DUMMY_PROVIDER_MODEL
+
+
+def translation_requires_provider(translation: generated.TranslationLayer) -> bool:
+    """True when the layer or any entry recorded a non-dummy provider identity."""
+    if not is_dummy_provider_model(translation.providerModel):
+        return True
+    return any(not is_dummy_provider_model(entry.providerModel) for entry in translation.entries)
+
 
 # Node kinds whose RichText content is translated. BIBLIOGRAPHY_ENTRY is
 # excluded (PRD FR-CITE-004): reference entries stay in the source
@@ -341,8 +366,14 @@ def translate_document(
     terminology_file: Path | None = None,
     cache: TranslationCache | None = None,
     node_ids: set[str] | None = None,
+    skip_cache_read: bool = False,
 ) -> generated.TranslationLayer:
-    """Build a TranslationLayer for ``semantic`` without mutating it."""
+    """Build a TranslationLayer for ``semantic`` without mutating it.
+
+    ``skip_cache_read`` still writes successful results into ``cache``; it only
+    bypasses lookups. User-initiated retranslation uses that path so a click
+    cannot silently replay a previous model output.
+    """
     provider = provider or DummyTranslationProvider()
     manual_terms = load_manual_terminology(terminology_file)
     candidate_terms: tuple[str, ...] = ()
@@ -383,6 +414,7 @@ def translate_document(
                 provider_endpoint=provider_endpoint,
                 terminology_revision=terminology_revision,
                 target_locale=target_locale,
+                skip_cache_read=skip_cache_read,
             )
             entries.append(
                 _make_entry(
@@ -417,6 +449,7 @@ def translate_document(
                 provider_endpoint=provider_endpoint,
                 terminology_revision=terminology_revision,
                 target_locale=target_locale,
+                skip_cache_read=skip_cache_read,
             )
             content = source.model_copy(update={"text": result.text, "marks": result.marks})
             entries.append(
@@ -461,9 +494,25 @@ def retranslate_nodes(
     provider: TranslationProvider | None = None,
     *,
     cache: TranslationCache | None = None,
+    provider_model: str | None = None,
     provider_endpoint: str = "",
+    skip_cache_read: bool = True,
 ) -> generated.TranslationLayer:
-    """Re-translate selected nodes and merge into an existing TranslationLayer."""
+    """Re-translate selected nodes and merge into an existing TranslationLayer.
+
+    New entries record ``provider_model`` (the provider that actually ran), not
+    the previous layer identity. Layer ``providerModel`` is the latest pass:
+    when every entry shares one model that model is stored; mixed documents
+    keep the latest-pass identity and per-entry ``providerModel`` remains
+    authoritative. User-initiated calls skip cache reads for the selected
+    nodes and write the new results back.
+    """
+    if provider is None:
+        resolved_model = provider_model or DUMMY_PROVIDER_MODEL
+    elif not provider_model:
+        raise ValueError("provider_model is required when a non-dummy provider is supplied")
+    else:
+        resolved_model = provider_model
     refreshed = translate_document(
         semantic,
         provider,
@@ -471,15 +520,31 @@ def retranslate_nodes(
         source_locale=translation.sourceLocale,
         terminology=list(translation.terminology or []),
         terminology_revision=translation.terminologyRevision or "rev-0",
-        provider_model=translation.providerModel or "dummy",
+        provider_model=resolved_model,
         provider_endpoint=provider_endpoint,
         cache=cache,
         node_ids=node_ids,
+        skip_cache_read=skip_cache_read,
     )
     merged = {entry.semanticNodeId: entry for entry in translation.entries}
     for entry in refreshed.entries:
         merged[entry.semanticNodeId] = entry
-    return translation.model_copy(update={"entries": list(merged.values())})
+    merged_entries = list(merged.values())
+    return translation.model_copy(
+        update={
+            "entries": merged_entries,
+            "providerModel": _layer_provider_model(merged_entries, resolved_model),
+        }
+    )
+
+
+def _layer_provider_model(entries: list[generated.TranslationEntry], latest_pass: str) -> str:
+    """Latest-pass identity; homogeneous layers collapse to the shared model."""
+    models = {entry.providerModel for entry in entries if entry.providerModel}
+    if len(models) == 1:
+        only = next(iter(models))
+        return only or latest_pass
+    return latest_pass
 
 
 def _translate_node(
@@ -496,6 +561,7 @@ def _translate_node(
     provider_endpoint: str,
     terminology_revision: str,
     target_locale: str,
+    skip_cache_read: bool = False,
 ) -> TranslationResult:
     cache_key = _cache_key(
         semantic_node_id=semantic_node_id,
@@ -508,7 +574,7 @@ def _translate_node(
         node_kind=node_kind,
         candidate_terms=candidate_terms,
     )
-    if cache is not None and (cached := cache.get(cache_key)) is not None:
+    if cache is not None and not skip_cache_read and (cached := cache.get(cache_key)) is not None:
         return TranslationResult(text=cached.text, marks=cached.marks, confidence=cached.confidence)
     request = TranslationRequest(
         text=source.text,
@@ -539,6 +605,7 @@ def _translate_table_content(
     provider_endpoint: str,
     terminology_revision: str,
     target_locale: str,
+    skip_cache_read: bool = False,
 ) -> generated.TableContent:
     """Translate every table cell while preserving grid shape (FR-TRANS-002)."""
     cells: list[generated.TableCell] = []
@@ -556,6 +623,7 @@ def _translate_table_content(
             provider_endpoint=provider_endpoint,
             terminology_revision=terminology_revision,
             target_locale=target_locale,
+            skip_cache_read=skip_cache_read,
         )
         cells.append(
             cell.model_copy(
