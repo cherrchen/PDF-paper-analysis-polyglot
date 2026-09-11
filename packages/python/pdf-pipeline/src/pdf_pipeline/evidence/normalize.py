@@ -11,12 +11,15 @@ boundary (see docs/contracts/parser-adapter-contract.md).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from document_model import load_document
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.geometry import as_rect
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 # Canonical LayoutLabel identity entries keep normalization idempotent:
 # candidates that already carry a normalized label pass through unchanged.
@@ -189,6 +192,38 @@ def normalize_bundle(
             )
         )
     return normalized
+
+
+def merge_evidence_bundles(
+    bundles: Sequence[generated.EvidenceBundle],
+) -> generated.EvidenceBundle:
+    """Merge per-provider bundles into one ensemble bundle.
+
+    Candidates and provenance records are concatenated; per-provider
+    attribution survives through each record's ``producer`` string. The
+    merged bundle records its member providers in the ``provider`` field
+    so downstream artifacts stay self-describing.
+    """
+    if not bundles:
+        raise ValueError("cannot merge an empty evidence bundle list")
+    schema_version = bundles[0].schemaVersion
+    if any(bundle.schemaVersion != schema_version for bundle in bundles):
+        raise ValueError("cannot merge evidence bundles with mixed schema versions")
+    provider = f"ensemble:{'+'.join(bundle.provider for bundle in bundles)}"
+    version = "+".join(bundle.providerVersion for bundle in bundles)
+    return generated.EvidenceBundle(
+        schemaVersion=schema_version,
+        provider=provider,
+        providerVersion=version,
+        candidates=[candidate for bundle in bundles for candidate in bundle.candidates],
+        provenance=generated.ProvenanceStore(
+            records=[
+                record
+                for bundle in bundles
+                for record in (bundle.provenance.records if bundle.provenance else [])
+            ]
+        ),
+    )
 
 
 def evidence_bundle_from_json(data: object) -> generated.EvidenceBundle:

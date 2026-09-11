@@ -33,7 +33,7 @@ from paper_llm.translation import (
     translation_requires_provider,
 )
 
-from pdf_pipeline.evidence.providers import MockLayoutEvidenceProvider
+from pdf_pipeline.evidence.normalize import merge_evidence_bundles
 from pdf_pipeline.fusion import RegionLine
 from pdf_pipeline.geometry import as_rect
 from pdf_pipeline.ids import stable_uuid
@@ -52,6 +52,7 @@ from pdf_pipeline.render_latex import (
     render_target_document_id,
 )
 from pdf_pipeline.resource_store import bind_figure_image_resources, extract_resource_document
+from pdf_pipeline.routing import ROUTING_VERSION, collect_bundles, route_providers
 from pdf_pipeline.sem_validate import validate_semantic_recovery
 from pdf_pipeline.semantic import recover_semantic_document
 
@@ -488,11 +489,12 @@ def run_pipeline(
         raise ValueError(f"unsupported input PDF: {capability.reason}")
 
     physical = extract_physical_document(data)
-    # Phase 7.1 DocumentProbe: routing diagnostics from the physical layer
-    # alone; providers are selected in Stage C (adaptive routing) from this.
+    # Phase 7.1 + 7.3: probe the document, then route the provider ensemble.
     probe = probe_document(physical)
-    evidence = MockLayoutEvidenceProvider().collect(physical)
-    layout = recover_layout_document(physical, evidence=evidence)
+    plan = route_providers(probe)
+    bundles = collect_bundles(plan, physical)
+    evidence = merge_evidence_bundles(bundles)
+    layout = recover_layout_document(physical, evidence=bundles)
     region_texts = region_texts_from(physical, layout)
     semantic = recover_semantic_document(
         layout,
@@ -580,12 +582,17 @@ def run_pipeline(
     paths["source.pdf"] = source_copy
     paths["target.pdf"] = target_pdf
 
-    # Phase 7.1: ad-hoc routing diagnostics artifact (not a canonical schema
-    # document, same category as the viewer manifest).
+    # Phase 7.1/7.3: ad-hoc routing diagnostics artifact (not a canonical
+    # schema document, same category as the viewer manifest).
     probe_path = out_dir / "probe.json"
     _atomic_write_json(
         probe_path,
-        {"probeVersion": PROBE_VERSION, **probe.to_json()},
+        {
+            "probeVersion": PROBE_VERSION,
+            "routingVersion": ROUTING_VERSION,
+            **probe.to_json(),
+            "routing": plan.to_json(),
+        },
     )
     paths["probe.json"] = probe_path
 

@@ -39,6 +39,12 @@ challenger = "docling-sim"
 primary = "docling-sim"
 fallback = "mock"
 
+[formula.detection]
+primary = "mock"
+
+[formula.recognition]
+primary = "mock"
+
 [scholarly.metadata]
 primary = "grobid-sim"
 

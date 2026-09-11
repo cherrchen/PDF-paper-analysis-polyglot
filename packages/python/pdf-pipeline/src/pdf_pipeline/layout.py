@@ -62,21 +62,22 @@ def recover_layout_document(
     physical: generated.PhysicalDocument,
     *,
     providers: Iterable[EvidenceProvider] | None = None,
-    evidence: generated.EvidenceBundle | None = None,
+    evidence: generated.EvidenceBundle | Iterable[generated.EvidenceBundle] | None = None,
 ) -> generated.LayoutDocument:
     """Recover the LayoutDocument of a PhysicalDocument.
 
-    ``evidence`` injects a pre-built bundle (e.g. from a real parser
-    adapter); by default the deterministic mock provider runs so the
-    pipeline needs no third-party dependency.
+    ``evidence`` injects one pre-built bundle or several (one per
+    ensemble member); by default the deterministic mock provider runs so
+    the pipeline needs no third-party dependency.
     """
-    bundles = (
-        [evidence]
-        if evidence is not None
-        else [
+    if evidence is None:
+        bundles = [
             provider.collect(physical) for provider in (providers or [MockLayoutEvidenceProvider()])
         ]
-    )
+    elif isinstance(evidence, generated.EvidenceBundle):
+        bundles = [evidence]
+    else:
+        bundles = list(evidence)
     candidates_by_page: dict[str, list[NormalizedCandidate]] = {}
     for bundle in bundles:
         for candidate in normalize_bundle(bundle, physical):
