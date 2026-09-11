@@ -114,8 +114,12 @@ def test_end_to_end_pipeline_runs_and_validates(tmp_path: Path) -> None:
     viewer_mapping = json.loads(
         (tmp_path / "out/viewer/data/mapping.json").read_text(encoding="utf-8")
     )
-    assert viewer_mapping["viewerDataVersion"] == 1
+    assert viewer_mapping["viewerDataVersion"] == 2
     assert viewer_mapping["sourceRegions"]
+    assert viewer_mapping["translation"]["entries"]
+    assert "semanticRelations" in viewer_mapping
+    assert "provenance" in viewer_mapping
+    assert "issues" in viewer_mapping
 
 
 def test_viewer_mapping_keeps_all_cross_page_source_fragments(tmp_path: Path) -> None:

@@ -15,15 +15,15 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pypdfium2 as pdfium
-from document_model import dump_document, validate_bundle_references
+from document_model import dump_document, load_document, validate_bundle_references
 from document_model.generated import schema_models as generated
 from paper_llm import translate_document
 from paper_llm.cache import TranslationCache
 from paper_llm.config import TranslationConfig, load_translation_config
-from paper_llm.translation import create_provider
+from paper_llm.translation import create_provider, retranslate_nodes
 
 from pdf_pipeline.evidence.providers import MockLayoutEvidenceProvider
 from pdf_pipeline.fusion import RegionLine
@@ -51,8 +51,19 @@ if TYPE_CHECKING:
         PhysicalDocument,
         SemanticDocument,
     )
+    from paper_llm.types import TranslationProvider
 
 PIPELINE_VERSION = "0.1.0"
+
+# Workspace file -> canonical document kind (document_model.serialize._ROOT_MODELS).
+_WORKSPACE_KINDS = {
+    "physical.json": "physical-document",
+    "layout.json": "layout-document",
+    "semantic.json": "semantic-document",
+    "translation.json": "translation-layer",
+    "mapping.json": "mapping",
+    "resources.json": "resources",
+}
 
 
 def region_texts_from(physical: PhysicalDocument, layout: LayoutDocument) -> dict[str, str]:
@@ -151,6 +162,51 @@ def build_source_anchors(
     return physical_layout_bindings, source_anchors, source_semantic_bindings
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write via sibling temp + replace so a reader never sees a half-written file."""
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
+
+def _viewer_node(node: generated.SemanticNode) -> dict[str, object]:
+    data: dict[str, object] = {
+        "id": node.id,
+        "kind": node.kind,
+        "content": dump_document(node.content),
+        "confidence": dump_document(node.confidence),
+        "provenanceIds": list(node.provenanceIds),
+    }
+    if node.parentId is not None:
+        data["parentId"] = node.parentId
+    return data
+
+
+def _viewer_translation(translation: generated.TranslationLayer) -> dict[str, object]:
+    data: dict[str, object] = {
+        "targetLocale": translation.targetLocale,
+        "entries": [
+            {
+                "semanticNodeId": entry.semanticNodeId,
+                "content": dump_document(entry.content),
+                **({"confidence": entry.confidence} if entry.confidence is not None else {}),
+                **({"providerModel": entry.providerModel} if entry.providerModel else {}),
+                **({"cacheKey": entry.cacheKey} if entry.cacheKey else {}),
+            }
+            for entry in translation.entries
+        ],
+    }
+    if translation.sourceLocale is not None:
+        data["sourceLocale"] = translation.sourceLocale
+    if translation.providerModel is not None:
+        data["providerModel"] = translation.providerModel
+    if translation.terminologyRevision is not None:
+        data["terminologyRevision"] = translation.terminologyRevision
+    if translation.terminology is not None:
+        data["terminology"] = [dump_document(term) for term in translation.terminology]
+    return data
+
+
 def _write_viewer_assets(
     *,
     data_dir: Path,
@@ -161,8 +217,9 @@ def _write_viewer_assets(
     physical: PhysicalDocument,
     layout: LayoutDocument,
     semantic: SemanticDocument,
+    translation: generated.TranslationLayer,
 ) -> None:
-    """Emit the static fetch targets for the web viewer (Phase 2.7)."""
+    """Emit the static fetch targets for the web viewer (M6 bidirectional reader, v2)."""
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "source.pdf").write_bytes(source_pdf)
     (data_dir / "target.pdf").write_bytes(target_pdf.read_bytes())
@@ -175,37 +232,78 @@ def _write_viewer_assets(
         }
         for region in layout.regions
     ]
-    (data_dir / "mapping.json").write_text(
+    provenance = (
+        [dump_document(record) for record in semantic.provenance.records]
+        if semantic.provenance is not None
+        else []
+    )
+    issues = [
+        dump_document(issue)
+        for store in (semantic.issues, mapping.issues, translation.issues)
+        if store is not None
+        for issue in store.issues
+    ]
+    _atomic_write_text(
+        data_dir / "mapping.json",
         json.dumps(
             {
-                "viewerDataVersion": 1,
+                "viewerDataVersion": 2,
                 **dump_document(mapping),
-                "semanticNodes": [
-                    {"id": node.id, "kind": node.kind} for node in semantic.nodes[1:]
-                ],
+                "semanticNodes": [_viewer_node(node) for node in semantic.nodes[1:]],
+                "semanticRelations": [dump_document(rel) for rel in semantic.relations],
                 "sourceRegions": source_regions,
                 "renderAnchors": [dump_document(a) for a in render_anchors],
+                "translation": _viewer_translation(translation),
+                "provenance": provenance,
+                "issues": issues,
             },
             indent=2,
             ensure_ascii=False,
         )
         + "\n",
-        encoding="utf-8",
     )
-    source_page = physical.pages[0].geometry
+    source_pages = [
+        {"widthPt": page.geometry.widthPt, "heightPt": page.geometry.heightPt}
+        for page in physical.pages
+    ]
     target_doc = pdfium.PdfDocument(str(target_pdf))
     try:
         target_page_count = len(target_doc)
-        target_width, target_height = target_doc[0].get_size()
+        target_pages: list[dict[str, float]] = []
+        for index in range(target_page_count):
+            width, height = target_doc[index].get_size()
+            target_pages.append({"widthPt": width, "heightPt": height})
     finally:
         target_doc.close()
     meta = {
         "sourcePageCount": len(physical.pages),
         "targetPageCount": target_page_count,
-        "sourcePageSize": {"widthPt": source_page.widthPt, "heightPt": source_page.heightPt},
-        "targetPageSize": {"widthPt": target_width, "heightPt": target_height},
+        "sourcePages": source_pages,
+        "targetPages": target_pages,
     }
-    (data_dir / "viewer-meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    _atomic_write_text(data_dir / "viewer-meta.json", json.dumps(meta, indent=2) + "\n")
+
+
+def _build_translation_provider(
+    config: TranslationConfig,
+) -> tuple[TranslationProvider | None, str, str, TranslationCache | None]:
+    """Build (provider, provider_model, provider_endpoint, cache) from config.
+
+    Shared by ``run_pipeline`` and ``rerender_workspace``. A ``None`` provider
+    means the deterministic dummy translator.
+    """
+    cache: TranslationCache | None = None
+    if config.cache_dir is not None:
+        cache = TranslationCache(config.cache_dir / "translation-cache.jsonl")
+    if config.provider is None:
+        return None, "dummy", "", cache
+    provider = create_provider(provider_model="openai-compat", provider_config=config.provider)
+    return (
+        provider,
+        f"openai-compat:{config.provider.model}",
+        config.provider.endpoint,
+        cache,
+    )
 
 
 def run_pipeline(
@@ -219,10 +317,6 @@ def run_pipeline(
     data = source_pdf.read_bytes()
     out_dir.mkdir(parents=True, exist_ok=True)
     config = translation_config or load_translation_config()
-    cache = None
-    if config.cache_dir is not None:
-        cache = TranslationCache(config.cache_dir / "translation-cache.jsonl")
-
     capability = probe_input_capability(data)
     if not capability.usable:
         # FR-PDF-002: fail loudly at the entry point rather than silently
@@ -247,16 +341,7 @@ def run_pipeline(
                 "issues": store.model_copy(update={"issues": [*store.issues, *recovery_issues]})
             }
         )
-    provider = None
-    provider_model = "dummy"
-    provider_endpoint = ""
-    if config.provider is not None:
-        provider = create_provider(
-            provider_model="openai-compat",
-            provider_config=config.provider,
-        )
-        provider_model = f"openai-compat:{config.provider.model}"
-        provider_endpoint = config.provider.endpoint
+    provider, provider_model, provider_endpoint, cache = _build_translation_provider(config)
     translation = translate_document(
         semantic,
         provider,
@@ -307,6 +392,11 @@ def run_pipeline(
         path = out_dir / name
         dump_document(document, path=path)
         paths[name] = path
+    # Keep the input bytes in the workspace so rerender_workspace can rebuild
+    # viewer assets without the user re-supplying the source PDF.
+    source_copy = out_dir / "source.pdf"
+    source_copy.write_bytes(data)
+    paths["source.pdf"] = source_copy
 
     # Cross-layer integrity: every id reference in the bundle resolves.
     bundle = {
@@ -334,9 +424,102 @@ def run_pipeline(
         physical=physical,
         layout=layout,
         semantic=semantic,
+        translation=translation,
     )
     paths["viewer-data"] = data_dir
     return paths
+
+
+def rerender_workspace(
+    workspace_dir: Path,
+    *,
+    viewer_data_dir: Path,
+    node_ids: set[str],
+    translation_config: TranslationConfig | None = None,
+) -> list[str]:
+    """Re-translate `node_ids` in a finished workspace and rebuild render output.
+
+    FR-TRANS-004: the source PDF is never re-parsed — physical/layout/semantic/
+    mapping geometry is loaded from the workspace and only the translation,
+    render document, target PDF, render anchors, and viewer assets are rebuilt.
+    Returns the sorted re-translated node ids.
+    """
+    documents = {
+        name: load_document(kind, json.loads((workspace_dir / name).read_text(encoding="utf-8")))
+        for name, kind in _WORKSPACE_KINDS.items()
+    }
+    physical = cast("PhysicalDocument", documents["physical.json"])
+    layout = cast("LayoutDocument", documents["layout.json"])
+    semantic = cast("SemanticDocument", documents["semantic.json"])
+    translation = cast("generated.TranslationLayer", documents["translation.json"])
+    mapping = cast("generated.MappingBundle", documents["mapping.json"])
+    resources = cast("generated.ResourceDocument", documents["resources.json"])
+
+    translatable = {entry.semanticNodeId for entry in translation.entries}
+    unknown = node_ids - translatable
+    if unknown:
+        raise ValueError(f"not re-translatable nodes: {sorted(unknown)}")
+
+    config = translation_config or load_translation_config()
+    provider, _model, provider_endpoint, cache = _build_translation_provider(config)
+    new_translation = retranslate_nodes(
+        semantic,
+        translation,
+        node_ids,
+        provider,
+        cache=cache,
+        provider_endpoint=provider_endpoint,
+    )
+    render = compose_render_document(
+        semantic,
+        new_translation,
+        profile=DEFAULT_PROFILE,
+        policy=DEFAULT_POLICY,
+        resources=resources.resources,
+    )
+    tex = project_to_latex(render, resource_dir=workspace_dir / "resources")
+    target_pdf = compile_latex(tex, workspace_dir / "build")
+    render_anchors = recover_render_anchors(target_pdf, semantic)
+    new_mapping = build_mapping_bundle(
+        semantic,
+        source_anchors=mapping.sourceAnchors,
+        source_semantic_bindings=mapping.sourceSemanticBindings,
+        physical_layout_bindings=mapping.physicalLayoutBindings,
+        render_anchors=render_anchors,
+        render_document_id=render_target_document_id(render),
+    )
+
+    for name, document in (
+        ("translation.json", new_translation),
+        ("render.json", render),
+        ("mapping.json", new_mapping),
+    ):
+        dump_document(document, path=workspace_dir / name)
+
+    bundle = {
+        "physical": dump_document(physical),
+        "layout": dump_document(layout),
+        "semantic": dump_document(semantic),
+        "translation": dump_document(new_translation),
+        "render": dump_document(render),
+        "mappings": dump_document(new_mapping),
+    }
+    issues = validate_bundle_references(bundle)
+    if issues:
+        raise RuntimeError(f"bundle reference issues: {issues}")
+
+    _write_viewer_assets(
+        data_dir=viewer_data_dir,
+        source_pdf=(workspace_dir / "source.pdf").read_bytes(),
+        target_pdf=target_pdf,
+        mapping=new_mapping,
+        render_anchors=render_anchors,
+        physical=physical,
+        layout=layout,
+        semantic=semantic,
+        translation=new_translation,
+    )
+    return sorted(node_ids)
 
 
 def main(argv: list[str] | None = None) -> int:
