@@ -105,7 +105,11 @@ test-golden:
 
 viewer-fixture:
     {{ python }} scripts/latex_run.py compile smoke
-    {{ python }} -m pdf_pipeline tests/fixtures/source/latex/build/figure-caption.pdf apps/web/.viewer-fixture --viewer-data-dir apps/web/public/data
+    {{ python }} -m pdf_pipeline tests/fixtures/source/latex/build/paper-anatomy.pdf apps/web/.viewer-fixture --viewer-data-dir apps/web/public/data
+
+# Run reader API (:8000) and viewer dev server (:4173) together.
+serve-reader: viewer-fixture
+    @sh -c 'uv run python -m paper_api --workspace apps/web/.viewer-fixture --data-dir apps/web/public/data & api=$!; trap "kill $api" EXIT; pnpm --filter @paper/web exec vite --host 127.0.0.1 --port 4173 --strictPort'
 
 test-e2e: viewer-fixture
     pnpm --filter @paper/web build
