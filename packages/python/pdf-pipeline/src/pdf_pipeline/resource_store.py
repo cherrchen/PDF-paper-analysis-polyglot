@@ -1,20 +1,14 @@
-# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportAttributeAccessIssue=false, reportCallIssue=false, reportPrivateUsage=false
 """Extract embedded PDF images into a ResourceDocument (M5 Phase 5.7)."""
 
 from __future__ import annotations
 
 import hashlib
-import io
-import struct
-import zlib
 from typing import TYPE_CHECKING
 
-import pypdfium2 as pdfium
-import pypdfium2.raw as pdfium_c
 from document_model import stable_uuid
 from document_model.generated import schema_models as generated
 
-from pdf_pipeline.physical import _deterministic_id
+from pdf_pipeline.pdfium_image import ImageExtractError, extract_embedded_images
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -36,57 +30,39 @@ def extract_resource_document(
     resource_dir.mkdir(parents=True, exist_ok=True)
     records: list[generated.ResourceRecord] = []
     issues: list[generated.Issue] = []
-    pdf = pdfium.PdfDocument(pdf_bytes)
-    try:
-        for page_index, page in enumerate(pdf):
-            image_counter = 0
-            for obj in page.get_objects(max_depth=16):
-                if obj.type != pdfium_c.FPDF_PAGEOBJ_IMAGE:
-                    continue
-                left, bottom, right, top = obj.get_pos()
-                if right - left <= 0 or top - bottom <= 0:
-                    continue
-                resource_id = _deterministic_id(fingerprint, "image", page_index, image_counter)
-                extracted = _extract_image_bytes(obj)
-                if extracted is None:
-                    issues.append(
-                        _extract_issue(
-                            fingerprint,
-                            resource_id,
-                            page_index,
-                            image_counter,
-                        )
-                    )
-                    image_counter += 1
-                    continue
-                media_type, image_bytes = extracted
-                if not image_bytes:
-                    issues.append(
-                        _extract_issue(
-                            fingerprint,
-                            resource_id,
-                            page_index,
-                            image_counter,
-                        )
-                    )
-                    image_counter += 1
-                    continue
-                extension = _extension_for_media_type(media_type)
-                file_path = resource_dir / f"{resource_id}{extension}"
-                file_path.write_bytes(image_bytes)
-                records.append(
-                    generated.ResourceRecord(
-                        id=resource_id,
-                        kind="EMBEDDED_IMAGE",
-                        mediaType=media_type,
-                        byteLength=len(image_bytes),
-                        sha256=hashlib.sha256(image_bytes).hexdigest(),
-                        origin="EXTRACTED",
-                    )
+    for page_index, image_counter, extracted in extract_embedded_images(pdf_bytes):
+        resource_id = stable_uuid(fingerprint, "image", page_index, image_counter)
+        if isinstance(extracted, ImageExtractError) or not extracted.payload:
+            issues.append(
+                _extract_issue(
+                    fingerprint,
+                    resource_id,
+                    page_index,
+                    image_counter,
+                    stage=(
+                        extracted.stage if isinstance(extracted, ImageExtractError) else "empty"
+                    ),
+                    reason=(
+                        extracted.reason
+                        if isinstance(extracted, ImageExtractError)
+                        else "empty image bytes"
+                    ),
                 )
-                image_counter += 1
-    finally:
-        pdf.close()
+            )
+            continue
+        extension = _extension_for_media_type(extracted.media_type)
+        file_path = resource_dir / f"{resource_id}{extension}"
+        file_path.write_bytes(extracted.payload)
+        records.append(
+            generated.ResourceRecord(
+                id=resource_id,
+                kind="EMBEDDED_IMAGE",
+                mediaType=extracted.media_type,
+                byteLength=len(extracted.payload),
+                sha256=hashlib.sha256(extracted.payload).hexdigest(),
+                origin="EXTRACTED",
+            )
+        )
     document = generated.ResourceDocument(
         schemaVersion="0.1.0",
         id=stable_uuid(fingerprint, "resource-document"),
@@ -149,14 +125,20 @@ def bind_figure_image_resources(
 
 
 def _extract_issue(
-    fingerprint: str, resource_id: str, page_index: int, image_counter: int
+    fingerprint: str,
+    resource_id: str,
+    page_index: int,
+    image_counter: int,
+    *,
+    stage: str,
+    reason: str,
 ) -> generated.Issue:
     return generated.Issue(
         id=stable_uuid(fingerprint, "issue", "image-extract", page_index, image_counter),
         category="PHYSICAL_EXTRACTION",
         severity="WARNING",
         producer=_PRODUCER,
-        message=f"embedded image on page {page_index} could not be extracted",
+        message=(f"embedded image on page {page_index} could not be extracted ({stage}: {reason})"),
         affectedIds=[resource_id],
         recoverable=True,
         fallback="empty figure box",
@@ -171,106 +153,3 @@ def _extension_for_media_type(media_type: str) -> str:
         "image/webp": ".webp",
     }
     return mapping.get(media_type.lower(), ".bin")
-
-
-def _extract_image_bytes(image_obj: object) -> tuple[str, bytes] | None:
-    """Return media type and bytes for an embedded image, or None when unsupported."""
-    extracted = _extract_native_image(image_obj)
-    if extracted is not None:
-        return extracted
-    return _extract_bitmap_png(image_obj)
-
-
-def _extract_native_image(image_obj: object) -> tuple[str, bytes] | None:
-    buffer = io.BytesIO()
-    try:
-        image_obj.extract(buffer)  # type: ignore[attr-defined]
-    except (RuntimeError, OSError, TypeError, ValueError, AttributeError):
-        return None
-    payload = buffer.getvalue()
-    if not payload:
-        return None
-    media_type = _media_type_from_bytes(payload)
-    if media_type == "application/octet-stream":
-        return None
-    return media_type, payload
-
-
-def _extract_bitmap_png(image_obj: object) -> tuple[str, bytes] | None:
-    bitmap = None
-    png: bytes | None = None
-    try:
-        try:
-            bitmap = image_obj.get_bitmap(render=True)  # type: ignore[attr-defined]
-        except Exception:
-            bitmap = image_obj.get_bitmap()  # type: ignore[attr-defined]
-        png = _bitmap_to_png(bitmap)
-    except Exception:
-        return None
-    finally:
-        if bitmap is not None:
-            close = getattr(bitmap, "close", None)
-            if callable(close):
-                close()
-    if not png:
-        return None
-    return "image/png", png
-
-
-def _bitmap_to_png(bitmap: object) -> bytes | None:
-    width = int(bitmap.width)  # type: ignore[attr-defined]
-    height = int(bitmap.height)  # type: ignore[attr-defined]
-    stride = int(bitmap.stride)  # type: ignore[attr-defined]
-    channels = int(bitmap.n_channels)  # type: ignore[attr-defined]
-    mode = str(bitmap.mode)  # type: ignore[attr-defined]
-    raw = bytes(bitmap.buffer)  # type: ignore[attr-defined]
-    color_type, out_channels, swap_bgr = _png_layout(mode, channels)
-    if color_type is None or out_channels is None:
-        return None
-    rows: list[bytes] = []
-    row_bytes = width * channels
-    for y in range(height):
-        start = y * stride
-        row = bytearray(raw[start : start + row_bytes])
-        if swap_bgr:
-            for index in range(0, len(row), channels):
-                row[index], row[index + 2] = row[index + 2], row[index]
-        rows.append(b"\x00" + bytes(row[: width * out_channels]))
-    ihdr = struct.pack(">IIBBBBB", width, height, 8, color_type, 0, 0, 0)
-    idat = zlib.compress(b"".join(rows), 9)
-    return (
-        b"\x89PNG\r\n\x1a\n"
-        + _png_chunk(b"IHDR", ihdr)
-        + _png_chunk(b"IDAT", idat)
-        + _png_chunk(b"IEND", b"")
-    )
-
-
-def _png_layout(mode: str, channels: int) -> tuple[int | None, int | None, bool]:
-    if mode in {"L", "Gray"} or channels == 1:
-        return 0, 1, False
-    if mode == "BGR":
-        return 2, 3, True
-    if mode == "RGB" or channels == 3:
-        return 2, 3, False
-    if mode == "BGRA":
-        return 6, 4, True
-    if mode == "RGBA" or channels == 4:
-        return 6, 4, False
-    return None, None, False
-
-
-def _png_chunk(tag: bytes, data: bytes) -> bytes:
-    checksum = zlib.crc32(tag)
-    checksum = zlib.crc32(data, checksum) & 0xFFFFFFFF
-    return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", checksum)
-
-
-def _media_type_from_bytes(data: bytes) -> str:
-    if data.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if data.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "image/png"
-    if data.startswith(b"RIFF") and b"WEBP" in data[:16]:
-        return "image/webp"
-    return "application/octet-stream"

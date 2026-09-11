@@ -70,3 +70,22 @@ def test_bind_figure_resources_uses_source_physical_ids(tmp_path: Path) -> None:
     assert set(ids) <= resource_ids
     image_ids = {obj.id for obj in physical.objects if obj.objectType == "imageObject"}
     assert set(ids) <= image_ids
+
+
+@pytest.mark.unit
+def test_extract_pdfium_image_records_stage_and_reason() -> None:
+    from pdf_pipeline.pdfium_image import ImageExtractError, extract_pdfium_image
+
+    class FakeImage:
+        def extract(self, buffer: object) -> None:
+            del buffer
+            raise RuntimeError("native unavailable")
+
+        def get_bitmap(self, render: bool = False) -> object:
+            del render
+            raise ValueError("bitmap unavailable")
+
+    result = extract_pdfium_image(FakeImage())
+    assert isinstance(result, ImageExtractError)
+    assert result.stage in {"native-extract", "bitmap"}
+    assert "unavailable" in result.reason
