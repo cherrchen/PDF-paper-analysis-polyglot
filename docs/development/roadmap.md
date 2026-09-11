@@ -17,7 +17,7 @@ Initial Product 关键约束（摘自 PRD v0.2）：仅 Born-digital PDF；Targe
 ## 当前进度追踪
 
 **最后更新：** 2026-09-11
-**当前位置：** M5 Translation & Rendering 基线已落地，并完成第二轮内容保真修复（公式兜底、多图投影、占位符/缓存指纹、RenderPolicy 兑现）。完整 Exit Gate（可靠翻译 + 完整学术内容 + 自然重排）仍未宣称达成。下一阶段为 M6（Bidirectional Reader）。
+**当前位置：** M6 Bidirectional Reader 基线已落地（viewer 数据契约 v2、前端网格空间索引、多 fragment 高亮、几何驱动跳转 + 滚动居中 + focus、同步滚动、Semantic Inspector、`POST /api/retranslate` + `rerender_workspace` 局部重渲染），viewer 夹具切换到 `paper-anatomy` 并以 12 个 Playwright 用例锁定。下一阶段为 M7（Parser Ensemble & Quality）。
 
 README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线（完整原始 Phase 验收仍有延期项）。
 
@@ -31,7 +31,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M3 Layout Recovery Engine | 已完成 | Evidence 适配边界 + mock provider、XY-cut band/column、结构驱动 ReadingFlowGraph、continuation/caption/footnote 恢复；Exit Gate 经审查修复后达成 |
 | M4 Semantic Recovery Engine | 基线落地 | CONTINUATION 段落合并、编号 heading + SECTION 树、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复；第二轮正确性修复后表格标题、marks、脚注关联、环状树、多 fragment Viewer 与 provenance 已补。1→N / GROBID / 真实多列表格仍延期 |
 | M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；审查修复见 [M5 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.md)，保真修复见 [M5 内容保真修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.md)。未实现：`source-derived` / `dense-two-column`、MathML、矢量图 PDF/SVG |
-| M6 Bidirectional Reader | 未开始 | — |
+| M6 Bidirectional Reader | 基线落地 | viewerDataVersion 2（semanticNodes 全量/relations/translation/provenance/issues + 逐页尺寸）、前端 `PageSpatialIndex` 网格、`pickCounterpart` 几何跳转（无页码猜测）、多 fragment 高亮、同步滚动、Semantic Inspector、stdlib reader API + `rerender_workspace`（FR-TRANS-004 零源重解析）；决策见 [M6 落地 note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.md)；当前态见 [`docs/architecture/reader.md`](../architecture/reader.md)。未实现：字符级 mapping、跨文档多窗口、annotation |
 | M7 Parser Ensemble & Quality | 未开始 | — |
 | M8 Productionization | 未开始 | — |
 
@@ -104,9 +104,22 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 **M4 Exit Gate：** 基线机械门禁仍由 `paper-anatomy` 与 semantic/layout benchmark 覆盖；第二轮正确性项（表格标题、marks 偏移、脚注误配、环状树、多 fragment Viewer、provenance）见 [M4 第二轮审查正确性修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.md)。这不等于原始九个 Phase 全部完成：1 Layout→N Semantic（目标 M7）、GROBID、真实多列表格、矢量图 PDF/SVG 与 MathML 仍按记录延期。嵌入位图资源链已在 M5 落地。
 
+### M6 明细
+
+| Phase | 状态 | 证据 |
+| --- | --- | --- |
+| 6.1 Source Spatial Index | 基线 | `apps/web/src/spatial.ts::PageSpatialIndex`（source 侧实例）：8×12 网格、`hitTest`/`inBand`；vitest `spatial.test.ts` 覆盖跨界 rect、零面积、空页、回退页尺寸 |
+| 6.2 Target Spatial Index | 基线 | 同实现的 target 实例（`renderAnchors` 全 fragment 入索引，`buildPairs` 不再压成 `fragments[0]`）；e2e 断言 `renderAnchors.some(fragments.length > 1)` |
+| 6.3 Bidirectional Navigation | 基线 | `pickCounterpart`（最小合格页 + 最近 y）+ `activate` 滚动居中 + `focus`；`#sync-scroll` ±12 pt 条带、查不到不回退、250 ms 防回环；`tests/e2e/viewer-multifragment.spec.ts` 与 `viewer-navigation.spec.ts` |
+| 6.4 Multi-Fragment Highlight | 基线 | active 节点在当前页全部 fragment 均 `aria-pressed`，翻页保留；e2e 断言 pressed 数 == 该页 fragment 数 |
+| 6.5 Semantic Inspector | 基线 | `apps/web/src/inspector.ts`：id/kind/anchors/原文/译文/relations/confidence/provenance/issues/术语/citations，稳定 `#inspector-*` id；`tests/e2e/viewer-inspector.spec.ts` |
+| 6.6 Translation Interaction | 基线 | 双栏原文/译文 + Inspector 术语/引用；`POST /api/retranslate`（`apps/api`，400/409/413/405 契约）→ `pdf_pipeline.rerender_workspace` 零源重解析（pytest 注入 `extract_physical_document` raise 证明）→ 前端重建 target document 并回稳（`viewer-retranslate.spec.ts`） |
+
+**M6 Exit Gate：** 定位原文↔译文不依赖页码对应——`viewer-navigation.spec.ts` 对每个多 fragment anchor 断言 source 与 target 页码分布不同，且跳转/滚动全部由绑定 + 几何产生。真实 LLM 环境的译文变化以手工验证为承诺边界（dummy 输出确定，e2e 锁定协议）。
+
 ### 建议下一步
 
-1. 进入 M6：Bidirectional Reader。M5 基线与两轮修复已落地；完整 Exit Gate 仍未宣称。延期项：`source-derived` / `dense-two-column` profile、MathML、矢量图 PDF/SVG、1 Layout→N Semantic（M7）。
+1. 进入 M7：Parser Ensemble & Quality。M6 基线已落地（当前态：[`docs/architecture/reader.md`](../architecture/reader.md)）。延期项：`source-derived` / `dense-two-column` profile、MathML、矢量图 PDF/SVG、1 Layout→N Semantic、字符级 mapping、真 R-tree（如 >10⁴ fragments）、annotation 层。
 
 ### 维护说明
 

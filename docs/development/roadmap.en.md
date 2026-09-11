@@ -17,7 +17,7 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-11
-**Current position:** M5 Translation & Rendering baseline has landed, including a second fidelity-repair round (equation fallback, multi-image figures, placeholder/cache fingerprints, RenderPolicy follow-through). The full exit gate (reliable translation + complete academic content + natural reflow) is not claimed. M6 (Bidirectional Reader) is next.
+**Current position:** The M6 Bidirectional Reader baseline has landed (viewer data contract v2, frontend grid spatial index, multi-fragment highlight, geometry-driven jumps + centering scroll + focus, sync scroll, the Semantic Inspector, `POST /api/retranslate` + `rerender_workspace` local re-render) with the viewer fixture switched to `paper-anatomy` and locked by 12 Playwright cases. M7 (Parser Ensemble & Quality) is next.
 
 README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery baseline (the original phases are not fully closed).
 
@@ -31,7 +31,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M3 Layout Recovery Engine | Done | Evidence adapter boundary + mock provider, XY-cut band/column detection, structure-driven ReadingFlowGraph, continuation/caption/footnote recovery; exit gate met after review repairs |
 | M4 Semantic Recovery Engine | Baseline landed | CONTINUATION paragraph merging, numbered headings + SECTION tree, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery; second-round repairs restored table titles, marks, footnote linking, cyclic trees, multi-fragment Viewer, and provenance. 1→N / GROBID / true multi-column tables remain deferred |
 | M5 Translation & Rendering | Baseline landed | schema 0.2.0, structured TranslationRequest/Result, OpenAI-compatible adapter, terminology/cache, readable-single-column Profile/Policy, table/equation/bibliography/figure-resource LaTeX projection, dual-hypertarget RenderAnchors; review repairs in [M5 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.en.md); fidelity repairs in [M5 fidelity repairs](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.en.md). Not implemented: `source-derived` / `dense-two-column`, MathML, PDF/SVG figure assets |
-| M6 Bidirectional Reader | Not started | — |
+| M6 Bidirectional Reader | Baseline landed | viewerDataVersion 2 (full semanticNodes/relations/translation/provenance/issues + per-page sizes), frontend `PageSpatialIndex` grid, `pickCounterpart` geometry jumps (no page guessing), multi-fragment highlight, sync scroll, the Semantic Inspector, stdlib reader API + `rerender_workspace` (FR-TRANS-004, zero source re-parsing); decisions in the [M6 landing note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.en.md); current state in [`docs/architecture/reader.en.md`](../architecture/reader.en.md). Not implemented: character-level mapping, multi-window, annotations |
 | M7 Parser Ensemble & Quality | Not started | — |
 | M8 Productionization | Not started | — |
 
@@ -104,9 +104,22 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 **M4 exit gate:** The mechanical baseline gate remains `paper-anatomy` plus the semantic/layout benchmarks. Second-round correctness items (table titles, mark offsets, footnote mismatches, cyclic trees, multi-fragment Viewer, provenance) are in the [M4 correctness-repairs note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.en.md). That is not the same as completing all nine original phases: 1 Layout→N Semantic (target M7), GROBID, true multi-column tables, PDF/SVG figure assets, and MathML stay deferred as recorded. The embedded-raster resource chain landed in M5.
 
+### M6 details
+
+| Phase | Status | Evidence |
+| --- | --- | --- |
+| 6.1 Source Spatial Index | Baseline | `apps/web/src/spatial.ts::PageSpatialIndex` (source instance): 8×12 grid, `hitTest`/`inBand`; vitest `spatial.test.ts` covers boundary-straddling rects, zero-area shapes, empty pages, page-size fallback |
+| 6.2 Target Spatial Index | Baseline | Same implementation on the target side (`renderAnchors` feed every fragment into the index; `buildPairs` no longer collapses to `fragments[0]`); e2e asserts `renderAnchors.some(fragments.length > 1)` |
+| 6.3 Bidirectional Navigation | Baseline | `pickCounterpart` (smallest eligible page + closest y) + `activate` centering scroll + focus; `#sync-scroll` with a ±12 pt band, no fallback when nothing maps, 250 ms loop suppression; `tests/e2e/viewer-multifragment.spec.ts` and `viewer-navigation.spec.ts` |
+| 6.4 Multi-Fragment Highlight | Baseline | Every fragment of the active node on the visible page is `aria-pressed`, surviving page turns; the e2e asserts pressed count == fragment count for that page |
+| 6.5 Semantic Inspector | Baseline | `apps/web/src/inspector.ts`: id/kind/anchors/original/translation/relations/confidence/provenance/issues/terminology/citations with stable `#inspector-*` ids; `tests/e2e/viewer-inspector.spec.ts` |
+| 6.6 Translation Interaction | Baseline | Two-pane original/translation + Inspector terminology/citations; `POST /api/retranslate` (`apps/api`, 400/409/413/405 contract) → `pdf_pipeline.rerender_workspace` with zero source re-parsing (pytest poisons `extract_physical_document` to prove it) → frontend rebuilds the target document and settles (`viewer-retranslate.spec.ts`) |
+
+**M6 exit gate:** Locating original↔translation never assumes a page correspondence — `viewer-navigation.spec.ts` asserts differing source/target page distributions for every multi-fragment anchor, and every jump/scroll derives from bindings + geometry. Real-provider text changes remain a manual-verification promise (dummy output is deterministic; e2e locks the protocol).
+
 ### Recommended next steps
 
-1. Enter M6: Bidirectional Reader. The M5 baseline and two repair rounds have landed; the full exit gate is not claimed. Deferred: `source-derived` / `dense-two-column` profiles, MathML, PDF/SVG figure assets, and 1 Layout→N Semantic (M7).
+1. Enter M7: Parser Ensemble & Quality. The M6 baseline has landed (current state: [`docs/architecture/reader.en.md`](../architecture/reader.en.md)). Deferred: `source-derived` / `dense-two-column` profiles, MathML, PDF/SVG figure assets, 1 Layout→N Semantic, character-level mapping, a real R-tree (if >10⁴ fragments appear), and the annotation layer.
 
 ### Maintenance
 
