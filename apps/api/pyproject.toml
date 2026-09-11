@@ -6,7 +6,7 @@ readme = "README.md"
 license = { text = "MIT with Non-Commercial additional terms (see LICENSE)" }
 requires-python = ">=3.13,<3.14"
 authors = [{ name = "PDF Paper Analysis contributors" }]
-dependencies = ["document-model"]
+dependencies = ["document-model", "pdf-pipeline", "paper-llm"]
 
 [build-system]
 requires = ["hatchling"]
@@ -17,3 +17,5 @@ packages = ["src/paper_api"]
 
 [tool.uv.sources]
 document-model = { workspace = true }
+pdf-pipeline = { workspace = true }
+paper-llm = { workspace = true }

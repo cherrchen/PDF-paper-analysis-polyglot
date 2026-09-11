@@ -273,10 +273,16 @@ version = "0.0.0"
 source = { editable = "apps/api" }
 dependencies = [
     { name = "document-model" },
+    { name = "paper-llm" },
+    { name = "pdf-pipeline" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "document-model", editable = "packages/python/document-model" }]
+requires-dist = [
+    { name = "document-model", editable = "packages/python/document-model" },
+    { name = "paper-llm", editable = "packages/python/llm" },
+    { name = "pdf-pipeline", editable = "packages/python/pdf-pipeline" },
+]
 
 [[package]]
 name = "paper-llm"
