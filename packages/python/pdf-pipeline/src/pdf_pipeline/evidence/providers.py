@@ -36,8 +36,9 @@ PARA_MIN_X_OVERLAP = 0.5
 # Caption prefix pattern ("Figure 1", "Fig. 2", "Table 3").
 _CAPTION_PREFIX = re.compile(r"^(Figure|Fig\.?|Table)\s+\d+", re.IGNORECASE)
 
-# Math-symbol density for formula candidates.
-_FORMULA_CHARS = set("=+−×÷∑∫∏√∞≠≤≥±()[]{}^_\\αβγδϵθλμπσφω")  # noqa: RUF001
+# Math-symbol density for formula candidates. Shared with the DocumentProbe
+# (pdf_pipeline.probe) so routing and evidence agree on what "mathy" means.
+FORMULA_CHARS = set("=+−×÷∑∫∏√∞≠≤≥±()[]{}^_\\αβγδϵθλμπσφω")  # noqa: RUF001
 
 
 class EvidenceProvider(Protocol):
@@ -140,7 +141,7 @@ class MockLayoutEvidenceProvider:
             body_font = body_font_by_page[page.id]
             for candidate in _paragraph_candidates(page_body_spans[page.id]):
                 _emit_region_candidate(sink, candidate, body_font)
-            for rect, preview in _table_candidates(page_body_spans[page.id]):
+            for rect, preview in table_region_candidates(page_body_spans[page.id]):
                 sink.add_region(
                     page_id=page.id,
                     rect=rect,
@@ -237,7 +238,7 @@ TABLE_NUMERIC_ROW_RATIO = 0.5
 _NUMERIC_TAIL = re.compile(r"[\d.,%]+\)?\s*$")
 
 
-def _table_candidates(
+def table_region_candidates(
     spans: list[generated.TextSpan],
 ) -> list[tuple[generated.Rect, str]]:
     ordered = sorted(spans, key=lambda span: (as_rect(span.geometry).y, as_rect(span.geometry).x))
@@ -355,5 +356,5 @@ def _looks_like_formula(text: str) -> bool:
     stripped = text.strip()
     if stripped.count("=") + stripped.count("\\") == 0:
         return False
-    math_chars = sum(1 for char in stripped if char in _FORMULA_CHARS)
+    math_chars = sum(1 for char in stripped if char in FORMULA_CHARS)
     return math_chars / len(stripped) >= 0.15

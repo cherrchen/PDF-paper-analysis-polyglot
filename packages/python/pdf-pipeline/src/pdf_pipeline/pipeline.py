@@ -5,8 +5,8 @@ PDF -> Physical -> Evidence -> Layout -> Semantic + Translation ->
 RenderDocument -> LaTeX -> Target PDF -> RenderAnchor MappingBundle.
 
 Run as a module: ``python -m pdf_pipeline run <input.pdf> <outdir>``.
-Outputs seven canonical JSON documents plus the compiled target PDF and
-page previews for the viewer.
+Outputs seven canonical JSON documents plus the compiled target PDF, the
+document probe artifact, and page previews for the viewer.
 """
 
 from __future__ import annotations
@@ -39,6 +39,8 @@ from pdf_pipeline.geometry import as_rect
 from pdf_pipeline.ids import stable_uuid
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document, probe_input_capability
+from pdf_pipeline.probe import PRODUCER_VERSION as PROBE_VERSION
+from pdf_pipeline.probe import probe_document
 from pdf_pipeline.render_anchor import (
     build_mapping_bundle,
     recover_render_anchors,
@@ -486,6 +488,9 @@ def run_pipeline(
         raise ValueError(f"unsupported input PDF: {capability.reason}")
 
     physical = extract_physical_document(data)
+    # Phase 7.1 DocumentProbe: routing diagnostics from the physical layer
+    # alone; providers are selected in Stage C (adaptive routing) from this.
+    probe = probe_document(physical)
     evidence = MockLayoutEvidenceProvider().collect(physical)
     layout = recover_layout_document(physical, evidence=evidence)
     region_texts = region_texts_from(physical, layout)
@@ -574,6 +579,15 @@ def run_pipeline(
     _atomic_write_bytes(source_copy, data)
     paths["source.pdf"] = source_copy
     paths["target.pdf"] = target_pdf
+
+    # Phase 7.1: ad-hoc routing diagnostics artifact (not a canonical schema
+    # document, same category as the viewer manifest).
+    probe_path = out_dir / "probe.json"
+    _atomic_write_json(
+        probe_path,
+        {"probeVersion": PROBE_VERSION, **probe.to_json()},
+    )
+    paths["probe.json"] = probe_path
 
     data_dir = viewer_data_dir or out_dir / "viewer" / "data"
     _write_viewer_assets(
