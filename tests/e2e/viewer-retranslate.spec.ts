@@ -2,9 +2,8 @@ import { expect, test } from "@playwright/test";
 
 /**
  * M6 6.6 translation interaction: re-translate a node through the reader API.
- * The dummy provider is byte-deterministic, so these specs lock the protocol,
- * the status line, and the interface settling back — not text changes (those
- * require a real provider and are covered by M5 structure tests).
+ * Each click is bound to its own `/api/retranslate` response and a busy→idle
+ * revision change so a leftover status line cannot false-pass the second run.
  */
 test.describe.configure({ mode: "serial" });
 
@@ -13,7 +12,6 @@ test("re-translate button posts to the API and the reader settles back", async (
   await page.goto("/");
   await expect(page.locator("#viewer")).toBeVisible();
 
-  // Pick a translatable paragraph region and open the inspector on it.
   const mappings = await page.request.get("/data/mapping.json").then((r) => r.json());
   const entries = new Set(
     mappings.translation.entries.map((e: { semanticNodeId: string }) => e.semanticNodeId),
@@ -41,19 +39,51 @@ test("re-translate button posts to the API and the reader settles back", async (
   await button.first().click();
   await expect(page.locator("#retranslate-button")).toBeVisible();
 
+  const waitRetranslate = () =>
+    page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/retranslate") && response.request().method() === "POST",
+      { timeout: 110_000 },
+    );
+
+  const firstPending = waitRetranslate();
   await page.click("#retranslate-button");
-  await expect(page.locator("#viewer-status")).toContainText("Node re-translated", {
+  await expect(page.locator("#viewer")).toHaveAttribute("data-busy", "true");
+  const first = await firstPending;
+  expect(first.ok()).toBeTruthy();
+  const firstBody = (await first.json()) as { revision?: string };
+  expect(firstBody.revision).toBeTruthy();
+  await expect(page.locator("#viewer")).toHaveAttribute("data-busy", "false", {
     timeout: 110_000,
   });
+  await expect(page.locator("#viewer")).toHaveAttribute("data-revision", firstBody.revision ?? "", {
+    timeout: 110_000,
+  });
+  await expect(page.locator("#viewer-status")).toContainText("Node re-translated");
   await expect(page.locator("#inspector-node-id")).toHaveText(nodeId);
   await expect(page.locator("#source-canvas")).toBeVisible();
   await expect(page.locator("#target-canvas")).toBeVisible();
+  await expect(page.locator("#retranslate-button")).toBeEnabled();
 
-  // A second click stays healthy (idempotent under the deterministic dummy).
+  const secondPending = waitRetranslate();
   await page.click("#retranslate-button");
-  await expect(page.locator("#viewer-status")).toContainText("Node re-translated", {
+  await expect(page.locator("#viewer")).toHaveAttribute("data-busy", "true");
+  const second = await secondPending;
+  expect(second.ok()).toBeTruthy();
+  const secondBody = (await second.json()) as { revision?: string };
+  expect(secondBody.revision).toBeTruthy();
+  expect(secondBody.revision).not.toBe(firstBody.revision);
+  await expect(page.locator("#viewer")).toHaveAttribute("data-busy", "false", {
     timeout: 110_000,
   });
+  await expect(page.locator("#viewer")).toHaveAttribute(
+    "data-revision",
+    secondBody.revision ?? "",
+    {
+      timeout: 110_000,
+    },
+  );
+  await expect(page.locator("#viewer-status")).toContainText("Node re-translated");
 });
 
 test("the API rejects unknown nodes with a structured 400", async ({ request }) => {
