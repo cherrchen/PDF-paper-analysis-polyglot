@@ -9,11 +9,18 @@
   <body>
     <main>
       <header class="masthead">
-        <p class="eyebrow">M2 comparison desk</p>
+        <p class="eyebrow">M6 bidirectional reader</p>
         <h1 id="title">PDF Paper Analysis</h1>
         <p id="status" aria-live="polite">Preparing document workspace…</p>
       </header>
       <section id="viewer" hidden>
+        <div id="reader-toolbar">
+          <label id="sync-scroll-label"
+            ><input type="checkbox" id="sync-scroll" />Sync scroll</label
+          >
+          <button id="inspector-toggle" type="button" aria-expanded="false">Inspector</button>
+        </div>
+        <div id="reader-body">
         <div id="panes">
           <article class="pane" id="source-pane">
             <header class="pane-header">
@@ -27,9 +34,11 @@
                 <button id="source-next" type="button">Next</button>
               </nav>
             </header>
-            <div class="page-stage">
-              <canvas id="source-canvas"></canvas>
-              <div class="mapping-overlay" id="source-overlay"></div>
+            <div class="page-scroll">
+              <div class="page-stage">
+                <canvas id="source-canvas"></canvas>
+                <div class="mapping-overlay" id="source-overlay"></div>
+              </div>
             </div>
           </article>
           <article class="pane" id="target-pane">
@@ -44,11 +53,15 @@
                 <button id="target-next" type="button">Next</button>
               </nav>
             </header>
-            <div class="page-stage">
-              <canvas id="target-canvas"></canvas>
-              <div class="mapping-overlay" id="target-overlay"></div>
+            <div class="page-scroll">
+              <div class="page-stage">
+                <canvas id="target-canvas"></canvas>
+                <div class="mapping-overlay" id="target-overlay"></div>
+              </div>
             </div>
           </article>
+        </div>
+        <aside id="inspector" hidden aria-label="Semantic inspector"></aside>
         </div>
         <p id="viewer-status" aria-live="polite">Loading linked regions…</p>
       </section>
