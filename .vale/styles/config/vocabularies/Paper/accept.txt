@@ -156,7 +156,13 @@ unlocatable
 viewport
 vitest
 rerenders
+rerender
+rerendered
+retranslation
+Retranslation
 recompiles
+async
+pyright
 vite
 Vite
 webServer
