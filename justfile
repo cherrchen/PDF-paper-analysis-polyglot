@@ -103,6 +103,19 @@ test-integration:
 test-golden:
     {{ python }} scripts/pytest_category.py golden uv run pytest -m golden
 
+# M7 Phase 7.7: run the ensemble over the corpus and compare with the
+# committed baseline; fails on any quality regression.
+benchmark:
+    uv run python tests/benchmark/run_benchmark.py
+
+benchmark-report:
+    uv run python tests/benchmark/run_benchmark.py --report-only
+
+# Intentional baseline improvements only (docs/testing/golden.md policy):
+# rerun with --update-baseline and justify the change in the commit.
+benchmark-update-baseline:
+    uv run python tests/benchmark/run_benchmark.py --update-baseline
+
 viewer-fixture:
     {{ python }} scripts/latex_run.py compile smoke
     {{ python }} -m pdf_pipeline tests/fixtures/source/latex/build/paper-anatomy.pdf apps/web/.viewer-fixture --viewer-data-dir apps/web/public/data

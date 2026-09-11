@@ -106,6 +106,8 @@ ignore = ["ISC001", "PLR0913", "PLR2004", "TRY003"]
 "**/tests/**/*.py" = ["S101", "INP001", "PLC0415"]
 "apps/*/tests/**/*.py" = ["S101", "INP001"]
 "packages/python/*/tests/**/*.py" = ["S101", "INP001"]
+# The benchmark runner is a CLI script: it prints its report.
+"tests/benchmark/run_benchmark.py" = ["T201", "INP001"]
 
 [tool.ruff.format]
 quote-style = "double"
