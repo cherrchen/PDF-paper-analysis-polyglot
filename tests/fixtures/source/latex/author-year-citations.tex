@@ -1,0 +1,37 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{fontspec}
+
+\setmainfont{Latin Modern Roman}
+
+\title{Author-Year Citations Fixture}
+\author{Repository fixture}
+\date{2026-09-12}% ISO date uses hyphens, not dashes. chktex 8
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+The transformer architecture (Vaswani et al., 2017) changed sequence
+modeling. Later surveys (Vaswani et al., 2017) and (Smith, 2020a) agree.
+
+\section{Method}
+We follow the deterministic baseline of (Smith, 2020a) and the recovery
+protocol of (Doe and Roe, 2021).
+
+\begin{thebibliography}{9}
+  \bibitem{vaswani2017}
+  A.~Vaswani et al.
+  Attention and sequence transduction.
+  \emph{Fixture Journal}, 5(4):12--20, 2017.
+  \bibitem{smith2020a}
+  B.~Smith.
+  Deterministic document recovery.
+  \emph{Fixture Journal}, 3(2):5--9, 2020a.
+  \bibitem{doe2021}
+  J.~Doe and K.~Roe.
+  Parser ensembles for scholarly PDFs.
+  \emph{Layout Letters}, 4(1):1--11, 2021.
+\end{thebibliography}
+
+\end{document}

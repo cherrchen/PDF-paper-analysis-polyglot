@@ -23,7 +23,12 @@ from typing import TYPE_CHECKING, Any, cast
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.ids import stable_uuid
-from pdf_pipeline.sem_bibliography import citation_spans, entry_label
+from pdf_pipeline.sem_bibliography import (
+    author_year_spans,
+    citation_spans,
+    entry_author_year_key,
+    entry_label,
+)
 from pdf_pipeline.sem_equations import display_groups, equation_content, inline_equation_marks
 from pdf_pipeline.sem_footnotes import (
     FootnoteBody,
@@ -32,10 +37,12 @@ from pdf_pipeline.sem_footnotes import (
     footnote_marker_label,
 )
 from pdf_pipeline.sem_paragraphs import (
+    ParagraphPiece,
     clean_text,
     continuation_pairs,
     group_continuation_confidence,
     merged_region_text,
+    split_region_paragraphs,
 )
 from pdf_pipeline.sem_sections import (
     classify_front_matter,
@@ -110,6 +117,7 @@ class _Claims:
         self.group_starts: dict[str, tuple[str, list[str]]] = {}
         self.skipped: set[str] = set()
         self.entries_by_label: dict[str, str] = {}
+        self.entries_by_author_year: dict[str, str] = {}
         self.footnotes: list[FootnoteBody] = []
         self.parents: dict[str, str] = {}
         self.region_nodes: dict[str, str] = {}
@@ -241,6 +249,7 @@ class _Recovery:
             ],
             labels,
             self._lines,
+            metadata=self._metadata_fields(),
         )
         root_id = self.make(
             self._node_id("root"),
@@ -471,7 +480,34 @@ class _Recovery:
         self._bibliography_ids.add(bibliography_id)
         return bibliography_id
 
+    def _paragraph_pieces(self, group: Sequence[str]) -> list[ParagraphPiece] | None:
+        """Split a paragraph group into pieces (1 Layout -> N Semantic).
+
+        Returns None when no region yields more than one paragraph: the
+        group keeps the classic merge behaviour.
+        """
+        pieces: list[ParagraphPiece] = []
+        for region_id in group:
+            region_pieces = split_region_paragraphs(region_id, self._lines.get(region_id, []))
+            if len(region_pieces) > 1:
+                pieces.extend(region_pieces)
+            else:
+                pieces.append(
+                    ParagraphPiece(
+                        region_id=region_id,
+                        text=merged_region_text([region_id], self._texts),
+                        is_heading=False,
+                    )
+                )
+        if len(pieces) <= len(group):
+            return None
+        return pieces
+
     def _emit_paragraph(self, parent_id: str, group: Sequence[str], claims: _Claims) -> None:
+        pieces = self._paragraph_pieces(group)
+        if pieces is not None:
+            self._emit_split_paragraphs(parent_id, pieces, claims)
+            return
         text = self.text_of(group)
         if not text:
             return
@@ -495,6 +531,56 @@ class _Recovery:
         self._bind_regions(node_id, list(group))
         claims.parents[node_id] = parent_id
         claims.region_nodes[group[0]] = node_id
+
+    def _emit_split_paragraphs(
+        self,
+        parent_id: str,
+        pieces: Sequence[ParagraphPiece],
+        claims: _Claims,
+    ) -> None:
+        """One layout region carries several paragraphs (and headings).
+
+        Every piece binds to its source region; region-level anchors mean
+        the reader highlights the shared block. Heading pieces become
+        HEADING nodes under the current section (re-parenting into a new
+        SECTION stays deferred — the numbered heading opens no section
+        from inside a split).
+        """
+        for index, piece in enumerate(pieces):
+            if not piece.text:
+                continue
+            node_id = self._node_id(piece.region_id, f"p{index}")
+            if piece.is_heading:
+                self.make(
+                    node_id,
+                    "HEADING",
+                    parent_id,
+                    generated.RichText(text=piece.text, marks=[]),
+                    score=CONFIDENCE_HEADING,
+                    reason="split: embedded heading line",
+                    attributes={"level": 1},
+                )
+            else:
+                self.make(
+                    node_id,
+                    "PARAGRAPH",
+                    parent_id,
+                    generated.RichText(text=piece.text, marks=[]),
+                    score=CONFIDENCE_PARAGRAPH,
+                    reason="split: multiple paragraphs in one region",
+                )
+            self._bind_regions(node_id, [piece.region_id])
+            claims.parents[node_id] = parent_id
+            claims.region_nodes.setdefault(piece.region_id, node_id)
+
+    def _metadata_fields(self) -> dict[str, str]:
+        """Scholarly metadata from the ensemble (grobid-sim class)."""
+        if self._evidence is None:
+            return {}
+        for candidate in self._evidence.candidates:
+            if isinstance(candidate, generated.MetadataCandidate):
+                return {field.name: field.value for field in candidate.fields}
+        return {}
 
     def _emit_equation(self, parent_id: str, group: Sequence[str], claims: _Claims) -> None:
         node_id = self._node_id(group[0])
@@ -615,6 +701,9 @@ class _Recovery:
         claims.region_nodes[group[0]] = node_id
         if label is not None:
             claims.entries_by_label.setdefault(label, node_id)
+        author_year = entry_author_year_key(text)
+        if author_year is not None:
+            claims.entries_by_author_year.setdefault(author_year, node_id)
 
     def _bind_regions(self, node_id: str, region_ids: Sequence[str]) -> None:
         for node in self.nodes:
@@ -700,6 +789,26 @@ class _Recovery:
                     )
                 )
                 self.relation("CITES", node.id, target)
+        for start, end, key in author_year_spans(text):
+            label = text[start:end]
+            target = claims.entries_by_author_year.get(key)
+            if target is None:
+                self.issue(
+                    "CITATION_RESOLUTION",
+                    f"unresolved author-year citation ({key}) in node {node.id}",
+                    [node.id],
+                )
+                continue
+            marks.append(
+                generated.InlineMark(
+                    type="CITATION",
+                    start=start,
+                    end=end,
+                    targetNodeId=target,
+                    label=label,
+                )
+            )
+            self.relation("CITES", node.id, target)
         return marks
 
     def _under_bibliography(self, node: generated.SemanticNode, claims: _Claims) -> bool:

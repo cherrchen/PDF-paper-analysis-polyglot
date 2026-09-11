@@ -91,6 +91,13 @@ class ExtractOptions:
     line_merge_gap_pt: float = 6.0
     line_merge_overlap_ratio: float = 0.5
 
+    # Char gaps beyond this multiple of the rect height split a rect into
+    # separate fragments (Phase 7.2 structured-table baseline). PDFium
+    # merges whole table rows into one rect, losing cell boundaries; true
+    # cell separators sit at ~4-6em while word/sentence spaces stay below
+    # ~1.5em, so only cells split — prose is untouched.
+    cell_split_gap_factor: float = 3.0
+
 
 def source_fingerprint(data: bytes) -> str:
     """Stable fingerprint of the source PDF bytes."""
@@ -173,6 +180,87 @@ def _merge_line_fragments(
     return merged
 
 
+def _split_rect_at_cell_gaps(
+    textpage: pdfium.PdfTextPage,
+    char_boxes: list[tuple[float, float, float, float, str]],
+    *,
+    left: float,
+    bottom: float,
+    right: float,
+    top: float,
+    text: str,
+    threshold: float,
+) -> list[tuple[float, float, float, float, str, float]]:
+    """Split one PDFium rect into fragments at char gaps beyond ``threshold``.
+
+    ``char_boxes`` carries (left, bottom, right, top, char) for the page's
+    characters in order; chars whose center falls inside the rect belong
+    to it. A rect without a wide gap returns as one fragment with its
+    original text, so non-table content keeps PDFium's exact granularity.
+    """
+    members = [
+        box
+        for box in char_boxes
+        if left <= (box[0] + box[2]) / 2 <= right and bottom <= (box[1] + box[3]) / 2 <= top
+    ]
+    printable = [box for box in members if box[4].strip()]
+    height = top - bottom
+    wide_gap = any(
+        printable[i + 1][0] - printable[i][2] > threshold for i in range(len(printable) - 1)
+    )
+    if not wide_gap:
+        return [(left, bottom, right, top, text, height)]
+
+    fragments: list[tuple[float, float, float, float, str, float]] = []
+    current: list[float] | None = None
+    parts: list[str] = []
+    pending: list[str] = []
+
+    def close() -> None:
+        nonlocal current, parts, pending
+        if current is not None and parts:
+            joined = "".join(parts)
+            if joined.strip():
+                fragments.append((current[0], current[1], current[2], current[3], joined, height))
+        current = None
+        parts = []
+        pending = []
+
+    for box in members:
+        char_left, char_bottom, char_right, char_top, char = box
+        if not char.strip():
+            if current is not None:
+                pending.append(char)
+            continue
+        if current is not None and char_left - current[2] > threshold:
+            close()
+        if current is None:
+            current = [char_left, char_bottom, char_right, char_top]
+            parts = [*pending, char]
+            pending = []
+            continue
+        current[2] = max(current[2], char_right)
+        current[1] = min(current[1], char_bottom)
+        current[3] = max(current[3], char_top)
+        parts.extend(pending)
+        pending = []
+        parts.append(char)
+    close()
+    return fragments
+
+
+def _char_boxes(
+    textpage: pdfium.PdfTextPage, char_count: int
+) -> list[tuple[float, float, float, float, str]]:
+    """(left, bottom, right, top, char) for every character, in order."""
+    boxes: list[tuple[float, float, float, float, str]] = []
+    for char_index in range(char_count):
+        char = textpage.get_text_range(char_index, 1)
+        left, bottom, right, top = textpage.get_charbox(char_index, loose=True)
+        boxes.append((left, bottom, right, top, char))
+    return boxes
+
+
 def _extract_text_spans(
     page: pdfium.PdfPage,
     *,
@@ -188,6 +276,7 @@ def _extract_text_spans(
         if char_count == 0:
             return []
         rect_count = textpage.count_rects(0, char_count)
+        char_boxes = _char_boxes(textpage, char_count)
         fragments: list[tuple[float, float, float, float, str, float]] = []
         for rect_index in range(rect_count):
             left, bottom, right, top = textpage.get_rect(rect_index)
@@ -196,7 +285,19 @@ def _extract_text_spans(
                 continue
             # Char height as a font-size estimate for the first char in rect.
             font_size = top - bottom
-            fragments.append((left, bottom, right, top, text, font_size))
+            cell_gap_threshold = options.cell_split_gap_factor * max(font_size, 1.0)
+            fragments.extend(
+                _split_rect_at_cell_gaps(
+                    textpage,
+                    char_boxes,
+                    left=left,
+                    bottom=bottom,
+                    right=right,
+                    top=top,
+                    text=text,
+                    threshold=cell_gap_threshold,
+                )
+            )
         spans: list[generated.TextSpan] = []
         for order, (left, bottom, right, top, text, font_size) in enumerate(
             _merge_line_fragments(fragments, options)

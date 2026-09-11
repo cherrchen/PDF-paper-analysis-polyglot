@@ -142,6 +142,7 @@ def classify_front_matter(
     flow_texts: Sequence[tuple[str, str]],
     labels: Mapping[str, str | None],
     lines: Mapping[str, Sequence[RegionLine]],
+    metadata: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Region ids of the page-1 title block -> role (title/author/date/abstract).
 
@@ -151,7 +152,23 @@ def classify_front_matter(
     the abstract; ISO dates are dates; short capitalized lines are
     authors. Regions outside the returned mapping continue into the
     section tree.
+
+    ``metadata`` (scholarly specialist evidence, Phase 7.2 grobid-sim
+    class) confirms the title/author assignment when the heuristic title
+    detection has no ``HEADING_LIKE`` line to work with: a region whose
+    text contains the specialist's title or author value takes that role.
     """
+    roles = _front_matter_roles(flow_texts, labels, lines)
+    if metadata:
+        _confirm_with_metadata(flow_texts, roles, metadata)
+    return roles
+
+
+def _front_matter_roles(
+    flow_texts: Sequence[tuple[str, str]],
+    labels: Mapping[str, str | None],
+    lines: Mapping[str, Sequence[RegionLine]],
+) -> dict[str, str]:
     boundary = _front_matter_boundary(flow_texts, labels)
     if not boundary:
         return {}
@@ -214,6 +231,34 @@ def _front_matter_boundary(
     if title_index < 0:
         return None
     return (title_index, abstract_index, len(flow_texts))
+
+
+def _confirm_with_metadata(
+    flow_texts: Sequence[tuple[str, str]],
+    roles: dict[str, str],
+    metadata: Mapping[str, str],
+) -> None:
+    """Specialist title/author values confirm or fill front-matter roles."""
+    title = metadata.get("title", "").strip()
+    author = metadata.get("author", "").strip()
+    if title:
+        wanted = _normalize_match(title)
+        for region_id, text in flow_texts[:8]:
+            if roles.get(region_id) in (None, "front") and _normalize_match(text).startswith(
+                wanted[: min(len(wanted), 40)]
+            ):
+                roles[region_id] = "title"
+                break
+    if author:
+        wanted = _normalize_match(author)
+        for region_id, text in flow_texts[:8]:
+            if roles.get(region_id) in (None, "front") and wanted in _normalize_match(text):
+                roles[region_id] = "author"
+                break
+
+
+def _normalize_match(text: str) -> str:
+    return " ".join(text.lower().split())
 
 
 def _front_matter_role(

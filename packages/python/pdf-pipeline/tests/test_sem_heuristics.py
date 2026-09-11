@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from document_model.generated import schema_models as generated
-from pdf_pipeline.sem_bibliography import citation_spans
+from pdf_pipeline.fusion import RegionLine
+from pdf_pipeline.sem_bibliography import author_year_spans, citation_spans, entry_author_year_key
 from pdf_pipeline.sem_footnotes import (
     FootnoteBody,
     ParagraphWindow,
@@ -11,6 +12,7 @@ from pdf_pipeline.sem_footnotes import (
     body_reference_spans,
     footnote_marker_label,
 )
+from pdf_pipeline.sem_paragraphs import split_region_paragraphs
 from pdf_pipeline.sem_sections import classify_front_matter
 from pdf_pipeline.sem_tables import table_content
 
@@ -106,3 +108,74 @@ def test_table_structure_evidence_wins_over_line_fallback() -> None:
     assert content.rows == 1
     assert [cell.content.text for cell in content.cells] == ["A", "B"]
     assert "evidence" in reason
+
+
+# --- Phase 4.1 (M7): 1 Layout -> N Semantic paragraph splitting -----------
+
+
+def _line(y: float, text: str, height: float = 11.0) -> RegionLine:
+    from document_model.generated import schema_models as generated
+
+    return RegionLine(
+        rect=generated.Rect(kind="rect", x=70, y=y, width=460, height=height),
+        text=text,
+        font_size=height,
+    )
+
+
+def test_split_region_keeps_single_paragraph_intact() -> None:
+    lines = [_line(100, "One paragraph flows"), _line(114, "across two lines.")]
+    pieces = split_region_paragraphs("r1", lines)
+    assert len(pieces) == 1
+    assert pieces[0].text == "One paragraph flows across two lines."
+    assert pieces[0].is_heading is False
+
+
+def test_split_region_on_paragraph_gap() -> None:
+    lines = [
+        _line(100, "First paragraph ends here."),
+        _line(170, "Second paragraph starts after a wide gap."),
+    ]
+    pieces = split_region_paragraphs("r1", lines)
+    assert [piece.text for piece in pieces] == [
+        "First paragraph ends here.",
+        "Second paragraph starts after a wide gap.",
+    ]
+
+
+def test_split_region_on_embedded_heading() -> None:
+    lines = [
+        _line(100, "Intro prose before the heading."),
+        _line(120, "2 Methods"),
+        _line(134, "Body text of the methods section."),
+    ]
+    pieces = split_region_paragraphs("r1", lines)
+    assert [piece.is_heading for piece in pieces] == [False, True, False]
+    assert pieces[1].text == "2 Methods"
+
+
+def test_split_region_math_line_is_not_heading() -> None:
+    lines = [_line(100, "Prose line one."), _line(130, "2 dx = dy")]
+    pieces = split_region_paragraphs("r1", lines)
+    assert all(not piece.is_heading for piece in pieces)
+
+
+# --- Phase 4.7 (M7): author-year citations --------------------------------
+
+
+def test_author_year_spans_extract_keys() -> None:
+    text = "Shown by (Vaswani et al., 2017) and (Smith 2020b); math x(1) stays out."
+    spans = author_year_spans(text)
+    keys = [key for _, _, key in spans]
+    assert keys == ["vaswani:2017", "smith:2020b"]
+    assert text[spans[0][0] : spans[0][1]] == "(Vaswani et al., 2017)"
+
+
+def test_author_year_spans_ignore_subscript_brackets() -> None:
+    assert author_year_spans("array index x(2019) is not a citation") == []
+
+
+def test_entry_author_year_key_matches_marker() -> None:
+    entry = "[1] Smith, J. Deterministic recovery. Fixture Journal, 2020b."
+    assert entry_author_year_key(entry) == "smith:2020b"
+    assert entry_author_year_key("no surname, no year") is None

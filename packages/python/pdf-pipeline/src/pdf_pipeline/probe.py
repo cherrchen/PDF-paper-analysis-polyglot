@@ -23,6 +23,7 @@ from pdf_pipeline.evidence.providers import FORMULA_CHARS, table_region_candidat
 from pdf_pipeline.geometry import as_rect
 from pdf_pipeline.page_structure import PageItem, detect_bands, items_from_objects
 from pdf_pipeline.physical import MIN_CHARS_PER_PAGE
+from pdf_pipeline.table_grid import table_grid_regions
 
 PRODUCER = "pdf-pipeline.probe"
 PRODUCER_VERSION = "0.1.0"
@@ -96,7 +97,7 @@ def probe_document(physical: generated.PhysicalDocument) -> ProbeResult:
         math_chars += sum(1 for span in spans for char in span.text if char in FORMULA_CHARS)
         text_chars += chars
 
-        if table_region_candidates(_ordered(spans)):
+        if table_region_candidates(_ordered(spans)) or table_grid_regions(_ordered(spans)):
             table_pages += 1
 
         graphic_area = sum(

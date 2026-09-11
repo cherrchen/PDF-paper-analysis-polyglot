@@ -413,3 +413,61 @@ def test_semantic_nodes_and_relations_carry_provenance() -> None:
         item for item in semantic.provenance.records if item.id in footnote.provenanceIds
     )
     assert set(footnote_record.inputRefs) & layout_ids
+
+
+# --- M7 Phase 7.2/7.3 + deferred items: ensemble and author-year ----------
+
+
+def test_author_year_citations_resolve() -> None:
+    """(Author, Year) markers resolve against bibliography entry keys."""
+    _, _, semantic = _recover("author-year-citations")
+    entries = _nodes(semantic, "BIBLIOGRAPHY_ENTRY")
+    assert len(entries) == 3
+    cites = [r for r in semantic.relations if r.type == "CITES"]
+    assert len(cites) >= 3
+    author_year_marks = [
+        mark
+        for node in semantic.nodes
+        if isinstance(node.content, generated.RichText)
+        for mark in node.content.marks
+        if mark.type == "CITATION" and (mark.label or "").startswith("(")
+    ]
+    assert len(author_year_marks) >= 3
+    unresolved = [
+        issue
+        for issue in (semantic.issues.issues if semantic.issues else [])
+        if issue.category == "CITATION_RESOLUTION"
+    ]
+    assert not unresolved
+
+
+def test_ensemble_routes_table_structure_specialist() -> None:
+    """table-heavy routes docling-sim; its cells win over the line fallback."""
+    from pdf_pipeline.capabilities import load_registry
+    from pdf_pipeline.evidence.normalize import merge_evidence_bundles
+    from pdf_pipeline.probe import probe_document
+    from pdf_pipeline.routing import collect_bundles, route_providers
+
+    registry = load_registry()
+    physical = extract_physical_document(_fixture("table-heavy"))
+    plan = route_providers(probe_document(physical), registry)
+    assert "docling-sim" in plan.provider_names()
+    bundles = collect_bundles(plan, physical)
+    merged = merge_evidence_bundles(bundles)
+    layout = recover_layout_document(physical, evidence=bundles, registry=registry)
+    texts = region_texts_from(physical, layout)
+    semantic = recover_semantic_document(
+        layout,
+        texts,
+        lines=region_lines_from(physical, layout),
+        evidence=merged,
+    )
+    tables = [n for n in semantic.nodes if n.kind == "TABLE"]
+    assert tables
+    content = tables[0].content
+    assert isinstance(content, generated.TableContent)
+    assert content.columns == 3
+    assert content.rows >= 3
+    cell_texts = [cell.content.text for cell in content.cells]
+    assert "Paragraph" in cell_texts
+    assert "0.94" in cell_texts

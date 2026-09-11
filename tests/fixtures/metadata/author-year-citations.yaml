@@ -1,0 +1,16 @@
+origin: repository-authored
+license: MIT with Non-Commercial additional terms
+purpose: Author-year inline citations with matching bibliography entries
+generation_method: latexmk with tex/latexmkrc (LuaLaTeX)
+tier: 1
+layout:
+  columns: 1
+  pages_expected: 1
+  has_math: false
+  has_table: false
+  has_figure: false
+  multilingual: false
+known_special_cases:
+  - Author-year citation marks (Vaswani et al., 2017) style
+  - Year disambiguation suffixes (2020a)
+  - Bibliography entry list at document end

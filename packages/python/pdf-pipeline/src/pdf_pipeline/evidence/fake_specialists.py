@@ -25,6 +25,13 @@ from document_model.generated import schema_models as generated
 from pdf_pipeline.evidence.providers import CandidateSink
 from pdf_pipeline.furniture import body_font_size, split_furniture
 from pdf_pipeline.geometry import as_rect, containment
+from pdf_pipeline.table_grid import (
+    cluster_lines,
+    column_centers,
+    column_index,
+    ordered_spans,
+    table_grid_regions,
+)
 
 DOCLING_PROVIDER = "docling-sim"
 DOCLING_PROVIDER_VERSION = "0.1.0"
@@ -34,15 +41,6 @@ GROBID_PROVIDER_VERSION = "0.1.0"
 # A span belongs to a table when at least this share of its area lies
 # inside the detected table rect.
 TABLE_CELL_CONTAINMENT = 0.7
-
-# A grid needs at least this many consecutive aligned multi-span rows.
-TABLE_MIN_GRID_ROWS = 2
-TABLE_MIN_GRID_COLUMNS = 2
-
-# Row/column clustering tolerances (PDF points).
-CELL_ROW_GAP_FACTOR = 0.6
-CELL_LINE_GAP_FACTOR = 0.4
-CELL_COLUMN_TOLERANCE_PT = 5.0
 
 # GROBID-sim text patterns.
 _ABSTRACT_HEAD = re.compile(r"^abstract\b", re.IGNORECASE)
@@ -72,7 +70,7 @@ class FakeDoclingTableProvider:
         for page in physical.pages:
             spans = _page_text_spans(physical, page.id)
             body, _, _ = split_furniture(spans, page.geometry.heightPt, 0.0)
-            for table_rect in _table_grid_regions(body):
+            for table_rect in table_grid_regions(body):
                 _emit_table_structure(sink, page.id, table_rect, body)
         candidates, provenance = sink.finish()
         return generated.EvidenceBundle(
@@ -115,82 +113,7 @@ def _page_text_spans(
         for obj in physical.objects
         if isinstance(obj, generated.TextSpan) and obj.pageId == page_id
     ]
-    return _ordered(spans)
-
-
-def _ordered(spans: list[generated.TextSpan]) -> list[generated.TextSpan]:
-    return sorted(spans, key=lambda span: (as_rect(span.geometry).y, as_rect(span.geometry).x))
-
-
-def _table_grid_regions(
-    spans: list[generated.TextSpan],
-) -> list[generated.Rect]:
-    """Detect grid-like table regions from span geometry.
-
-    A table is a maximal run of consecutive multi-span lines whose column
-    count matches and whose column x-centers stay aligned within
-    tolerance — a deterministic baseline for what Docling recovers from
-    ruling lines in real PDFs.
-    """
-    lines = _cluster_lines(spans)
-    grids: list[list[list[generated.TextSpan]]] = []
-    current: list[list[generated.TextSpan]] = []
-    current_centers: list[list[float]] = []
-    for line in lines:
-        if len(line) < TABLE_MIN_GRID_COLUMNS:
-            current = []
-            current_centers = []
-            continue
-        centers = _column_centers(line)
-        if current and not _columns_aligned(centers, current_centers[-1]):
-            if len(current) >= TABLE_MIN_GRID_ROWS:
-                grids.append(current)
-            current = []
-            current_centers = []
-        current.append(line)
-        current_centers.append(centers)
-    if len(current) >= TABLE_MIN_GRID_ROWS:
-        grids.append(current)
-    return [_union_rect(lines_) for lines_ in grids]
-
-
-def _columns_aligned(a: list[float], b: list[float]) -> bool:
-    return len(a) == len(b) and all(
-        abs(x - y) <= CELL_COLUMN_TOLERANCE_PT for x, y in zip(a, b, strict=True)
-    )
-
-
-def _cluster_lines(spans: list[generated.TextSpan]) -> list[list[generated.TextSpan]]:
-    """Group spans into visual lines by shared y-band."""
-    lines: list[list[generated.TextSpan]] = []
-    for span in _ordered(spans):
-        rect = as_rect(span.geometry)
-        if lines:
-            last_rect = as_rect(lines[-1][-1].geometry)
-            line_gap = CELL_LINE_GAP_FACTOR * max(rect.height, last_rect.height)
-            same_line = abs(rect.y - last_rect.y) <= line_gap or (
-                rect.y < last_rect.y + last_rect.height and last_rect.y < rect.y + rect.height
-            )
-            if same_line:
-                lines[-1].append(span)
-                continue
-        lines.append([span])
-    return lines
-
-
-def _union_rect(lines: list[list[generated.TextSpan]]) -> generated.Rect:
-    rect = as_rect(lines[0][0].geometry)
-    for line in lines:
-        for span in line:
-            other = as_rect(span.geometry)
-            rect = generated.Rect(
-                kind="rect",
-                x=min(rect.x, other.x),
-                y=min(rect.y, other.y),
-                width=max(rect.x + rect.width, other.x + other.width) - min(rect.x, other.x),
-                height=max(rect.y + rect.height, other.y + other.height) - min(rect.y, other.y),
-            )
-    return rect
+    return ordered_spans(spans)
 
 
 def _emit_table_structure(
@@ -207,14 +130,16 @@ def _emit_table_structure(
     ]
     if len(members) < 2:
         return
-    rows = _cluster_rows(members)
-    column_centers = _column_centers(members)
-    if not rows or not column_centers:
+    rows = cluster_lines(members)
+    centers = column_centers(members)
+    if not rows or not centers:
         return
     cells = [
         generated.TableCellCandidate(
             row=row_index,
-            column=_column_index(as_rect(span.geometry).x, column_centers),
+            column=column_index(
+                as_rect(span.geometry).x + as_rect(span.geometry).width / 2, centers
+            ),
             rowSpan=1,
             colSpan=1,
             text=span.text.strip(),
@@ -229,7 +154,7 @@ def _emit_table_structure(
         pageId=page_id,
         geometry=table_rect,
         rowCount=len(rows),
-        columnCount=len(column_centers),
+        columnCount=len(centers),
         cells=cells,
         confidence=TABLE_STRUCTURE_CONFIDENCE,
         provenanceIds=[],
@@ -239,38 +164,6 @@ def _emit_table_structure(
         operation="table-structure",
         input_refs=[span.id for span in members],
     )
-
-
-def _cluster_rows(spans: list[generated.TextSpan]) -> list[list[generated.TextSpan]]:
-    """Group table spans into rows by vertical position."""
-    ordered = _ordered(spans)
-    rows: list[list[generated.TextSpan]] = []
-    for span in ordered:
-        rect = as_rect(span.geometry)
-        if rows:
-            last = rows[-1][-1]
-            last_rect = as_rect(last.geometry)
-            gap = rect.y - (last_rect.y + last_rect.height)
-            if gap <= CELL_ROW_GAP_FACTOR * max(rect.height, last_rect.height, 1.0):
-                rows[-1].append(span)
-                continue
-        rows.append([span])
-    return rows
-
-
-def _column_centers(spans: list[generated.TextSpan]) -> list[float]:
-    """Cluster span left edges into column centers."""
-    centers: list[float] = []
-    for span in sorted(spans, key=lambda s: as_rect(s.geometry).x):
-        x = as_rect(span.geometry).x
-        if centers and abs(x - centers[-1]) <= CELL_COLUMN_TOLERANCE_PT:
-            continue
-        centers.append(x)
-    return centers
-
-
-def _column_index(x: float, centers: list[float]) -> int:
-    return min(range(len(centers)), key=lambda i: abs(x - centers[i]))
 
 
 def _emit_scholarly(sink: CandidateSink, physical: generated.PhysicalDocument) -> None:

@@ -21,7 +21,8 @@ from document_model import stable_uuid
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.furniture import body_font_size, split_furniture
-from pdf_pipeline.geometry import as_rect, overlap_ratio, union_rect, vertical_gap
+from pdf_pipeline.geometry import as_rect, containment, overlap_ratio, union_rect, vertical_gap
+from pdf_pipeline.table_grid import table_grid_regions
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -180,6 +181,24 @@ class MockLayoutEvidenceProvider:
                     confidence=0.6,
                     text_preview=preview,
                     input_refs=[],
+                )
+            # Cell-fragmented grids (char-level extraction): aligned rows
+            # of >= 2 spans whose union carries a numeric tail.
+            for grid_rect in table_grid_regions(page_body_spans[page.id]):
+                members = [
+                    span
+                    for span in page_body_spans[page.id]
+                    if containment(grid_rect, as_rect(span.geometry)) >= 0.7
+                ]
+                preview = " ".join(span.text for span in members)[:200]
+                sink.add_region(
+                    page_id=page.id,
+                    rect=grid_rect,
+                    normalized_label="TABLE",
+                    provider_label="table-grid",
+                    confidence=0.6,
+                    text_preview=preview,
+                    input_refs=[span.id for span in members],
                 )
             for kind, spans in (
                 ("header", page_headers[page.id]),
