@@ -152,6 +152,16 @@ describe("pickCounterpart", () => {
     const pair = { sources: [fragment(2, 100)], targets: [fragment(0, 300), fragment(1, 10)] };
     expect(pickCounterpart(pair, "source", fragment(2, 100)).pageIndex).toBe(0);
   });
+
+  it("is a landing heuristic when source and target pagination diverge", () => {
+    const pair = {
+      sources: [fragment(0, 40), fragment(0, 400)],
+      targets: [fragment(5, 20), fragment(5, 380), fragment(6, 10)],
+    };
+    const picked = pickCounterpart(pair, "source", fragment(0, 400));
+    expect(picked.pageIndex).toBe(5);
+    expect(picked.geometry.y).toBe(380);
+  });
 });
 
 describe("buildReaderModel", () => {

@@ -99,6 +99,37 @@ describe("citationMarksFor", () => {
     ]);
   });
 
+  it("slices mathematical letters and supplementary CJK at Python code-point offsets", () => {
+    const math = node("n-math", {
+      text: "𝛼 [1]",
+      marks: [{ type: "CITATION", start: 2, end: 5, targetNodeId: "ref-1" }],
+    });
+    const mathModel = buildReaderModel(bundleWith(math), {
+      source: [{ width: 612, height: 792 }],
+      target: [{ width: 612, height: 792 }],
+    });
+    expect(citationMarksFor(mathModel, math)).toEqual([
+      { text: "[1]", label: "CITATION", targetNodeId: "ref-1" },
+    ]);
+
+    const cjk = node("n-cjk", {
+      text: "见𰻞[1]后",
+      marks: [{ type: "CITATION", start: 2, end: 5, targetNodeId: "ref-2" }],
+    });
+    const translated = {
+      text: "见𰻞[1]后译",
+      marks: [{ type: "CITATION" as const, start: 2, end: 5, targetNodeId: "ref-2" }],
+    };
+    const cjkModel = buildReaderModel(bundleWith(cjk, translated), {
+      source: [{ width: 612, height: 792 }],
+      target: [{ width: 612, height: 792 }],
+    });
+    expect(citationMarksFor(cjkModel, cjk)).toEqual([
+      { text: "[1]", label: "CITATION", targetNodeId: "ref-2" },
+      { text: "[1]", label: "CITATION", targetNodeId: "ref-2" },
+    ]);
+  });
+
   it("flags out-of-range marks instead of throwing", () => {
     const paragraph = node("n1", {
       text: "short",

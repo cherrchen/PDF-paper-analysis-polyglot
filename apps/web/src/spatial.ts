@@ -2,10 +2,11 @@
  * M6 (6.1/6.2) frontend spatial index over source/target fragment rectangles.
  *
  * A uniform grid per page (8 × 12 cells) is deliberately not an R-tree: at
- * paper scale the fragment count stays below 10³, insertion and band/point
- * queries are O(1) amortized, and no third-party dependency is introduced.
- * If a future corpus exceeds ~10⁴ fragments, swap the internals behind this
- * same `PageSpatialIndex` interface.
+ * paper scale the fragment count stays below 10³, cell lookup is O(1), and no
+ * third-party dependency is introduced. A dense cell still scans its
+ * candidates, so heavily overlapping fragments degrade toward scanning the
+ * page set. If a future corpus exceeds ~10⁴ fragments, swap the internals
+ * behind this same `PageSpatialIndex` interface.
  */
 import type { Rect } from "./mapping.js";
 

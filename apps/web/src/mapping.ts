@@ -160,10 +160,14 @@ export function fragmentsForSide(pair: Pair, side: Side): Fragment[] {
 }
 
 /**
- * Deterministic cross-side destination (FR-SYNC-004: no page-number guessing).
- * Among counterpart fragments on the smallest page at/after the origin page,
- * pick the closest y (a reflowed node lands on its start page); when no
- * counterpart page is at/after the origin, take the first counterpart.
+ * Intra-node landing heuristic when character-level mapping is absent.
+ *
+ * Node identity comes from source↔target bindings, not from this function.
+ * Among counterpart fragments, pick the closest y on the smallest page at or
+ * after the origin page; when none exists at/after, take the first counterpart.
+ * Cross-document page indexes and y coordinates are a fallback for "where
+ * inside this node", not a substitute for FR-SYNC-004 identity. Sync-scroll
+ * reuses the same landing rule so both panes stay on corresponding bands.
  */
 export function pickCounterpart(pair: Pair, origin: Side, originRect: Fragment): Fragment {
   const counterparts = fragmentsForSide(pair, origin === "source" ? "target" : "source");

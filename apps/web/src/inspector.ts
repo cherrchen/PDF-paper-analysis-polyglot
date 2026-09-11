@@ -10,8 +10,12 @@ import type {
   RichTextContent,
   SemanticNodeView,
 } from "./mapping.js";
+import { codePointSliceOrOutOfRange } from "./unicode.js";
+
 export type InspectorOptions = {
   apiAvailable: boolean;
+  /** True while a reader-level retranslate is in flight (any node). */
+  retranslateBusy?: boolean;
   /** Jump navigation to another semantic node (relation / citation targets). */
   onSelect: (nodeId: string) => void;
   /** Re-translate the current node via the reader API; disables button while running. */
@@ -90,10 +94,7 @@ export function citationMarksFor(model: ReaderModel, node: SemanticNodeView) {
   for (const content of texts) {
     for (const mark of content.marks) {
       if (!CITATION_MARK_TYPES.has(mark.type)) continue;
-      const slice =
-        mark.start >= 0 && mark.end <= content.text.length && mark.end >= mark.start
-          ? content.text.slice(mark.start, mark.end)
-          : "mark out of range";
+      const slice = codePointSliceOrOutOfRange(content.text, mark.start, mark.end);
       out.push({
         text: slice,
         label: `${mark.type}${mark.label ? ` ${mark.label}` : ""}`,
@@ -179,15 +180,14 @@ export function renderInspector(
   translationBody.id = "inspector-translation";
   translationSection.append(translationBody);
   if (entry && opts.apiAvailable) {
-    const button = el("button", "Re-translate node");
+    const button = el("button", opts.retranslateBusy ? "Re-translating…" : "Re-translate node");
     button.id = "retranslate-button";
     button.type = "button";
+    button.disabled = Boolean(opts.retranslateBusy);
     button.addEventListener("click", () => {
-      if (!opts.onRetranslate) return;
+      if (!opts.onRetranslate || opts.retranslateBusy) return;
       button.disabled = true;
-      void opts.onRetranslate(nodeId).finally(() => {
-        button.disabled = false;
-      });
+      void opts.onRetranslate(nodeId);
     });
     translationSection.append(button);
   }
