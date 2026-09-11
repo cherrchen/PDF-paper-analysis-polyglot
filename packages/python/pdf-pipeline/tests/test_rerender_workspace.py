@@ -16,6 +16,9 @@ import pypdfium2 as pdfium
 import pytest
 from document_model import load_document
 from document_model.generated import schema_models as generated
+from paper_llm.config import TranslationConfig
+from paper_llm.translation import TranslationProviderNotConfiguredError
+from paper_llm.types import TranslationRequest, TranslationResult
 from pdf_pipeline import pipeline
 from pdf_pipeline.pipeline import rerender_workspace
 
@@ -41,11 +44,12 @@ def _load_translation(workspace: Path) -> generated.TranslationLayer:
 
 
 @pytest.fixture
-def workspace(tmp_path: Path) -> Path:
-    """A workspace built by run_pipeline on the smoke fixture (real compile)."""
+def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A workspace built by run_pipeline on the smoke fixture (fake compile)."""
     fixture = Path(__file__).resolve().parents[4] / "tests/fixtures/source/latex/build/smoke.pdf"
     if not fixture.exists():
         pytest.skip("smoke fixture PDF not built; run `just latex-smoke`")
+    monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
     out = tmp_path / "ws"
     pipeline.run_pipeline(fixture, out)
     return out
@@ -81,6 +85,11 @@ def test_rerender_rewrites_translation_and_viewer_data(
     meta = json.loads((viewer_dir / "viewer-meta.json").read_text())
     assert len(meta["sourcePages"]) == meta["sourcePageCount"]
     assert len(meta["targetPages"]) == meta["targetPageCount"]
+    manifest = json.loads((viewer_dir / "manifest.json").read_text())
+    assert manifest["revision"]
+    rev_dir = viewer_dir / "revisions" / manifest["revision"]
+    assert (rev_dir / "mapping.json").is_file()
+    assert (rev_dir / "target.pdf").is_file()
 
 
 def test_rerender_rejects_unknown_nodes(workspace: Path, tmp_path: Path) -> None:
@@ -112,3 +121,151 @@ def test_rerender_never_reparses_source_pdf(
     monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
     node_id = _load_translation(workspace).entries[0].semanticNodeId
     rerender_workspace(workspace, viewer_data_dir=tmp_path / "viewer", node_ids={node_id})
+
+
+class _LabeledProvider:
+    def __init__(self, label: str) -> None:
+        self.label = label
+        self.calls = 0
+
+    def translate_request(self, request: TranslationRequest) -> TranslationResult:
+        self.calls += 1
+        return TranslationResult(text=f"{self.label}:{request.text}", marks=[])
+
+
+def test_rerender_records_current_provider_identity(
+    workspace: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    translation = _load_translation(workspace)
+    node_id = translation.entries[0].semanticNodeId
+    other_id = translation.entries[1].semanticNodeId
+    labeled = _LabeledProvider("model-b")
+
+    def fake_build(_config: TranslationConfig) -> tuple[object, str, str, None]:
+        return labeled, "openai-compat:model-b", "http://llm.example", None
+
+    monkeypatch.setattr(pipeline, "_build_translation_provider", fake_build)
+    monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
+    rerender_workspace(workspace, viewer_data_dir=tmp_path / "viewer", node_ids={node_id})
+    after = _load_translation(workspace)
+    by_id = {entry.semanticNodeId: entry for entry in after.entries}
+    assert by_id[node_id].providerModel == "openai-compat:model-b"
+    assert str(by_id[node_id].content.text).startswith("model-b:")
+    assert by_id[other_id].providerModel == translation.entries[1].providerModel
+    assert after.providerModel == "openai-compat:model-b"
+    assert labeled.calls >= 1
+
+
+def test_rerender_real_workspace_without_provider_errors(workspace: Path, tmp_path: Path) -> None:
+    from document_model import dump_document
+
+    translation = _load_translation(workspace)
+    dump_document(
+        translation.model_copy(update={"providerModel": "openai-compat:gpt-4o"}),
+        path=workspace / "translation.json",
+    )
+    config = TranslationConfig(
+        target_locale="zh-CN",
+        source_locale=None,
+        terminology_file=None,
+        cache_dir=None,
+        provider=None,
+    )
+    with pytest.raises(TranslationProviderNotConfiguredError):
+        rerender_workspace(
+            workspace,
+            viewer_data_dir=tmp_path / "viewer",
+            node_ids={translation.entries[0].semanticNodeId},
+            translation_config=config,
+        )
+    assert _load_translation(workspace).providerModel == "openai-compat:gpt-4o"
+
+
+def test_rerender_compile_failure_keeps_previous_revision(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    viewer = workspace / "viewer" / "data"
+    before_translation = (workspace / "translation.json").read_text(encoding="utf-8")
+    before_manifest = (viewer / "manifest.json").read_text(encoding="utf-8")
+    node_id = _load_translation(workspace).entries[0].semanticNodeId
+
+    def boom(*_args: object, **_kwargs: object) -> Path:
+        raise RuntimeError("compile failed")
+
+    monkeypatch.setattr(pipeline, "compile_latex", boom)
+    with pytest.raises(RuntimeError, match="compile failed"):
+        rerender_workspace(workspace, viewer_data_dir=viewer, node_ids={node_id})
+    assert (workspace / "translation.json").read_text(encoding="utf-8") == before_translation
+    assert (viewer / "manifest.json").read_text(encoding="utf-8") == before_manifest
+
+
+def test_rerender_validate_failure_keeps_previous_revision(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    viewer = workspace / "viewer" / "data"
+    before_translation = (workspace / "translation.json").read_text(encoding="utf-8")
+    before_manifest = (viewer / "manifest.json").read_text(encoding="utf-8")
+    node_id = _load_translation(workspace).entries[0].semanticNodeId
+    monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
+    monkeypatch.setattr(pipeline, "validate_bundle_references", lambda *_a, **_k: ["injected"])
+    with pytest.raises(RuntimeError, match="bundle reference issues"):
+        rerender_workspace(workspace, viewer_data_dir=viewer, node_ids={node_id})
+    assert (workspace / "translation.json").read_text(encoding="utf-8") == before_translation
+    assert (viewer / "manifest.json").read_text(encoding="utf-8") == before_manifest
+
+
+def test_rerender_publish_failure_keeps_previous_revision(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    viewer = workspace / "viewer" / "data"
+    before_translation = (workspace / "translation.json").read_text(encoding="utf-8")
+    before_manifest = (viewer / "manifest.json").read_text(encoding="utf-8")
+    node_id = _load_translation(workspace).entries[0].semanticNodeId
+    monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
+
+    def boom(*_args: object, **_kwargs: object) -> str:
+        raise RuntimeError("publish failed")
+
+    monkeypatch.setattr(pipeline, "_publish_viewer_revision", boom)
+    with pytest.raises(RuntimeError, match="publish failed"):
+        rerender_workspace(workspace, viewer_data_dir=viewer, node_ids={node_id})
+    assert (workspace / "translation.json").read_text(encoding="utf-8") == before_translation
+    assert (viewer / "manifest.json").read_text(encoding="utf-8") == before_manifest
+
+
+def test_rerender_keeps_previous_revision_readable(
+    workspace: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    viewer = tmp_path / "viewer"
+    monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
+    node_id = _load_translation(workspace).entries[0].semanticNodeId
+    rerender_workspace(workspace, viewer_data_dir=viewer, node_ids={node_id})
+    first = json.loads((viewer / "manifest.json").read_text(encoding="utf-8"))
+    first_mapping = (viewer / "revisions" / first["revision"] / "mapping.json").read_text(
+        encoding="utf-8"
+    )
+
+    def three_page_compile(tex: Path, build_dir: Path) -> Path:
+        del tex
+        build_dir.mkdir(parents=True, exist_ok=True)
+        out = build_dir / "target.pdf"
+        doc = pdfium.PdfDocument.new()
+        for _ in range(3):
+            doc.new_page(612, 792)
+        doc.save(out)
+        doc.close()
+        return out
+
+    monkeypatch.setattr(pipeline, "compile_latex", three_page_compile)
+    rerender_workspace(workspace, viewer_data_dir=viewer, node_ids={node_id})
+    second = json.loads((viewer / "manifest.json").read_text(encoding="utf-8"))
+    assert second["revision"] != first["revision"]
+    assert (viewer / "revisions" / first["revision"] / "mapping.json").read_text(
+        encoding="utf-8"
+    ) == first_mapping
+    meta = json.loads((viewer / "viewer-meta.json").read_text(encoding="utf-8"))
+    assert meta["targetPageCount"] == 3
+    concurrent = json.loads(
+        (viewer / "revisions" / first["revision"] / "viewer-meta.json").read_text(encoding="utf-8")
+    )
+    assert concurrent["targetPageCount"] == 2

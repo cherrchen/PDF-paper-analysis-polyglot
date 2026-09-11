@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -23,7 +25,13 @@ from document_model.generated import schema_models as generated
 from paper_llm import translate_document
 from paper_llm.cache import TranslationCache
 from paper_llm.config import TranslationConfig, load_translation_config
-from paper_llm.translation import create_provider, retranslate_nodes
+from paper_llm.translation import (
+    DUMMY_PROVIDER_MODEL,
+    TranslationProviderNotConfiguredError,
+    create_provider,
+    retranslate_nodes,
+    translation_requires_provider,
+)
 
 from pdf_pipeline.evidence.providers import MockLayoutEvidenceProvider
 from pdf_pipeline.fusion import RegionLine
@@ -164,9 +172,94 @@ def build_source_anchors(
 
 def _atomic_write_text(path: Path, text: str) -> None:
     """Write via sibling temp + replace so a reader never sees a half-written file."""
-    tmp = path.with_suffix(".tmp")
+    tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(text, encoding="utf-8")
     tmp.replace(path)
+
+
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    """Write binary via sibling temp + replace."""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+
+
+def _atomic_write_json(path: Path, data: object) -> None:
+    _atomic_write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+
+
+def _viewer_revision_id() -> str:
+    return uuid.uuid4().hex
+
+
+def _read_viewer_manifest(data_dir: Path) -> dict[str, str] | None:
+    path = data_dir / "manifest.json"
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    revision = payload.get("revision")
+    if not isinstance(revision, str) or not revision:
+        return None
+    return {str(key): str(value) for key, value in payload.items()}
+
+
+def _prune_viewer_revisions(data_dir: Path, keep: set[str]) -> None:
+    root = data_dir / "revisions"
+    if not root.is_dir():
+        return
+    for child in root.iterdir():
+        if child.is_dir() and child.name not in keep:
+            shutil.rmtree(child, ignore_errors=True)
+
+
+def _publish_viewer_revision(
+    data_dir: Path,
+    *,
+    mapping_text: str,
+    meta_text: str,
+    source_pdf: bytes,
+    target_pdf: bytes,
+) -> str:
+    """Write one complete viewer revision, then flip the manifest pointer.
+
+    Concurrent readers that follow ``manifest.json`` always receive files from a
+    single revision. Stable aliases under ``data_dir`` are updated after the
+    manifest so in-flight `/data/*.json` fetches may still race; the reader
+    itself loads via the manifest.
+    """
+    data_dir.mkdir(parents=True, exist_ok=True)
+    previous = _read_viewer_manifest(data_dir)
+    revision = _viewer_revision_id()
+    rev_dir = data_dir / "revisions" / revision
+    rev_dir.mkdir(parents=True, exist_ok=True)
+    (rev_dir / "mapping.json").write_text(mapping_text, encoding="utf-8")
+    (rev_dir / "viewer-meta.json").write_text(meta_text, encoding="utf-8")
+    (rev_dir / "source.pdf").write_bytes(source_pdf)
+    (rev_dir / "target.pdf").write_bytes(target_pdf)
+    manifest = {
+        "revision": revision,
+        "mapping": f"/data/revisions/{revision}/mapping.json",
+        "meta": f"/data/revisions/{revision}/viewer-meta.json",
+        "source": f"/data/revisions/{revision}/source.pdf",
+        "target": f"/data/revisions/{revision}/target.pdf",
+    }
+    _atomic_write_json(data_dir / "manifest.json", manifest)
+    for name in ("mapping.json", "viewer-meta.json", "source.pdf", "target.pdf"):
+        source = rev_dir / name
+        if name.endswith(".pdf"):
+            _atomic_write_bytes(data_dir / name, source.read_bytes())
+        else:
+            _atomic_write_text(data_dir / name, source.read_text(encoding="utf-8"))
+    keep = {revision}
+    if previous is not None:
+        keep.add(previous["revision"])
+    _prune_viewer_revisions(data_dir, keep)
+    return revision
 
 
 def _viewer_node(node: generated.SemanticNode) -> dict[str, object]:
@@ -218,11 +311,14 @@ def _write_viewer_assets(
     layout: LayoutDocument,
     semantic: SemanticDocument,
     translation: generated.TranslationLayer,
-) -> None:
-    """Emit the static fetch targets for the web viewer (M6 bidirectional reader, v2)."""
+) -> str:
+    """Emit the static fetch targets for the web viewer (M6 bidirectional reader, v2).
+
+    Returns the published revision id. Files are staged in
+    ``data_dir/revisions/<id>/`` and only become current when ``manifest.json``
+    is replaced.
+    """
     data_dir.mkdir(parents=True, exist_ok=True)
-    (data_dir / "source.pdf").write_bytes(source_pdf)
-    (data_dir / "target.pdf").write_bytes(target_pdf.read_bytes())
     page_index_by_id = {page.id: page.index for page in physical.pages}
     source_regions = [
         {
@@ -243,8 +339,7 @@ def _write_viewer_assets(
         if store is not None
         for issue in store.issues
     ]
-    _atomic_write_text(
-        data_dir / "mapping.json",
+    mapping_text = (
         json.dumps(
             {
                 "viewerDataVersion": 2,
@@ -260,7 +355,7 @@ def _write_viewer_assets(
             indent=2,
             ensure_ascii=False,
         )
-        + "\n",
+        + "\n"
     )
     source_pages = [
         {"widthPt": page.geometry.widthPt, "heightPt": page.geometry.heightPt}
@@ -281,7 +376,13 @@ def _write_viewer_assets(
         "sourcePages": source_pages,
         "targetPages": target_pages,
     }
-    _atomic_write_text(data_dir / "viewer-meta.json", json.dumps(meta, indent=2) + "\n")
+    return _publish_viewer_revision(
+        data_dir,
+        mapping_text=mapping_text,
+        meta_text=json.dumps(meta, indent=2) + "\n",
+        source_pdf=source_pdf,
+        target_pdf=target_pdf.read_bytes(),
+    )
 
 
 def _build_translation_provider(
@@ -296,7 +397,7 @@ def _build_translation_provider(
     if config.cache_dir is not None:
         cache = TranslationCache(config.cache_dir / "translation-cache.jsonl")
     if config.provider is None:
-        return None, "dummy", "", cache
+        return None, DUMMY_PROVIDER_MODEL, "", cache
     provider = create_provider(provider_model="openai-compat", provider_config=config.provider)
     return (
         provider,
@@ -387,17 +488,6 @@ def run_pipeline(
         "mapping.json": mapping,
         "resources.json": resources,
     }
-    paths: dict[str, Path] = {}
-    for name, document in outputs.items():
-        path = out_dir / name
-        dump_document(document, path=path)
-        paths[name] = path
-    # Keep the input bytes in the workspace so rerender_workspace can rebuild
-    # viewer assets without the user re-supplying the source PDF.
-    source_copy = out_dir / "source.pdf"
-    source_copy.write_bytes(data)
-    paths["source.pdf"] = source_copy
-
     # Cross-layer integrity: every id reference in the bundle resolves.
     bundle = {
         "physical": dump_document(physical),
@@ -412,6 +502,16 @@ def run_pipeline(
     if issues:
         raise RuntimeError(f"bundle reference issues: {issues}")
 
+    paths: dict[str, Path] = {}
+    for name, document in outputs.items():
+        path = out_dir / name
+        _atomic_write_json(path, dump_document(document))
+        paths[name] = path
+    # Keep the input bytes in the workspace so rerender_workspace can rebuild
+    # viewer assets without the user re-supplying the source PDF.
+    source_copy = out_dir / "source.pdf"
+    _atomic_write_bytes(source_copy, data)
+    paths["source.pdf"] = source_copy
     paths["target.pdf"] = target_pdf
 
     data_dir = viewer_data_dir or out_dir / "viewer" / "data"
@@ -442,6 +542,9 @@ def rerender_workspace(
     FR-TRANS-004: the source PDF is never re-parsed — physical/layout/semantic/
     mapping geometry is loaded from the workspace and only the translation,
     render document, target PDF, render anchors, and viewer assets are rebuilt.
+    Compile, anchor recovery, and bundle validation finish against a staging
+    build directory; workspace JSON and the viewer revision are published only
+    after that succeeds. Failure leaves the previous complete version in place.
     Returns the sorted re-translated node ids.
     """
     documents = {
@@ -461,14 +564,18 @@ def rerender_workspace(
         raise ValueError(f"not re-translatable nodes: {sorted(unknown)}")
 
     config = translation_config or load_translation_config()
-    provider, _model, provider_endpoint, cache = _build_translation_provider(config)
+    provider, provider_model, provider_endpoint, cache = _build_translation_provider(config)
+    if provider is None and translation_requires_provider(translation):
+        raise TranslationProviderNotConfiguredError
     new_translation = retranslate_nodes(
         semantic,
         translation,
         node_ids,
         provider,
         cache=cache,
+        provider_model=provider_model,
         provider_endpoint=provider_endpoint,
+        skip_cache_read=True,
     )
     render = compose_render_document(
         semantic,
@@ -478,47 +585,49 @@ def rerender_workspace(
         resources=resources.resources,
     )
     tex = project_to_latex(render, resource_dir=workspace_dir / "resources")
-    target_pdf = compile_latex(tex, workspace_dir / "build")
-    render_anchors = recover_render_anchors(target_pdf, semantic)
-    new_mapping = build_mapping_bundle(
-        semantic,
-        source_anchors=mapping.sourceAnchors,
-        source_semantic_bindings=mapping.sourceSemanticBindings,
-        physical_layout_bindings=mapping.physicalLayoutBindings,
-        render_anchors=render_anchors,
-        render_document_id=render_target_document_id(render),
-    )
+    staging_build = workspace_dir / "build" / f".rerender-{uuid.uuid4().hex}"
+    try:
+        target_pdf = compile_latex(tex, staging_build)
+        render_anchors = recover_render_anchors(target_pdf, semantic)
+        new_mapping = build_mapping_bundle(
+            semantic,
+            source_anchors=mapping.sourceAnchors,
+            source_semantic_bindings=mapping.sourceSemanticBindings,
+            physical_layout_bindings=mapping.physicalLayoutBindings,
+            render_anchors=render_anchors,
+            render_document_id=render_target_document_id(render),
+        )
+        bundle = {
+            "physical": dump_document(physical),
+            "layout": dump_document(layout),
+            "semantic": dump_document(semantic),
+            "translation": dump_document(new_translation),
+            "render": dump_document(render),
+            "mappings": dump_document(new_mapping),
+        }
+        issues = validate_bundle_references(bundle)
+        if issues:
+            raise RuntimeError(f"bundle reference issues: {issues}")
 
-    for name, document in (
-        ("translation.json", new_translation),
-        ("render.json", render),
-        ("mapping.json", new_mapping),
-    ):
-        dump_document(document, path=workspace_dir / name)
-
-    bundle = {
-        "physical": dump_document(physical),
-        "layout": dump_document(layout),
-        "semantic": dump_document(semantic),
-        "translation": dump_document(new_translation),
-        "render": dump_document(render),
-        "mappings": dump_document(new_mapping),
-    }
-    issues = validate_bundle_references(bundle)
-    if issues:
-        raise RuntimeError(f"bundle reference issues: {issues}")
-
-    _write_viewer_assets(
-        data_dir=viewer_data_dir,
-        source_pdf=(workspace_dir / "source.pdf").read_bytes(),
-        target_pdf=target_pdf,
-        mapping=new_mapping,
-        render_anchors=render_anchors,
-        physical=physical,
-        layout=layout,
-        semantic=semantic,
-        translation=new_translation,
-    )
+        _write_viewer_assets(
+            data_dir=viewer_data_dir,
+            source_pdf=(workspace_dir / "source.pdf").read_bytes(),
+            target_pdf=target_pdf,
+            mapping=new_mapping,
+            render_anchors=render_anchors,
+            physical=physical,
+            layout=layout,
+            semantic=semantic,
+            translation=new_translation,
+        )
+        for name, document in (
+            ("translation.json", new_translation),
+            ("render.json", render),
+            ("mapping.json", new_mapping),
+        ):
+            _atomic_write_json(workspace_dir / name, dump_document(document))
+    finally:
+        shutil.rmtree(staging_build, ignore_errors=True)
     return sorted(node_ids)
 
 
