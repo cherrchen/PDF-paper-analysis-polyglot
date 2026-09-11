@@ -126,7 +126,7 @@ def test_derive_dummy_terminology_is_deterministic() -> None:
                     "parentId": "00000000-0000-0000-0000-000000000102",
                     "children": [],
                     "content": {
-                        "text": "Semantic Recovery Semantic Recovery semantic recovery",
+                        "text": "Semantic Recovery. Semantic Recovery.",
                         "marks": [],
                     },
                     "attributes": {},
@@ -142,3 +142,107 @@ def test_derive_dummy_terminology_is_deterministic() -> None:
     second, rev_b = derive_dummy_terminology(semantic)
     assert first == second
     assert rev_a == rev_b
+
+
+@pytest.mark.unit
+def test_collect_terminology_exposes_candidates_for_real_providers() -> None:
+    from document_model.generated import schema_models as generated
+    from paper_llm.terminology import collect_terminology
+
+    semantic = generated.SemanticDocument.model_validate(
+        {
+            "schemaVersion": "0.1.0",
+            "id": "00000000-0000-0000-0000-000000000101",
+            "rootId": "00000000-0000-0000-0000-000000000102",
+            "nodes": [
+                {
+                    "id": "00000000-0000-0000-0000-000000000102",
+                    "kind": "DOCUMENT",
+                    "children": ["00000000-0000-0000-0000-000000000103"],
+                    "content": {"text": "", "marks": []},
+                    "attributes": {},
+                    "confidence": {"score": 1.0},
+                    "provenanceIds": [],
+                },
+                {
+                    "id": "00000000-0000-0000-0000-000000000103",
+                    "kind": "PARAGRAPH",
+                    "parentId": "00000000-0000-0000-0000-000000000102",
+                    "children": [],
+                    "content": {
+                        "text": "Semantic Recovery. Semantic Recovery.",
+                        "marks": [],
+                    },
+                    "attributes": {},
+                    "confidence": {"score": 1.0},
+                    "provenanceIds": [],
+                },
+            ],
+            "relations": [],
+            "provenanceIds": [],
+        }
+    )
+    dummy_terms, _, dummy_candidates = collect_terminology(semantic, provider_model="dummy")
+    real_terms, _, real_candidates = collect_terminology(
+        semantic, provider_model="openai-compat:mock"
+    )
+    assert dummy_candidates == ()
+    assert dummy_terms
+    assert dummy_terms[0].preferredTranslation.startswith("[TERM]")
+    assert real_terms == []
+    assert "Semantic Recovery" in real_candidates
+
+
+@pytest.mark.unit
+def test_real_provider_prompt_includes_candidate_terms() -> None:
+    from document_model.generated import schema_models as generated
+    from paper_llm.translation import translate_document
+    from paper_llm.types import TranslationRequest, TranslationResult
+
+    semantic = generated.SemanticDocument.model_validate(
+        {
+            "schemaVersion": "0.1.0",
+            "id": "00000000-0000-0000-0000-000000000101",
+            "rootId": "00000000-0000-0000-0000-000000000102",
+            "nodes": [
+                {
+                    "id": "00000000-0000-0000-0000-000000000102",
+                    "kind": "DOCUMENT",
+                    "children": ["00000000-0000-0000-0000-000000000103"],
+                    "content": {"text": "", "marks": []},
+                    "attributes": {},
+                    "confidence": {"score": 1.0},
+                    "provenanceIds": [],
+                },
+                {
+                    "id": "00000000-0000-0000-0000-000000000103",
+                    "kind": "PARAGRAPH",
+                    "parentId": "00000000-0000-0000-0000-000000000102",
+                    "children": [],
+                    "content": {
+                        "text": "Semantic Recovery. Semantic Recovery.",
+                        "marks": [],
+                    },
+                    "attributes": {},
+                    "confidence": {"score": 1.0},
+                    "provenanceIds": [],
+                },
+            ],
+            "relations": [],
+            "provenanceIds": [],
+        }
+    )
+    seen: dict[str, tuple[str, ...]] = {}
+
+    class CaptureProvider:
+        def translate_request(self, request: TranslationRequest) -> TranslationResult:
+            seen["candidates"] = request.candidate_terms
+            return TranslationResult(text=request.text, marks=list(request.marks))
+
+    translate_document(
+        semantic,
+        CaptureProvider(),
+        provider_model="openai-compat:mock",
+        target_locale="zh-CN",
+    )
+    assert "Semantic Recovery" in seen["candidates"]

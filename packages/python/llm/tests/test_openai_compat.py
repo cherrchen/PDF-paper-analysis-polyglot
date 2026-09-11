@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import httpx
 import pytest
 from document_model.generated import schema_models as generated
 from paper_llm.config import ProviderConfig
@@ -61,8 +62,9 @@ def test_openai_compat_provider_sends_protected_placeholders() -> None:
         assert isinstance(content, str)
         captured["prompt"] = content
         assert "See [1]." not in content
-        assert "⟦0⟧" in content
-        return {"choices": [{"message": {"content": "参见 ⟦0⟧。"}}]}
+        assert "⟦0:" in content
+        assert "⟧" in content
+        return {"choices": [{"message": {"content": "参见 ⟦0:0⟧。"}}]}
 
     mark = generated.InlineMark(
         type="CITATION", start=4, end=7, targetNodeId="entry-1", label="[1]"
@@ -74,7 +76,7 @@ def test_openai_compat_provider_sends_protected_placeholders() -> None:
             context=TranslationContext(target_locale="zh-CN"),
         )
     )
-    assert "⟦0⟧" in captured["prompt"]
+    assert "⟦0:" in captured["prompt"]
     assert result.text == "参见 [1]。"
     assert len(result.marks) == 1
     assert result.text[result.marks[0].start : result.marks[0].end] == "[1]"
@@ -92,7 +94,7 @@ def test_openai_compat_provider_rejects_dropped_placeholders() -> None:
         type="CITATION", start=4, end=7, targetNodeId="entry-1", label="[1]"
     )
     provider = _provider(post_json)
-    with pytest.raises(RuntimeError, match="dropped protected placeholders"):
+    with pytest.raises(RuntimeError, match="altered protected placeholders"):
         provider.translate_request(
             TranslationRequest(
                 text="See [1].",
@@ -131,6 +133,56 @@ def test_create_provider_uses_explicit_config(monkeypatch: pytest.MonkeyPatch) -
     provider.translate_request(TranslationRequest(text="hello"))
     assert captured["url"].startswith("http://from-config.example/")
     assert captured["model"] == "config-model"
+
+
+@pytest.mark.unit
+def test_injected_http_client_is_not_closed() -> None:
+    payloads = [
+        {"choices": [{"message": {"content": "first"}}]},
+        {"choices": [{"message": {"content": "second"}}]},
+        {"choices": [{"message": {"content": "third"}}]},
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        del request
+        return httpx.Response(200, json=payloads.pop(0))
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatProvider(
+        ProviderConfig(endpoint="http://mock.local", api_key=None, model="mock"),
+        client=client,
+    )
+    first = provider.translate_request(TranslationRequest(text="a"))
+    second = provider.translate_request(TranslationRequest(text="b"))
+    assert first.text == "first"
+    assert second.text == "second"
+    client.close()
+
+
+@pytest.mark.unit
+def test_injected_http_client_survives_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _no_sleep(seconds: float) -> None:
+        del seconds
+
+    monkeypatch.setattr("paper_llm.openai_compat.time.sleep", _no_sleep)
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        del request
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(503)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    provider = OpenAICompatProvider(
+        ProviderConfig(endpoint="http://mock.local", api_key=None, model="mock", max_retries=2),
+        client=client,
+    )
+    result = provider.translate_request(TranslationRequest(text="hello"))
+    assert result.text == "ok"
+    assert calls["n"] == 2
+    client.close()
 
 
 @pytest.mark.unit

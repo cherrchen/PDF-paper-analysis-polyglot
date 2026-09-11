@@ -33,6 +33,7 @@ class TranslationRequest:
     terminology: tuple[generated.Term, ...] = ()
     node_kind: str | None = None
     semantic_node_id: str | None = None
+    candidate_terms: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

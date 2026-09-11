@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from document_model.generated import schema_models as generated
+from document_model.tree import walk_semantic_nodes
 
 from paper_llm.types import TranslationContext
 
@@ -18,11 +19,22 @@ def build_translation_contexts(
 ) -> dict[str, TranslationContext]:
     """Return per-node translation context keyed by semantic node id."""
     nodes_by_id = {node.id: node for node in semantic.nodes}
-    ordered = _walk_nodes(semantic, nodes_by_id)
+    ordered = walk_semantic_nodes(semantic)
     document_title = _document_title(ordered, nodes_by_id)
-    section_titles: list[str] = []
+    neighbor_indexes: list[int] = []
     neighbor_texts: list[str] = []
+    for index, node in enumerate(ordered):
+        if node.kind not in _CONTEXT_KINDS:
+            continue
+        text = _rich_text(node.content)
+        if not text:
+            continue
+        neighbor_indexes.append(index)
+        neighbor_texts.append(text)
+
+    section_titles: list[str] = []
     contexts: dict[str, TranslationContext] = {}
+    neighbor_cursor = 0
 
     for index, node in enumerate(ordered):
         if node.kind == "HEADING":
@@ -38,56 +50,25 @@ def build_translation_contexts(
         if node.kind not in _CONTEXT_KINDS and node.kind != "TABLE":
             continue
 
-        preceding = _neighbor_snippet(neighbor_texts, backward=True)
-        following_texts = [
-            text
-            for item in ordered[index + 1 :]
-            for text in [_rich_text(item.content)]
-            if text and item.kind in _CONTEXT_KINDS
-        ]
-        following = _neighbor_snippet(following_texts, backward=False)
+        while neighbor_cursor < len(neighbor_indexes) and neighbor_indexes[neighbor_cursor] < index:
+            neighbor_cursor += 1
+        follow_start = neighbor_cursor
+        if follow_start < len(neighbor_indexes) and neighbor_indexes[follow_start] == index:
+            follow_start += 1
         contexts[node.id] = TranslationContext(
             target_locale=target_locale,
             source_locale=source_locale,
             document_title=document_title,
             section_path=tuple(section_titles),
-            preceding_text=preceding,
-            following_text=following,
+            preceding_text=_neighbor_snippet_range(
+                neighbor_texts, 0, neighbor_cursor, backward=True
+            ),
+            following_text=_neighbor_snippet_range(
+                neighbor_texts, follow_start, len(neighbor_texts), backward=False
+            ),
         )
 
-        if node.kind in _CONTEXT_KINDS:
-            text = _rich_text(node.content)
-            if text:
-                neighbor_texts.append(text)
-
     return contexts
-
-
-def _walk_nodes(
-    semantic: generated.SemanticDocument,
-    nodes_by_id: dict[str, generated.SemanticNode],
-) -> list[generated.SemanticNode]:
-    ordered: list[generated.SemanticNode] = []
-    seen: set[str] = set()
-
-    def walk(node_id: str) -> None:
-        if node_id in seen:
-            return
-        seen.add(node_id)
-        node = nodes_by_id.get(node_id)
-        if node is None:
-            return
-        for child_id in node.children:
-            if child_id in seen:
-                continue
-            child = nodes_by_id.get(child_id)
-            if child is None:
-                continue
-            ordered.append(child)
-            walk(child.id)
-
-    walk(semantic.rootId)
-    return ordered
 
 
 def _document_title(
@@ -116,11 +97,13 @@ def _rich_text(content: generated.NodeContent) -> str | None:
     return None
 
 
-def _neighbor_snippet(texts: list[str], *, backward: bool) -> str | None:
+def _neighbor_snippet_range(
+    texts: list[str], start: int, end: int, *, backward: bool
+) -> str | None:
     collected: list[str] = []
-    items = reversed(texts) if backward else texts
-    for text in items:
-        stripped = text.strip()
+    indexes = range(end - 1, start - 1, -1) if backward else range(start, end)
+    for index in indexes:
+        stripped = texts[index].strip()
         if not stripped:
             continue
         collected.append(stripped)

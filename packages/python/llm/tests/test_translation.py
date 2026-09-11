@@ -204,7 +204,7 @@ def test_non_prefix_translation_rebuilds_marks_via_placeholders() -> None:
     assert translated[marks[0].start : marks[0].end] == "1"
 
 
-def test_rewritten_text_without_placeholders_drops_stale_marks() -> None:
+def test_rewritten_text_without_placeholders_is_rejected() -> None:
     from document_model.generated import schema_models as generated
     from paper_llm.types import TranslationRequest, TranslationResult
 
@@ -220,6 +220,45 @@ def test_rewritten_text_without_placeholders_drops_stale_marks() -> None:
     mark = generated.InlineMark(
         type="CITATION", start=4, end=7, targetNodeId="entry-1", label="[1]"
     )
-    translated, marks = translate_rich_text("see [1] now", [mark], ReplaceProvider())
-    assert translated == "fully rewritten without markers"
-    assert marks == []
+    with pytest.raises(RuntimeError, match="altered protected placeholders"):
+        translate_rich_text("see [1] now", [mark], ReplaceProvider())
+
+
+def test_duplicate_placeholders_are_rejected() -> None:
+    from document_model.generated import schema_models as generated
+    from paper_llm.translation import translate_rich_text_body
+    from paper_llm.types import TranslationRequest, TranslationResult
+
+    class DuplicateProvider:
+        def translate_request(self, request: TranslationRequest) -> TranslationResult:
+            def echo_twice(value: str) -> str:
+                return f"{value} {value}"
+
+            text, marks = translate_rich_text_body(request.text, request.marks, echo_twice)
+            return TranslationResult(text=text, marks=marks)
+
+    mark = generated.InlineMark(
+        type="CITATION", start=4, end=7, targetNodeId="entry-1", label="[1]"
+    )
+    with pytest.raises(RuntimeError, match="altered protected placeholders"):
+        translate_rich_text("see [1] now", [mark], DuplicateProvider())
+
+
+def test_source_placeholder_form_does_not_steal_marks() -> None:
+    from document_model.generated import schema_models as generated
+    from paper_llm.types import TranslationRequest, TranslationResult
+
+    class EchoProvider:
+        def translate_request(self, request: TranslationRequest) -> TranslationResult:
+            from paper_llm.translation import translate_rich_text_body
+
+            text, marks = translate_rich_text_body(request.text, request.marks, lambda value: value)
+            return TranslationResult(text=text, marks=marks)
+
+    mark = generated.InlineMark(
+        type="CITATION", start=8, end=11, targetNodeId="entry-1", label="[1]"
+    )
+    translated, marks = translate_rich_text("see ⟦0⟧ [1]", [mark], EchoProvider())
+    assert translated == "see ⟦0⟧ [1]"
+    assert len(marks) == 1
+    assert translated[marks[0].start : marks[0].end] == "[1]"

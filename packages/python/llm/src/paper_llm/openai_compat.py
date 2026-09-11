@@ -1,4 +1,3 @@
-# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportUnnecessaryIsInstance=false
 """OpenAI-compatible Chat Completions translation adapter (M5 Phase 5.5)."""
 
 from __future__ import annotations
@@ -8,7 +7,9 @@ from typing import TYPE_CHECKING
 
 import httpx
 
-from paper_llm.translation import assert_placeholders_preserved, translate_rich_text_body
+from paper_llm.http_json import chat_completion_text, read_json_object
+from paper_llm.prompt import SYSTEM_PROMPT, build_translation_prompt
+from paper_llm.translation import translate_rich_text_body
 from paper_llm.types import TranslationRequest, TranslationResult
 
 if TYPE_CHECKING:
@@ -34,10 +35,8 @@ class OpenAICompatProvider:
 
     def translate_request(self, request: TranslationRequest) -> TranslationResult:
         def complete_protected(protected: str) -> str:
-            prompt = _build_prompt(request, source_text=protected)
-            response_text = self._complete(prompt)
-            assert_placeholders_preserved(protected, response_text)
-            return response_text
+            prompt = build_translation_prompt(request, source_text=protected)
+            return self._complete(prompt)
 
         text, marks = translate_rich_text_body(
             request.text,
@@ -50,7 +49,7 @@ class OpenAICompatProvider:
         payload: dict[str, object] = {
             "model": self._config.model,
             "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.2,
@@ -69,63 +68,33 @@ class OpenAICompatProvider:
                 if attempt > self._config.max_retries:
                     raise
                 time.sleep(min(2**attempt, 8))
-        choices = data.get("choices")
-        if not isinstance(choices, list) or not choices:
-            raise RuntimeError("provider returned no choices")
-        message = choices[0].get("message") if isinstance(choices[0], dict) else None
-        content = message.get("content") if isinstance(message, dict) else None
-        if not isinstance(content, str) or not content.strip():
-            raise RuntimeError("provider returned empty content")
-        return content.strip()
+        return chat_completion_text(data)
 
     def _request(
         self, url: str, payload: dict[str, object], headers: dict[str, str]
     ) -> dict[str, object]:
         if self._post_json is not None:
-            data = self._post_json(url, payload, headers)
-            if not isinstance(data, dict):
-                raise RuntimeError("provider mock returned non-object JSON")
-            return data
-        with self._client or httpx.Client(timeout=self._config.timeout_s) as client:
-            response = client.post(url, json=payload, headers=headers)
-            if response.status_code in {408, 409, 429, 500, 502, 503, 504}:
-                raise _RetriableProviderError(response.status_code)
-            response.raise_for_status()
-            data = response.json()
-            if not isinstance(data, dict):
-                raise TypeError("provider returned non-object JSON")
-            return data
+            return self._post_json(url, payload, headers)
+        if self._client is not None:
+            return _post_chat_completion(self._client, url, payload, headers)
+        with httpx.Client(timeout=self._config.timeout_s) as client:
+            return _post_chat_completion(client, url, payload, headers)
+
+
+def _post_chat_completion(
+    client: httpx.Client,
+    url: str,
+    payload: dict[str, object],
+    headers: dict[str, str],
+) -> dict[str, object]:
+    response = client.post(url, json=payload, headers=headers)
+    if response.status_code in {408, 409, 429, 500, 502, 503, 504}:
+        raise _RetriableProviderError(response.status_code)
+    response.raise_for_status()
+    return read_json_object(response)
 
 
 class _RetriableProviderError(RuntimeError):
     def __init__(self, status_code: int) -> None:
         super().__init__(f"retriable provider error: HTTP {status_code}")
         self.status_code = status_code
-
-
-_SYSTEM_PROMPT = (
-    "You are an academic paper translator. Preserve placeholder tokens such as "
-    "⟦0⟧ exactly. Never translate citation markers, equation references, or "
-    "bibliography labels. Return only the translated text."
-)
-
-
-def _build_prompt(request: TranslationRequest, *, source_text: str | None = None) -> str:
-    sections: list[str] = []
-    context = request.context
-    if context.document_title:
-        sections.append(f"Document title: {context.document_title}")
-    if context.section_path:
-        sections.append("Section path: " + " > ".join(context.section_path))
-    if context.preceding_text:
-        sections.append(f"Previous paragraph: {context.preceding_text}")
-    if context.following_text:
-        sections.append(f"Next paragraph: {context.following_text}")
-    if request.terminology:
-        glossary = "\n".join(
-            f"- {term.term} => {term.preferredTranslation}" for term in request.terminology
-        )
-        sections.append(f"Terminology:\n{glossary}")
-    sections.append(f"Target locale: {context.target_locale or 'unspecified'}")
-    sections.append(f"Source text:\n{source_text if source_text is not None else request.text}")
-    return "\n\n".join(sections)

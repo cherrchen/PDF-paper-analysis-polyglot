@@ -136,3 +136,125 @@ def test_real_provider_terminology_revision_invalidates_cache(tmp_path: Path) ->
     assert first.entries[0].content.text == second.entries[0].content.text
     assert "办法" in third.entries[0].content.text
     assert "方法" in first.entries[0].content.text
+
+
+@pytest.mark.unit
+def test_cache_misses_when_endpoint_or_context_changes(tmp_path: Path) -> None:
+    semantic = _paragraph_semantic()
+    cache = TranslationCache(tmp_path / "cache.jsonl")
+    calls = 0
+
+    class CountingProvider:
+        def translate_request(self, request: TranslationRequest) -> TranslationResult:
+            nonlocal calls
+            calls += 1
+            return TranslationResult(text=f"{calls}:{request.text}", marks=[])
+
+    translate_document(
+        semantic,
+        CountingProvider(),
+        provider_model="openai-compat:mock",
+        provider_endpoint="http://a.example",
+        cache=cache,
+        target_locale="zh-CN",
+    )
+    translate_document(
+        semantic,
+        CountingProvider(),
+        provider_model="openai-compat:mock",
+        provider_endpoint="http://b.example",
+        cache=cache,
+        target_locale="zh-CN",
+    )
+    assert calls == 2
+
+    extra_id = "00000000-0000-0000-0000-000000000104"
+    extra = generated.SemanticNode.model_validate(
+        {
+            "id": extra_id,
+            "kind": "PARAGRAPH",
+            "parentId": "00000000-0000-0000-0000-000000000102",
+            "children": [],
+            "content": {"text": "Following context.", "marks": []},
+            "attributes": {},
+            "confidence": {"score": 1.0},
+            "provenanceIds": [],
+        }
+    )
+    root = semantic.nodes[0].model_copy(
+        update={"children": [*semantic.nodes[0].children, extra_id]}
+    )
+    with_context = semantic.model_copy(update={"nodes": [root, semantic.nodes[1], extra]})
+    before_context = calls
+    translate_document(
+        semantic,
+        CountingProvider(),
+        provider_model="openai-compat:mock",
+        provider_endpoint="http://a.example",
+        cache=cache,
+        target_locale="zh-CN",
+    )
+    translate_document(
+        with_context,
+        CountingProvider(),
+        provider_model="openai-compat:mock",
+        provider_endpoint="http://a.example",
+        cache=cache,
+        target_locale="zh-CN",
+    )
+    assert calls > before_context + 1
+
+
+@pytest.mark.unit
+def test_failed_placeholder_translation_is_not_cached(tmp_path: Path) -> None:
+    semantic = _paragraph_semantic("See [1].")
+    mark = generated.InlineMark(
+        type="CITATION", start=4, end=7, targetNodeId="entry-1", label="[1]"
+    )
+    paragraph = semantic.nodes[1]
+    assert isinstance(paragraph.content, generated.RichText)
+    semantic = semantic.model_copy(
+        update={
+            "nodes": [
+                semantic.nodes[0],
+                paragraph.model_copy(
+                    update={"content": paragraph.content.model_copy(update={"marks": [mark]})}
+                ),
+            ]
+        }
+    )
+    cache = TranslationCache(tmp_path / "cache.jsonl")
+    calls = 0
+
+    class BadThenGood:
+        def translate_request(self, request: TranslationRequest) -> TranslationResult:
+            nonlocal calls
+            calls += 1
+            from paper_llm.translation import translate_rich_text_body
+
+            def complete(value: str) -> str:
+                if calls == 1:
+                    return value + " " + value
+                return value
+
+            text, marks = translate_rich_text_body(request.text, request.marks, complete)
+            return TranslationResult(text=text, marks=marks)
+
+    with pytest.raises(RuntimeError, match="altered protected placeholders"):
+        translate_document(
+            semantic,
+            BadThenGood(),
+            provider_model="openai-compat:mock",
+            cache=cache,
+            target_locale="zh-CN",
+        )
+    cache_file = tmp_path / "cache.jsonl"
+    assert not cache_file.exists() or cache_file.read_text(encoding="utf-8").strip() == ""
+    translate_document(
+        semantic,
+        BadThenGood(),
+        provider_model="openai-compat:mock",
+        cache=cache,
+        target_locale="zh-CN",
+    )
+    assert calls == 2

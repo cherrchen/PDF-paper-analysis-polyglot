@@ -249,12 +249,14 @@ def run_pipeline(
         )
     provider = None
     provider_model = "dummy"
+    provider_endpoint = ""
     if config.provider is not None:
         provider = create_provider(
             provider_model="openai-compat",
             provider_config=config.provider,
         )
         provider_model = f"openai-compat:{config.provider.model}"
+        provider_endpoint = config.provider.endpoint
     translation = translate_document(
         semantic,
         provider,
@@ -262,6 +264,7 @@ def run_pipeline(
         source_locale=config.source_locale,
         terminology_file=config.terminology_file,
         provider_model=provider_model,
+        provider_endpoint=provider_endpoint,
         cache=cache,
     )
     resource_dir = out_dir / "resources"

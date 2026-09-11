@@ -10,8 +10,10 @@ placeholders drop the marks rather than pointing at the wrong characters.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
-from typing import TYPE_CHECKING, Any
+from collections import Counter
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -25,9 +27,10 @@ from document_model.generated import schema_models as generated
 
 from paper_llm.config import load_translation_config
 from paper_llm.context import build_translation_contexts
+from paper_llm.prompt import TRANSLATION_PROMPT_VERSION
 from paper_llm.terminology import (
     build_terminology,
-    derive_dummy_terminology,
+    collect_terminology,
     load_manual_terminology,
 )
 from paper_llm.types import (
@@ -58,8 +61,7 @@ _PROTECTED_MARK_TYPES = frozenset(
     }
 )
 
-# Placeholders must survive a dummy prefix and not appear in papers.
-_PLACEHOLDER = "⟦{index}⟧"
+# Placeholders must survive a dummy prefix and not collide with source text.
 _PLACEHOLDER_PATTERN = re.compile(r"⟦(\d+)⟧")
 
 
@@ -139,12 +141,16 @@ def _translate_with_placeholders(
     spans = _merged_mark_spans(marks)
     protected = text
     originals: list[str] = []
+    template, pattern = _placeholder_spec(text)
     for index, (start, end) in reversed(list(enumerate(spans))):
         originals.append(text[start:end])
-        protected = protected[:start] + _PLACEHOLDER.format(index=index) + protected[end:]
+        protected = protected[:start] + template.format(index=index) + protected[end:]
     originals.reverse()
     translated_protected = translate_text(protected)
-    rebuilt, new_marks = _restore_placeholders(translated_protected, originals, marks, spans)
+    assert_placeholders_preserved(protected, translated_protected, pattern)
+    rebuilt, new_marks = _restore_placeholders(
+        translated_protected, originals, marks, spans, pattern
+    )
     return rebuilt, new_marks
 
 
@@ -159,19 +165,32 @@ def _merged_mark_spans(marks: list[generated.InlineMark]) -> list[tuple[int, int
     return merged
 
 
+def _placeholder_spec(text: str) -> tuple[str, re.Pattern[str]]:
+    nonce = 0
+    while nonce < 10_000:
+        prefix = f"⟦{nonce}:"
+        if prefix not in text:
+            template = prefix + "{index}⟧"
+            pattern = re.compile(re.escape(prefix) + r"(\d+)⟧")
+            return template, pattern
+        nonce += 1
+    raise RuntimeError("unable to allocate translation placeholders")
+
+
 def _restore_placeholders(
     translated_protected: str,
     originals: list[str],
     marks: list[generated.InlineMark],
     spans: list[tuple[int, int]],
+    pattern: re.Pattern[str],
 ) -> tuple[str, list[generated.InlineMark]]:
     found: dict[int, tuple[int, int]] = {}
     rebuilt: list[str] = []
     cursor = 0
-    for match in _PLACEHOLDER_PATTERN.finditer(translated_protected):
+    for match in pattern.finditer(translated_protected):
         index = int(match.group(1))
-        if index >= len(originals):
-            continue
+        if index >= len(originals) or index in found:
+            raise RuntimeError("translation altered protected placeholders")
         rebuilt.append(translated_protected[cursor : match.start()])
         start = sum(len(part) for part in rebuilt)
         rebuilt.append(originals[index])
@@ -206,17 +225,50 @@ def _span_index_for_mark(mark: generated.InlineMark, spans: list[tuple[int, int]
     return None
 
 
-def placeholder_indices(text: str) -> set[int]:
+def placeholder_indices(text: str, pattern: re.Pattern[str] | None = None) -> set[int]:
     """Return placeholder indexes present in ``text``."""
-    return {int(match.group(1)) for match in _PLACEHOLDER_PATTERN.finditer(text)}
+    compiled = pattern or _PLACEHOLDER_PATTERN
+    return {int(match.group(1)) for match in compiled.finditer(text)}
 
 
-def assert_placeholders_preserved(protected: str, translated: str) -> None:
-    """Raise when the model dropped any placeholder tokens from ``protected``."""
-    missing = placeholder_indices(protected) - placeholder_indices(translated)
-    if missing:
-        dropped = ", ".join(f"⟦{index}⟧" for index in sorted(missing))
-        raise RuntimeError(f"translation dropped protected placeholders: {dropped}")
+def placeholder_counts(text: str, pattern: re.Pattern[str] | None = None) -> Counter[int]:
+    """Return placeholder occurrence counts keyed by index."""
+    compiled = pattern or _PLACEHOLDER_PATTERN
+    return Counter(int(match.group(1)) for match in compiled.finditer(text))
+
+
+def assert_placeholders_preserved(
+    protected: str,
+    translated: str,
+    pattern: re.Pattern[str] | None = None,
+) -> None:
+    """Raise when the model dropped, duplicated, or invented placeholder tokens."""
+    expected = placeholder_counts(protected, pattern)
+    actual = placeholder_counts(translated, pattern)
+    if actual == expected:
+        return
+    details: list[str] = []
+    for index in sorted(set(expected) | set(actual)):
+        wanted = expected.get(index, 0)
+        got = actual.get(index, 0)
+        if wanted == got:
+            continue
+        details.append(f"⟦{index}⟧ expected {wanted}, got {got}")
+    raise RuntimeError("translation altered protected placeholders: " + "; ".join(details))
+
+
+def _context_digest(context: TranslationContext) -> str:
+    payload = {
+        "title": context.document_title,
+        "section": list(context.section_path),
+        "prev": context.preceding_text,
+        "next": context.following_text,
+        "target": context.target_locale,
+        "source": context.source_locale,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()
+    ).hexdigest()[:16]
 
 
 def _cache_key(
@@ -226,12 +278,27 @@ def _cache_key(
     target_locale: str,
     provider_model: str,
     terminology_revision: str,
+    provider_endpoint: str = "",
+    prompt_version: str = TRANSLATION_PROMPT_VERSION,
+    context: TranslationContext | None = None,
+    node_kind: str | None = None,
+    candidate_terms: tuple[str, ...] = (),
 ) -> str:
-    payload = (
-        f"{semantic_node_id}:{content_digest}:{target_locale}:"
-        f"{provider_model}:{terminology_revision}"
-    )
-    return hashlib.sha256(payload.encode()).hexdigest()[:16]
+    payload = {
+        "node": semantic_node_id,
+        "content": content_digest,
+        "target": target_locale,
+        "model": provider_model,
+        "endpoint": provider_endpoint,
+        "terminology": terminology_revision,
+        "prompt": prompt_version,
+        "context": _context_digest(context or TranslationContext(target_locale=target_locale)),
+        "kind": node_kind or "",
+        "candidates": list(candidate_terms),
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()
+    ).hexdigest()[:16]
 
 
 def _content_digest(content: generated.NodeContent) -> str:
@@ -270,6 +337,7 @@ def translate_document(
     terminology: list[generated.Term] | None = None,
     terminology_revision: str | None = None,
     provider_model: str = "dummy",
+    provider_endpoint: str = "",
     terminology_file: Path | None = None,
     cache: TranslationCache | None = None,
     node_ids: set[str] | None = None,
@@ -277,13 +345,11 @@ def translate_document(
     """Build a TranslationLayer for ``semantic`` without mutating it."""
     provider = provider or DummyTranslationProvider()
     manual_terms = load_manual_terminology(terminology_file)
+    candidate_terms: tuple[str, ...] = ()
     if terminology is None:
-        if provider_model == "dummy":
-            terminology, auto_revision = derive_dummy_terminology(
-                semantic, manual_terms=manual_terms
-            )
-        else:
-            terminology, auto_revision = build_terminology(semantic, manual_terms=manual_terms)
+        terminology, auto_revision, candidate_terms = collect_terminology(
+            semantic, manual_terms=manual_terms, provider_model=provider_model
+        )
     else:
         _, auto_revision = build_terminology(semantic, manual_terms=list(terminology))
     terminology_tuple = tuple(terminology)
@@ -309,10 +375,12 @@ def translate_document(
                 provider,
                 node_context,
                 terminology=terminology_tuple,
+                candidate_terms=candidate_terms,
                 node_kind=node.kind,
                 semantic_node_id=node.id,
                 cache=cache,
                 provider_model=provider_model,
+                provider_endpoint=provider_endpoint,
                 terminology_revision=terminology_revision,
                 target_locale=target_locale,
             )
@@ -321,7 +389,11 @@ def translate_document(
                     node.id,
                     result_content,
                     source_content=source_content,
+                    context=node_context,
+                    node_kind=node.kind,
+                    candidate_terms=candidate_terms,
                     provider_model=provider_model,
+                    provider_endpoint=provider_endpoint,
                     terminology_revision=terminology_revision,
                     target_locale=target_locale,
                 )
@@ -337,10 +409,12 @@ def translate_document(
                 provider,
                 node_context,
                 terminology=terminology_tuple,
+                candidate_terms=candidate_terms,
                 node_kind=node.kind,
                 semantic_node_id=node.id,
                 cache=cache,
                 provider_model=provider_model,
+                provider_endpoint=provider_endpoint,
                 terminology_revision=terminology_revision,
                 target_locale=target_locale,
             )
@@ -350,27 +424,34 @@ def translate_document(
                     node.id,
                     content,
                     source_content=source,
+                    context=node_context,
+                    node_kind=node.kind,
+                    candidate_terms=candidate_terms,
                     confidence=result.confidence,
                     provider_model=provider_model,
+                    provider_endpoint=provider_endpoint,
                     terminology_revision=terminology_revision,
                     target_locale=target_locale,
                 )
             )
-    layer_kwargs: dict[str, Any] = {
-        "schemaVersion": "0.2.0",
-        "id": stable_uuid(semantic.id, "translation-layer", target_locale),
-        "semanticDocumentId": semantic.id,
-        "targetLocale": target_locale,
-        "providerModel": provider_model,
-        "terminologyRevision": terminology_revision,
-        "entries": entries,
-        "provenanceIds": [],
-    }
+    layer = generated.TranslationLayer(
+        schemaVersion="0.2.0",
+        id=stable_uuid(semantic.id, "translation-layer", target_locale),
+        semanticDocumentId=semantic.id,
+        targetLocale=target_locale,
+        providerModel=provider_model,
+        terminologyRevision=terminology_revision,
+        entries=entries,
+        provenanceIds=[],
+    )
+    updates: dict[str, object] = {}
     if source_locale is not None:
-        layer_kwargs["sourceLocale"] = source_locale
+        updates["sourceLocale"] = source_locale
     if terminology_tuple:
-        layer_kwargs["terminology"] = list(terminology_tuple)
-    return generated.TranslationLayer(**layer_kwargs)
+        updates["terminology"] = list(terminology_tuple)
+    if updates:
+        return layer.model_copy(update=updates)
+    return layer
 
 
 def retranslate_nodes(
@@ -380,6 +461,7 @@ def retranslate_nodes(
     provider: TranslationProvider | None = None,
     *,
     cache: TranslationCache | None = None,
+    provider_endpoint: str = "",
 ) -> generated.TranslationLayer:
     """Re-translate selected nodes and merge into an existing TranslationLayer."""
     refreshed = translate_document(
@@ -390,6 +472,7 @@ def retranslate_nodes(
         terminology=list(translation.terminology or []),
         terminology_revision=translation.terminologyRevision or "rev-0",
         provider_model=translation.providerModel or "dummy",
+        provider_endpoint=provider_endpoint,
         cache=cache,
         node_ids=node_ids,
     )
@@ -405,10 +488,12 @@ def _translate_node(
     context: TranslationContext,
     *,
     terminology: tuple[generated.Term, ...],
+    candidate_terms: tuple[str, ...],
     node_kind: str,
     semantic_node_id: str,
     cache: TranslationCache | None,
     provider_model: str,
+    provider_endpoint: str,
     terminology_revision: str,
     target_locale: str,
 ) -> TranslationResult:
@@ -418,6 +503,10 @@ def _translate_node(
         target_locale=target_locale,
         provider_model=provider_model,
         terminology_revision=terminology_revision,
+        provider_endpoint=provider_endpoint,
+        context=context,
+        node_kind=node_kind,
+        candidate_terms=candidate_terms,
     )
     if cache is not None and (cached := cache.get(cache_key)) is not None:
         return TranslationResult(text=cached.text, marks=cached.marks, confidence=cached.confidence)
@@ -428,6 +517,7 @@ def _translate_node(
         terminology=terminology,
         node_kind=node_kind,
         semantic_node_id=semantic_node_id,
+        candidate_terms=candidate_terms,
     )
     result = provider.translate_request(request)
     if cache is not None:
@@ -441,10 +531,12 @@ def _translate_table_content(
     context: TranslationContext,
     *,
     terminology: tuple[generated.Term, ...],
+    candidate_terms: tuple[str, ...],
     node_kind: str,
     semantic_node_id: str,
     cache: TranslationCache | None,
     provider_model: str,
+    provider_endpoint: str,
     terminology_revision: str,
     target_locale: str,
 ) -> generated.TableContent:
@@ -456,10 +548,12 @@ def _translate_table_content(
             provider,
             context,
             terminology=terminology,
+            candidate_terms=candidate_terms,
             node_kind=node_kind,
             semantic_node_id=semantic_node_id,
             cache=cache,
             provider_model=provider_model,
+            provider_endpoint=provider_endpoint,
             terminology_revision=terminology_revision,
             target_locale=target_locale,
         )
@@ -480,8 +574,12 @@ def _make_entry(
     content: generated.NodeContent,
     *,
     source_content: generated.NodeContent,
+    context: TranslationContext,
+    node_kind: str,
+    candidate_terms: tuple[str, ...],
     confidence: float = 1.0,
     provider_model: str,
+    provider_endpoint: str,
     terminology_revision: str,
     target_locale: str,
 ) -> generated.TranslationEntry:
@@ -496,6 +594,10 @@ def _make_entry(
             target_locale=target_locale,
             provider_model=provider_model,
             terminology_revision=terminology_revision,
+            provider_endpoint=provider_endpoint,
+            context=context,
+            node_kind=node_kind,
+            candidate_terms=candidate_terms,
         ),
         provenanceIds=[],
     )
