@@ -16,8 +16,8 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 
 ## Current Progress
 
-**Last updated:** 2026-09-11
-**Current position:** The M6 Bidirectional Reader baseline has landed (viewer data contract v2, frontend grid spatial index, multi-fragment highlight, geometry-driven jumps + centering scroll + focus, sync scroll, the Semantic Inspector, `POST /api/retranslate` + `rerender_workspace` local re-render) with the viewer fixture switched to `paper-anatomy` and locked by 12 Playwright cases. M7 (Parser Ensemble & Quality) is next.
+**Last updated:** 2026-09-12
+**Current position:** The M7 Parser Ensemble & Quality baseline has landed (DocumentProbe, Capability Registry, Adaptive Routing, capability-authority conflict resolution, calibration diagnostics, quality report and baseline regression gate), with the M4/M5 items marked "target M7" (1 Layout→N Semantic, structured tables, author-year citations, scholarly metadata) folded in; everything runs on deterministic simulated specialists (docling-sim / grobid-sim), with real adapters joining via the same Protocol. See the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md). M8 (Productionization & Extensibility) is next.
 
 README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery baseline (the original phases are not fully closed).
 
@@ -32,7 +32,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M4 Semantic Recovery Engine | Baseline landed | CONTINUATION paragraph merging, numbered headings + SECTION tree, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery; second-round repairs restored table titles, marks, footnote linking, cyclic trees, multi-fragment Viewer, and provenance. 1→N / GROBID / true multi-column tables remain deferred |
 | M5 Translation & Rendering | Baseline landed | schema 0.2.0, structured TranslationRequest/Result, OpenAI-compatible adapter, terminology/cache, readable-single-column Profile/Policy, table/equation/bibliography/figure-resource LaTeX projection, dual-hypertarget RenderAnchors; review repairs in [M5 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.en.md); fidelity repairs in [M5 fidelity repairs](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.en.md). Not implemented: `source-derived` / `dense-two-column`, MathML, PDF/SVG figure assets |
 | M6 Bidirectional Reader | Baseline landed | viewerDataVersion 2 (full semanticNodes/relations/translation/provenance/issues + per-page sizes), frontend `PageSpatialIndex` grid, `pickCounterpart` geometry jumps (no page guessing), multi-fragment highlight, sync scroll, the Semantic Inspector, stdlib reader API + `rerender_workspace` (FR-TRANS-004, zero source re-parsing); decisions in the [M6 landing note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.en.md); current state in [`docs/architecture/reader.en.md`](../architecture/reader.en.md). Not implemented: character-level mapping, multi-window, annotations |
-| M7 Parser Ensemble & Quality | Not started | — |
+| M7 Parser Ensemble & Quality | Baseline landed | DocumentProbe + Capability Registry (TOML) + Adaptive Routing + authority conflict resolution; deferred items folded in (1 Layout→N Semantic, structured tables via physical cell splitting + grid detection, author-year citations, scholarly metadata); calibration/quality report + `just benchmark` baseline gate; real parser adapters and region-level annotated truth deferred |
 | M8 Productionization | Not started | — |
 
 ### M0 detail
@@ -117,9 +117,23 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 **M6 exit gate:** Locating original↔translation never assumes a page correspondence — `viewer-navigation.spec.ts` asserts differing source/target page distributions for every multi-fragment anchor, and every jump/scroll derives from bindings + geometry. Real-provider text changes remain a manual-verification promise (dummy output is deterministic; e2e locks the protocol).
 
+### M7 details
+
+| Phase | Status | Evidence |
+| --- | --- | --- |
+| 7.1 DocumentProbe | Baseline | `pdf_pipeline/probe.py`: native/scanned ratios, math/table/image densities, estimated_columns (modal detect_bands count), layout_complexity; `run_pipeline` writes the ad-hoc `probe.json` |
+| 7.2 Capability Registry | Baseline | `pdf_pipeline/capabilities.py` + `data/capability-registry.toml` (stdlib tomllib); invariant: reading_order/column_detection/semantic always internal; `fake_specialists.py` provides deterministic docling-sim (TABLE_STRUCTURE) and grobid-sim (METADATA/STRUCTURE) specialists |
+| 7.3 Adaptive Routing | Baseline | `pdf_pipeline/routing.py::route_providers` pure function: table-dense → docling-sim, math-heavy → formula capability, scholarly always; `pipeline.py` replaces the hard-coded mock with the routed ensemble and records the RoutingPlan in `probe.json` |
+| 7.4 Conflict Resolution | Baseline | `fusion.py` label votes = confidence × authority weight (primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8); conflict-fixture unit tests prove authority beats naive majority |
+| 7.5 Confidence Calibration | Diagnostic ready | `pdf_pipeline/calibration.py` binning + monotonicity diagnostics; numeric calibration awaits region-level annotated truth (no absolute gate; baseline-relative regression detection stays) |
+| 7.6 Quality Metrics | Baseline | `metrics.py::quality_report`: text coverage, region recall/precision, ordering, truth-expectation satisfaction, table-structure coverage, citation resolution, source/render mapping coverage, issue counts; unmeasurable metrics are null |
+| 7.7 Regression Benchmark | Baseline | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`; `just benchmark` gate (epsilon 1e-3, non-zero exit on regression); wired into nightly |
+
+**M7 exit gate:** Baseline achieved — provider/algorithm upgrades are now quantifiable as improved/unchanged/regressed via `just benchmark` against the baseline; deferred sources (real parser adapters, region-level annotated truth) are recorded in the landing note. Decisions: the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md).
+
 ### Recommended next steps
 
-1. Enter M7: Parser Ensemble & Quality. The M6 baseline has landed (current state: [`docs/architecture/reader.en.md`](../architecture/reader.en.md)). Deferred: `source-derived` / `dense-two-column` profiles, MathML, PDF/SVG figure assets, 1 Layout→N Semantic, character-level mapping, a real R-tree (if >10⁴ fragments appear), and the annotation layer.
+1. Enter M8: Productionization & Extensibility. The M7 baseline has landed (current state: the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md)). Remaining deferred: real MinerU/Docling/GROBID adapters, region-level annotated truth (the numeric-calibration prerequisite), `source-derived` / `dense-two-column` profiles, MathML, PDF/SVG figure assets, character-level mapping, and the annotation layer.
 
 ### Maintenance
 

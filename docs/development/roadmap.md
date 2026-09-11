@@ -16,8 +16,8 @@ Initial Product 关键约束（摘自 PRD v0.2）：仅 Born-digital PDF；Targe
 
 ## 当前进度追踪
 
-**最后更新：** 2026-09-11
-**当前位置：** M6 Bidirectional Reader 基线已落地（viewer 数据契约 v2、前端网格空间索引、多 fragment 高亮、几何驱动跳转 + 滚动居中 + focus、同步滚动、Semantic Inspector、`POST /api/retranslate` + `rerender_workspace` 局部重渲染），viewer 夹具切换到 `paper-anatomy` 并以 12 个 Playwright 用例锁定。下一阶段为 M7（Parser Ensemble & Quality）。
+**最后更新：** 2026-09-12
+**当前位置：** M7 Parser Ensemble & Quality 基线已落地（DocumentProbe、Capability Registry、Adaptive Routing、capability-authority 冲突解决、置信度校准诊断、质量报告与基线回归门禁），M4/M5 的「目标 M7」延期项（1 Layout→N Semantic、结构化表格、作者-年引用、Scholarly metadata）同步并入；全部基于确定性模拟 specialist provider（docling-sim / grobid-sim），真实 adapter 按同一 Protocol 接入。详见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。下一阶段为 M8（Productionization & Extensibility）。
 
 README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线（完整原始 Phase 验收仍有延期项）。
 
@@ -32,7 +32,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M4 Semantic Recovery Engine | 基线落地 | CONTINUATION 段落合并、编号 heading + SECTION 树、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复；第二轮正确性修复后表格标题、marks、脚注关联、环状树、多 fragment Viewer 与 provenance 已补。1→N / GROBID / 真实多列表格仍延期 |
 | M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；审查修复见 [M5 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.md)，保真修复见 [M5 内容保真修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.md)。未实现：`source-derived` / `dense-two-column`、MathML、矢量图 PDF/SVG |
 | M6 Bidirectional Reader | 基线落地 | viewerDataVersion 2（semanticNodes 全量/relations/translation/provenance/issues + 逐页尺寸）、前端 `PageSpatialIndex` 网格、`pickCounterpart` 几何跳转（无页码猜测）、多 fragment 高亮、同步滚动、Semantic Inspector、stdlib reader API + `rerender_workspace`（FR-TRANS-004 零源重解析）；决策见 [M6 落地 note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.md)；当前态见 [`docs/architecture/reader.md`](../architecture/reader.md)。未实现：字符级 mapping、跨文档多窗口、annotation |
-| M7 Parser Ensemble & Quality | 未开始 | — |
+| M7 Parser Ensemble & Quality | 基线落地 | DocumentProbe + Capability Registry（TOML）+ Adaptive Routing + authority 冲突解决；1 Layout→N Semantic、结构化表格（物理层单元格拆分 + 网格检测）、作者-年引用、Scholarly metadata 并入；校准/质量报告 + `just benchmark` 基线门禁；真实 parser adapter 与区域级标注真值延期 |
 | M8 Productionization | 未开始 | — |
 
 ### M0 明细
@@ -117,9 +117,23 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 **M6 Exit Gate：** 定位原文↔译文不依赖页码对应——`viewer-navigation.spec.ts` 对每个多 fragment anchor 断言 source 与 target 页码分布不同，且跳转/滚动全部由绑定 + 几何产生。真实 LLM 环境的译文变化以手工验证为承诺边界（dummy 输出确定，e2e 锁定协议）。
 
+### M7 明细
+
+| Phase | 状态 | 证据 |
+| --- | --- | --- |
+| 7.1 DocumentProbe | 基线 | `pdf_pipeline/probe.py`：native/scanned ratio、math/table/image density、estimated_columns（detect_bands 众数）、layout_complexity；`run_pipeline` 产出 ad-hoc `probe.json` |
+| 7.2 Capability Registry | 基线 | `pdf_pipeline/capabilities.py` + `data/capability-registry.toml`（stdlib tomllib）；不变量：reading_order/column_detection/semantic 恒 internal；`fake_specialists.py` 的 docling-sim（TABLE_STRUCTURE）与 grobid-sim（METADATA/STRUCTURE）为确定性 specialist |
+| 7.3 Adaptive Routing | 基线 | `pdf_pipeline/routing.py::route_providers` 纯函数：表格密集 → docling-sim、数学密集 → formula capability、scholarly 常规运行；`pipeline.py` 用 routed ensemble 替换硬编码 mock，`probe.json` 记录 RoutingPlan |
+| 7.4 Conflict Resolution | 基线 | `fusion.py` 标签投票 = confidence × authority 权重（primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8）；冲突 fixture 单测证明 authority 覆盖 naive majority |
+| 7.5 Confidence Calibration | 诊断就绪 | `pdf_pipeline/calibration.py` 分桶 + 单调性诊断；数值校准待区域级标注真值（绝对精度不作门禁，基线相对回归检测保留） |
+| 7.6 Quality Metrics | 基线 | `metrics.py::quality_report`：text coverage、region recall/precision、ordering、truth 期望满足度、table-structure coverage、citation resolution、source/render mapping coverage、issue 计数；不可测指标为 null |
+| 7.7 Regression Benchmark | 基线 | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`；`just benchmark` 门禁（epsilon 1e-3，回归非零退出）；nightly 接入 |
+
+**M7 Exit Gate：** 基线达成——provider/算法升级现在可以通过 `just benchmark` 与 baseline 对比量化 improved/unchanged/regressed；真源延后项（真实 parser adapter、区域级标注真值）见落地 note。决策见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。
+
 ### 建议下一步
 
-1. 进入 M7：Parser Ensemble & Quality。M6 基线已落地（当前态：[`docs/architecture/reader.md`](../architecture/reader.md)）。延期项：`source-derived` / `dense-two-column` profile、MathML、矢量图 PDF/SVG、1 Layout→N Semantic、字符级 mapping、真 R-tree（如 >10⁴ fragments）、annotation 层。
+1. 进入 M8：Productionization & Extensibility。M7 基线已落地（当前态见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)）。遗留延期项：真实 MinerU/Docling/GROBID adapter、区域级标注真值（数值校准前置）、`source-derived` / `dense-two-column` profile、MathML、矢量图 PDF/SVG、字符级 mapping、annotation 层。
 
 ### 维护说明
 
