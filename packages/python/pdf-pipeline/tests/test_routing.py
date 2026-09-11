@@ -83,9 +83,9 @@ def test_build_provider_covers_all_routed_names() -> None:
 
 
 def test_collect_bundles_produce_schema_valid_evidence() -> None:
-    from test_fake_specialists import _table_page
+    from test_fake_specialists import table_page
 
-    physical = _table_page()
+    physical = table_page()
     plan = route_providers(_probe(table=1.0))
     bundles = collect_bundles(plan, physical)
     assert len(bundles) == len(plan.provider_names())

@@ -51,6 +51,7 @@ from pdf_pipeline.reading_flow import FlowBand, FlowColumn, PageFlow, build_read
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from pdf_pipeline.capabilities import Registry
     from pdf_pipeline.fusion import InternalRegion, RegionDraft
     from pdf_pipeline.reading_flow import FlowEdge
 
@@ -63,12 +64,14 @@ def recover_layout_document(
     *,
     providers: Iterable[EvidenceProvider] | None = None,
     evidence: generated.EvidenceBundle | Iterable[generated.EvidenceBundle] | None = None,
+    registry: Registry | None = None,
 ) -> generated.LayoutDocument:
     """Recover the LayoutDocument of a PhysicalDocument.
 
     ``evidence`` injects one pre-built bundle or several (one per
     ensemble member); by default the deterministic mock provider runs so
-    the pipeline needs no third-party dependency.
+    the pipeline needs no third-party dependency. ``registry`` enables
+    capability-authority weighting during label fusion (Phase 7.4).
     """
     if evidence is None:
         bundles = [
@@ -88,6 +91,7 @@ def recover_layout_document(
         physical=physical,
         fingerprint=fingerprint,
         candidates_by_page=candidates_by_page,
+        registry=registry,
     )
     for page_index, page in enumerate(physical.pages):
         recovery.recover_page(page, page_index)
@@ -114,10 +118,12 @@ class _PageRecovery:
         physical: generated.PhysicalDocument,
         fingerprint: str,
         candidates_by_page: dict[str, list[NormalizedCandidate]],
+        registry: Registry | None = None,
     ) -> None:
         self._physical = physical
         self._fingerprint = fingerprint
         self._candidates_by_page = candidates_by_page
+        self._registry = registry
         self.regions_by_id: dict[str, InternalRegion] = {}
         self.page_flows: list[PageFlow] = []
         self.structural_bands: list[list[BandStructure]] = []
@@ -209,6 +215,7 @@ class _PageRecovery:
             drafts=drafts,
             candidates=self._candidates_by_page.get(page.id, []),
             region_id_fn=unique_region_id_fn,
+            registry=self._registry,
         )
         regions = self._assign_orphan_columns(regions, bands, page.geometry.widthPt)
 

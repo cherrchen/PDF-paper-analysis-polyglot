@@ -99,7 +99,7 @@ def test_authority_rank_orders_providers() -> None:
 # --- FakeDoclingTableProvider --------------------------------------------
 
 
-def _table_page() -> generated.PhysicalDocument:
+def table_page() -> generated.PhysicalDocument:
     """A 3x2 numeric table plus body prose above it."""
     page: list[generated.TextSpan] = [
         _span(70, 60, 460, 10, "Body prose before the table."),
@@ -111,7 +111,7 @@ def _table_page() -> generated.PhysicalDocument:
 
 
 def test_docling_sim_emits_structured_table() -> None:
-    physical = _table_page()
+    physical = table_page()
     bundle = FakeDoclingTableProvider().collect(physical)
     tables = [
         candidate for candidate in bundle.candidates if candidate.evidenceType == "TABLE_STRUCTURE"
@@ -128,7 +128,7 @@ def test_docling_sim_emits_structured_table() -> None:
 
 
 def test_docling_sim_is_deterministic_and_namespaces_ids() -> None:
-    physical = _table_page()
+    physical = table_page()
     provider = FakeDoclingTableProvider()
     first = provider.collect(physical)
     second = provider.collect(physical)

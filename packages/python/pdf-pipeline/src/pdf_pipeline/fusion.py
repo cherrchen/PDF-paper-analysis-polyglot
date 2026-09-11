@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, cast
 
 from document_model.generated import schema_models as generated
 
+from pdf_pipeline.capabilities import Registry, authority_rank
 from pdf_pipeline.evidence.normalize import MATCH_KEY_QUANTUM_PT, NormalizedCandidate
 from pdf_pipeline.geometry import (
     containment,
@@ -38,6 +39,40 @@ MATCH_TEXT_OVERLAP = 0.5
 # on a label; agreement boosts confidence, disagreement keeps both hints.
 _LABEL_AGREEMENT_BOOST = 0.15
 _FUSION_BASE_SCORE = 0.7
+
+# Phase 7.4 conflict resolution: capability authority beats vote counting
+# (docs/architecture/document-architecture.md §43 forbids majority voting).
+# A candidate's vote is its confidence scaled by the provider's authority
+# rank for the candidate's capability: primary > challenger > fallback >
+# unlisted. With no registry the plain confidence vote applies.
+AUTHORITY_WEIGHT_PRIMARY = 1.5
+AUTHORITY_WEIGHT_CHALLENGER = 1.2
+AUTHORITY_WEIGHT_FALLBACK = 1.0
+NON_AUTHORITY_WEIGHT = 0.8
+_RANK_WEIGHTS = {
+    0: AUTHORITY_WEIGHT_PRIMARY,
+    1: AUTHORITY_WEIGHT_CHALLENGER,
+    2: AUTHORITY_WEIGHT_FALLBACK,
+}
+_LABEL_CAPABILITY = {"TABLE": "table.structure", "FORMULA": "formula.detection"}
+_DEFAULT_CAPABILITY = "layout.region"
+
+
+def capability_for_label(label: str) -> str:
+    """Capability whose authority decides a label conflict."""
+    return _LABEL_CAPABILITY.get(label, _DEFAULT_CAPABILITY)
+
+
+def authority_weight(registry: Registry, label: str, provider: str) -> float:
+    """Confidence multiplier for a provider's vote on a label.
+
+    Rank-based so the challenger still counts if the primary disagrees;
+    unlisted providers keep a reduced but non-zero voice (cross-source
+    evidence stays usable).
+    """
+    rank = authority_rank(registry, capability_for_label(label), provider)
+    return _RANK_WEIGHTS.get(rank, NON_AUTHORITY_WEIGHT)
+
 
 _TOKEN_PATTERN = re.compile(r"\w+", re.UNICODE)
 
@@ -203,11 +238,16 @@ def match_candidate(
 
 def fuse_candidate_labels(
     candidates: list[NormalizedCandidate],
+    *,
+    registry: Registry | None = None,
 ) -> tuple[generated.LayoutLabel, float]:
-    """Confidence-weighted label vote across matching candidates."""
+    """Authority- and confidence-weighted label vote across candidates."""
     totals: dict[str, float] = {}
     for candidate in candidates:
-        totals[candidate.label] = totals.get(candidate.label, 0.0) + candidate.confidence
+        weight = candidate.confidence
+        if registry is not None:
+            weight *= authority_weight(registry, candidate.label, candidate.provider)
+        totals[candidate.label] = totals.get(candidate.label, 0.0) + weight
     best_label = max(totals, key=lambda label: (totals[label], label))
     total = sum(totals.values())
     share = totals[best_label] / total if total > 0 else 0.0
@@ -290,6 +330,8 @@ def draft_region(
 def fuse_matched_candidates(
     draft: RegionDraft,
     matches: list[tuple[NormalizedCandidate, MatchResult]],
+    *,
+    registry: Registry | None = None,
 ) -> None:
     """Fold matched provider candidates into a region draft.
 
@@ -300,7 +342,9 @@ def fuse_matched_candidates(
     """
     if not matches:
         return
-    fused_label, fused_share = fuse_candidate_labels([candidate for candidate, _ in matches])
+    fused_label, fused_share = fuse_candidate_labels(
+        [candidate for candidate, _ in matches], registry=registry
+    )
     dominant = max(
         ((label, weight) for label, weight in draft.label_hypotheses),
         key=lambda item: item[1],
@@ -382,6 +426,7 @@ def fuse_page(
     drafts: list[RegionDraft],
     candidates: list[NormalizedCandidate],
     region_id_fn: Callable[[int], str],
+    registry: Registry | None = None,
 ) -> list[InternalRegion]:
     """Fuse one page's geometric drafts with normalized provider candidates.
 
@@ -455,7 +500,7 @@ def fuse_page(
                 key=lambda index: (matches[index][1].score, -index),
             )
             best_draft, best_match = matches[best_index]
-            fuse_matched_candidates(best_draft, [(candidate, best_match)])
+            fuse_matched_candidates(best_draft, [(candidate, best_match)], registry=registry)
             consumed_candidates.add(candidate.evidenceId)
             continue
 
@@ -483,6 +528,8 @@ __all__ = [
     "InternalRegion",
     "MatchResult",
     "RegionLine",
+    "authority_weight",
+    "capability_for_label",
     "dominant_label",
     "draft_region",
     "finalize_draft",

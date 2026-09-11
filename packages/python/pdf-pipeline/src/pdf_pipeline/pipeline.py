@@ -33,6 +33,7 @@ from paper_llm.translation import (
     translation_requires_provider,
 )
 
+from pdf_pipeline.capabilities import load_registry
 from pdf_pipeline.evidence.normalize import merge_evidence_bundles
 from pdf_pipeline.fusion import RegionLine
 from pdf_pipeline.geometry import as_rect
@@ -489,12 +490,14 @@ def run_pipeline(
         raise ValueError(f"unsupported input PDF: {capability.reason}")
 
     physical = extract_physical_document(data)
-    # Phase 7.1 + 7.3: probe the document, then route the provider ensemble.
+    # Phase 7.1 + 7.3 + 7.4: probe, route, and fuse with capability
+    # authority weighting from one shared registry instance.
+    registry = load_registry()
     probe = probe_document(physical)
-    plan = route_providers(probe)
+    plan = route_providers(probe, registry)
     bundles = collect_bundles(plan, physical)
     evidence = merge_evidence_bundles(bundles)
-    layout = recover_layout_document(physical, evidence=bundles)
+    layout = recover_layout_document(physical, evidence=bundles, registry=registry)
     region_texts = region_texts_from(physical, layout)
     semantic = recover_semantic_document(
         layout,

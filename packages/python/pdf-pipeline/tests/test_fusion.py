@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import cast
+
+import pytest
 from document_model.generated import schema_models as generated
+from pdf_pipeline.capabilities import load_registry
 from pdf_pipeline.evidence.normalize import NormalizedCandidate
 from pdf_pipeline.fusion import (
     RegionDraft,
     draft_region,
+    fuse_candidate_labels,
     fuse_page,
     label_similarity,
     match_candidate,
@@ -167,3 +172,71 @@ def test_union_rect_covers_both() -> None:
     b = _rect(5, 5, 10, 10)
     merged = union_rect(a, b)
     assert (merged.x, merged.y, merged.width, merged.height) == (0, 0, 15, 15)
+
+
+# --- Phase 7.4: capability-authority conflict resolution ------------------
+
+
+def _vote_candidate(
+    label: str,
+    confidence: float,
+    provider: str,
+) -> NormalizedCandidate:
+    """A minimal normalized candidate for label-vote tests."""
+    return NormalizedCandidate(
+        evidenceId=f"ev-{provider}-{label}-{confidence}",
+        pageId="p",
+        rect=generated.Rect(kind="rect", x=0, y=0, width=10, height=10),
+        label=cast("generated.LayoutLabel", label),
+        providerLabel=label,
+        provider=provider,
+        confidence=confidence,
+        textPreview="",
+        provenanceIds=(),
+    )
+
+
+def test_authority_beats_naive_majority() -> None:
+    """Two unlisted providers must not outvote the capability authority."""
+    candidates = [
+        _vote_candidate("PARAGRAPH_LIKE", 0.5, "unknown-a"),
+        _vote_candidate("PARAGRAPH_LIKE", 0.5, "unknown-b"),
+        _vote_candidate("HEADING_LIKE", 0.75, "mock"),  # layout.region primary
+    ]
+    naive = fuse_candidate_labels(candidates)
+    assert naive[0] == "PARAGRAPH_LIKE"
+    weighted = fuse_candidate_labels(candidates, registry=load_registry())
+    assert weighted[0] == "HEADING_LIKE"
+
+
+def test_challenger_still_counts_against_primary() -> None:
+    """Challenger weight keeps cross-source evidence usable, not silenced."""
+    candidates = [
+        _vote_candidate("HEADING_LIKE", 0.6, "mock"),
+        _vote_candidate("PARAGRAPH_LIKE", 0.6, "docling-sim"),  # layout.region challenger
+    ]
+    label, _ = fuse_candidate_labels(candidates, registry=load_registry())
+    assert label == "HEADING_LIKE"  # 0.6 * 1.5 beats 0.6 * 1.2
+
+
+def test_table_structure_authority_resolves_table_labels() -> None:
+    """table.structure fallback outranks unlisted providers at equal confidence."""
+    candidates = [
+        _vote_candidate("TABLE", 0.6, "mock"),  # table.structure fallback
+        _vote_candidate("TEXT", 0.6, "unknown-a"),
+    ]
+    naive_label, _ = fuse_candidate_labels(candidates)
+    assert naive_label == "TEXT"  # alphabetical tie-break without a registry
+    label, _ = fuse_candidate_labels(candidates, registry=load_registry())
+    assert label == "TABLE"
+
+
+def test_unlisted_provider_keeps_reduced_voice() -> None:
+    """Cross-source evidence is reduced, never silenced (§43)."""
+    candidates = [
+        _vote_candidate("PARAGRAPH_LIKE", 0.5, "unknown-a"),
+        _vote_candidate("CAPTION_LIKE", 0.5, "unknown-b"),
+    ]
+    label, share = fuse_candidate_labels(candidates, registry=load_registry())
+    assert label == "PARAGRAPH_LIKE"
+    assert share == pytest.approx(0.5)
