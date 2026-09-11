@@ -412,3 +412,181 @@ def test_run_pipeline_uses_passed_provider_config(
     assert seen["config"] is passed
     assert passed.endpoint == "http://from-config.example"
     assert passed.model == "config-model"
+
+
+@pytest.mark.rendering
+def test_malformed_equations_compile_via_text_fallback(tmp_path: Path) -> None:
+    for text in ("x__1", "cost $5"):
+        block = generated.RenderEquationBlock(
+            renderKind="EQUATION",
+            id=BLOCK_ID,
+            semanticNodeIds=[NODE_A],
+            equation=generated.EquationContent(unicodeText=text),
+        )
+        tex = project_to_latex(_render([block]))
+        compile_latex(tex, tmp_path / text.replace(" ", "_").replace("$", "dollar"))
+        log = _log_text(tmp_path / text.replace(" ", "_").replace("$", "dollar"))
+        assert "Missing { inserted" not in log
+        assert "Extra }, or forgotten $" not in log
+
+
+@pytest.mark.rendering
+def test_sqrt_equation_keeps_operand_inside_radical(tmp_path: Path) -> None:
+    block = generated.RenderEquationBlock(
+        renderKind="EQUATION",
+        id=BLOCK_ID,
+        semanticNodeIds=[NODE_A],
+        equation=generated.EquationContent(unicodeText="√x"),
+    )
+    tex = project_to_latex(_render([block]))
+    assert r"\sqrt{x}" in tex
+    assert r"\sqrt{}x" not in tex
+    compile_latex(tex, tmp_path / "build")
+
+
+@pytest.mark.unit
+def test_figure_projects_every_bound_resource(tmp_path: Path) -> None:
+    resource_dir = tmp_path / "resources"
+    resource_dir.mkdir()
+    first = "00000000-0000-0000-0000-000000000091"
+    second = "00000000-0000-0000-0000-000000000092"
+    _write_tiny_png(resource_dir / f"{first}.png")
+    _write_tiny_png(resource_dir / f"{second}.png")
+    block = generated.RenderFigureBlock(
+        renderKind="FIGURE",
+        id=BLOCK_ID,
+        semanticNodeIds=[NODE_A, NODE_B],
+        figure=generated.FigureContent(
+            resources=generated.FigureResource(embeddedImageIds=[first, second])
+        ),
+        caption=generated.RichText(text="Two panels", marks=[]),
+        resourceIds=[first, second],
+    )
+    tex = project_to_latex(_render([block]), resource_dir=resource_dir)
+    assert tex.count("\\includegraphics") == 2
+    assert first in tex
+    assert second in tex
+    above = project_to_latex(
+        _render([block], policy=_policy(captionPosition="ABOVE")),
+        resource_dir=resource_dir,
+    )
+    caption_at = above.index(r"\caption{Two panels}")
+    graphic_at = above.index(r"\includegraphics")
+    assert caption_at < graphic_at
+
+
+@pytest.mark.unit
+def test_render_policy_wide_figure_and_table_overflow() -> None:
+    resource_id = "00000000-0000-0000-0000-000000000093"
+    figure = generated.RenderFigureBlock(
+        renderKind="FIGURE",
+        id=BLOCK_ID,
+        semanticNodeIds=[NODE_A],
+        figure=generated.FigureContent(
+            resources=generated.FigureResource(embeddedImageIds=[resource_id])
+        ),
+        resourceIds=[resource_id],
+    )
+    wide = project_to_latex(_render([figure], policy=_policy(wideFigureHandling="WIDE_FLOAT")))
+    inline = project_to_latex(_render([figure], policy=_policy(wideFigureHandling="INLINE")))
+    assert r"\begin{figure*}" in wide
+    assert r"\end{figure*}" in wide
+    assert r"\begin{figure}" not in inline
+    assert r"\begin{center}" in inline
+
+    table = generated.TableContent(
+        rows=1,
+        columns=1,
+        cells=[
+            generated.TableCell(
+                row=0,
+                column=0,
+                rowSpan=1,
+                colSpan=1,
+                content=generated.RichText(text="cell", marks=[]),
+            )
+        ],
+    )
+    block = generated.RenderTableBlock(
+        renderKind="TABLE",
+        id=BLOCK_ID,
+        semanticNodeIds=[NODE_A],
+        table=table,
+        columnAlignments=["LEFT"],
+    )
+    wrap = project_to_latex(_render([block], policy=_policy(tableOverflowHandling="WRAP")))
+    fail = project_to_latex(_render([block], policy=_policy(tableOverflowHandling="FAIL")))
+    wide_table = project_to_latex(
+        _render([block], policy=_policy(tableOverflowHandling="WIDE_FLOAT"))
+    )
+    assert r"p{\dimexpr" in wrap
+    assert r"\errmessage{table overflow with FAIL policy}" in fail
+    assert r"\begin{table*}" in wide_table
+
+
+@pytest.mark.unit
+def test_compose_records_multi_image_layout_issue() -> None:
+    first = "00000000-0000-0000-0000-000000000091"
+    second = "00000000-0000-0000-0000-000000000092"
+    figure = generated.SemanticNode.model_validate(
+        {
+            "id": NODE_A,
+            "kind": "FIGURE",
+            "parentId": ROOT_ID,
+            "children": [],
+            "content": {"resources": {"embeddedImageIds": [first, second]}},
+            "attributes": {},
+            "confidence": {"score": 1.0},
+            "provenanceIds": [],
+        }
+    )
+    translation = generated.TranslationLayer(
+        schemaVersion="0.2.0",
+        id=TR_ID,
+        semanticDocumentId=SEM_ID,
+        targetLocale="zh-CN",
+        entries=[],
+        provenanceIds=[],
+    )
+    resources = generated.ResourceStore(
+        resources=[
+            generated.ResourceRecord(
+                id=first, kind="EMBEDDED_IMAGE", mediaType="image/png", origin="EXTRACTED"
+            ),
+            generated.ResourceRecord(
+                id=second, kind="EMBEDDED_IMAGE", mediaType="image/png", origin="EXTRACTED"
+            ),
+        ]
+    )
+    render = compose_render_document(
+        _semantic(figure),
+        translation,
+        resources=resources,
+        policy=_policy(captionPosition="SOURCE"),
+    )
+    figure_blocks = [block for block in render.blocks if block.renderKind == "FIGURE"]
+    assert figure_blocks[0].resourceIds == [first, second]
+    assert render.issues is not None
+    messages = [issue.message for issue in render.issues.issues]
+    assert any("multiple bound images" in message for message in messages)
+
+
+@pytest.mark.rendering
+def test_multi_resource_figure_compiles(tmp_path: Path) -> None:
+    resource_dir = tmp_path / "resources"
+    resource_dir.mkdir()
+    first = "00000000-0000-0000-0000-000000000091"
+    second = "00000000-0000-0000-0000-000000000092"
+    _write_tiny_png(resource_dir / f"{first}.png")
+    _write_tiny_png(resource_dir / f"{second}.png")
+    block = generated.RenderFigureBlock(
+        renderKind="FIGURE",
+        id=BLOCK_ID,
+        semanticNodeIds=[NODE_A],
+        figure=generated.FigureContent(
+            resources=generated.FigureResource(embeddedImageIds=[first, second])
+        ),
+        resourceIds=[first, second],
+    )
+    tex = project_to_latex(_render([block]), resource_dir=resource_dir)
+    compile_latex(tex, tmp_path / "build")

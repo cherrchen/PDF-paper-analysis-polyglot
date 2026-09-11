@@ -5,14 +5,25 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
-import unicodedata
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from pdf_pipeline.math_latex import equation_to_latex
+from pdf_pipeline.tex_escape import escape_latex
 
 if TYPE_CHECKING:
     from document_model.generated import schema_models as generated
+
+__all__ = [
+    "LATEX_PRODUCER",
+    "TEMPLATE_BODY_MARKER",
+    "TEMPLATE_PROFILE_MARKER",
+    "anchor_end_name",
+    "compile_latex",
+    "escape_latex",
+    "project_to_latex",
+    "render_target_document_id",
+]
 
 TEMPLATE_BODY_MARKER = "% BODY"
 TEMPLATE_PROFILE_MARKER = "% PROFILE"
@@ -21,32 +32,7 @@ _ANCHOR_END_SUFFIX = ":end"
 _MISSING_FIGURE = (
     r"\fbox{\parbox{0.6\textwidth}{\centering\vspace{1.2cm}[figure unavailable]\vspace{1.2cm}}}"
 )
-
-_TEX_SPECIALS = {
-    "\\": r"\textbackslash{}",
-    "&": r"\&",
-    "%": r"\%",
-    "$": r"\$",
-    "#": r"\#",
-    "_": r"\_",
-    "{": r"\{",
-    "}": r"\}",
-    "~": r"\textasciitilde{}",
-    "^": r"\textasciicircum{}",
-}
-
-
-def escape_latex(text: str) -> str:
-    """Normalize extracted controls and escape TeX special characters."""
-    escaped: list[str] = []
-    for char in text:
-        if char in "\r\n\t":
-            escaped.append(" ")
-        elif unicodedata.category(char) == "Cc":
-            continue
-        else:
-            escaped.append(_TEX_SPECIALS.get(char, char))
-    return "".join(escaped)
+_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bin")
 
 
 def project_to_latex(
@@ -117,29 +103,77 @@ def _project_figure(
 ) -> list[str]:
     node_id = block.semanticNodeIds[0]
     inner = [f"\\renderanchor{{{node_id}}}%"]
-    graphic = _MISSING_FIGURE
-    if resource_dir is not None and block.resourceIds:
-        resource_id = block.resourceIds[0]
-        for extension in (".png", ".jpg", ".jpeg", ".webp", ".bin"):
-            candidate = resource_dir / f"{resource_id}{extension}"
-            if candidate.is_file():
-                image_path = candidate.resolve().as_posix()
-                graphic = f"\\includegraphics[width=0.8\\textwidth]{{{image_path}}}"
-                break
-    inner.append(graphic)
+    resource_ids = list(block.resourceIds or [])
+    width = _figure_image_width(policy)
+    graphics = [
+        _graphic_for_resource(resource_dir, resource_id, width) for resource_id in resource_ids
+    ]
+    if not graphics:
+        inner.append(_MISSING_FIGURE)
+    else:
+        inner.extend(graphics)
+    caption_position = _caption_position("figure", policy)
+    caption_lines: list[str] = []
     if block.caption is not None and len(block.semanticNodeIds) > 1:
-        inner.extend(
-            _caption_lines(
-                "figure",
-                block.caption.text,
-                block.semanticNodeIds[1],
-                floating=bool(policy.floatFigures),
-            )
+        caption_lines = _caption_lines(
+            "figure",
+            block.caption.text,
+            block.semanticNodeIds[1],
+            floating=_figure_is_float(policy),
         )
+    if caption_position == "ABOVE":
+        inner[1:1] = caption_lines
+    else:
+        inner.extend(caption_lines)
     inner.append(f"\\renderanchorend{{{node_id}}}%")
-    if policy.floatFigures:
-        return ["\\begin{figure}[htbp]\\centering", *inner, "\\end{figure}"]
-    return ["\\begin{center}", *inner, "\\end{center}"]
+    return [*_figure_wrapper_open(policy), *inner, _figure_wrapper_close(policy)]
+
+
+def _figure_is_float(policy: generated.RenderPolicy) -> bool:
+    return bool(policy.floatFigures) and (policy.wideFigureHandling or "SCALE_DOWN") != "INLINE"
+
+
+def _figure_image_width(policy: generated.RenderPolicy) -> str:
+    handling = policy.wideFigureHandling or "SCALE_DOWN"
+    if handling == "WIDE_FLOAT":
+        return r"\textwidth"
+    return r"0.8\textwidth"
+
+
+def _figure_wrapper_open(policy: generated.RenderPolicy) -> list[str]:
+    if not _figure_is_float(policy):
+        return [r"\begin{center}"]
+    if policy.wideFigureHandling == "WIDE_FLOAT":
+        return [r"\begin{figure*}[htbp]\centering"]
+    return [r"\begin{figure}[htbp]\centering"]
+
+
+def _figure_wrapper_close(policy: generated.RenderPolicy) -> str:
+    if not _figure_is_float(policy):
+        return r"\end{center}"
+    if policy.wideFigureHandling == "WIDE_FLOAT":
+        return r"\end{figure*}"
+    return r"\end{figure}"
+
+
+def _graphic_for_resource(resource_dir: Path | None, resource_id: str, width: str) -> str:
+    if resource_dir is None:
+        return _MISSING_FIGURE
+    for extension in _IMAGE_EXTENSIONS:
+        candidate = resource_dir / f"{resource_id}{extension}"
+        if candidate.is_file():
+            image_path = candidate.resolve().as_posix()
+            return f"\\includegraphics[width={width}]{{{image_path}}}"
+    return _MISSING_FIGURE
+
+
+def _caption_position(kind: str, policy: generated.RenderPolicy) -> str:
+    position = policy.captionPosition
+    if position == "ABOVE":
+        return "ABOVE"
+    if position == "SOURCE":
+        return "ABOVE" if kind == "table" else "BELOW"
+    return "BELOW"
 
 
 def _project_table(block: generated.RenderTableBlock, policy: generated.RenderPolicy) -> list[str]:
@@ -149,31 +183,61 @@ def _project_table(block: generated.RenderTableBlock, policy: generated.RenderPo
         "list[generated.ColumnAlignment]",
         list(block.columnAlignments) if block.columnAlignments else ["LEFT"] * columns,
     )
+    overflow = policy.tableOverflowHandling
+    wide = overflow == "WIDE_FLOAT"
     floating = bool(policy.floatTables)
     node_id = block.semanticNodeIds[0]
     caption_id = block.semanticNodeIds[-1] if len(block.semanticNodeIds) > 1 else None
-    lines = ["\\begin{table}[htbp]\\centering"] if floating else ["\\begin{center}"]
+    lines = [_table_wrapper_open(floating=floating, wide=wide)]
     lines.append(f"\\renderanchor{{{node_id}}}%")
-    if block.caption is not None and policy.captionPosition == "ABOVE":
+    caption_position = _caption_position("table", policy)
+    if block.caption is not None and caption_position == "ABOVE":
         lines.extend(_caption_lines("table", block.caption.text, caption_id, floating=floating))
-    tabular = _tabular_lines(table, alignments, columns)
-    if policy.tableOverflowHandling == "SCALE_FONT":
+    tabular = _tabular_lines(table, alignments, columns, wrap=overflow == "WRAP")
+    if overflow == "SCALE_FONT":
         lines.append("\\fitbox{%")
         lines.extend(tabular)
         lines.append("}")
+    elif overflow == "FAIL":
+        lines.append("\\sbox{\\fitcontentbox}{%")
+        lines.extend(tabular)
+        lines.append("}")
+        lines.append(
+            r"\ifdim\wd\fitcontentbox>\linewidth"
+            r"\errmessage{table overflow with FAIL policy}\fi"
+        )
+        lines.append(r"\usebox{\fitcontentbox}")
     else:
         lines.extend(tabular)
-    if block.caption is not None and policy.captionPosition != "ABOVE":
+    if block.caption is not None and caption_position != "ABOVE":
         lines.extend(_caption_lines("table", block.caption.text, caption_id, floating=floating))
     lines.append(f"\\renderanchorend{{{node_id}}}%")
-    lines.append("\\end{table}" if floating else "\\end{center}")
+    lines.append(_table_wrapper_close(floating=floating, wide=wide))
     return lines
+
+
+def _table_wrapper_open(*, floating: bool, wide: bool) -> str:
+    if floating and wide:
+        return r"\begin{table*}[htbp]\centering"
+    if floating:
+        return r"\begin{table}[htbp]\centering"
+    return r"\begin{center}"
+
+
+def _table_wrapper_close(*, floating: bool, wide: bool) -> str:
+    if floating and wide:
+        return r"\end{table*}"
+    if floating:
+        return r"\end{table}"
+    return r"\end{center}"
 
 
 def _tabular_lines(
     table: generated.TableContent,
     alignments: list[generated.ColumnAlignment] | tuple[generated.ColumnAlignment, ...],
     columns: int,
+    *,
+    wrap: bool = False,
 ) -> list[str]:
     inferred_columns = max(
         (cell.column + cell.colSpan for cell in table.cells),
@@ -187,7 +251,11 @@ def _tabular_lines(
     padded = list(alignments[:columns])
     while len(padded) < columns:
         padded.append("LEFT")
-    spec = "".join(align_char.get(align, "l") for align in padded)
+    if wrap:
+        col_width = rf"\dimexpr(\linewidth-{2 * columns}\tabcolsep)/{columns}\relax"
+        spec = "".join(f"p{{{col_width}}}" for _ in range(columns))
+    else:
+        spec = "".join(align_char.get(align, "l") for align in padded)
     origins: dict[tuple[int, int], generated.TableCell] = {}
     covered: set[tuple[int, int]] = set()
     for cell in table.cells:
@@ -211,20 +279,29 @@ def _tabular_lines(
                 parts.append("{}")
                 column += 1
                 continue
-            text = escape_latex(cell.content.text)
-            if cell.rowSpan > 1:
-                text = rf"\multirow{{{cell.rowSpan}}}{{*}}{{{text}}}"
-            if cell.colSpan > 1:
-                align = align_char.get(padded[column], "l")
-                text = rf"\multicolumn{{{cell.colSpan}}}{{{align}}}{{{text}}}"
-                parts.append(text)
-                column += cell.colSpan
-                continue
-            parts.append(f"{{{text}}}")
-            column += 1
+            text, consumed = _table_cell_tex(cell, padded, column, wrap=wrap)
+            parts.append(text)
+            column += consumed
         lines.append(" & ".join(parts) + " \\\\")
     lines.append("\\end{tabular}")
     return lines
+
+
+def _table_cell_tex(
+    cell: generated.TableCell,
+    padded: list[generated.ColumnAlignment],
+    column: int,
+    *,
+    wrap: bool,
+) -> tuple[str, int]:
+    align_char = {"LEFT": "l", "CENTER": "c", "RIGHT": "r"}
+    text = escape_latex(cell.content.text)
+    if cell.rowSpan > 1:
+        text = rf"\multirow{{{cell.rowSpan}}}{{*}}{{{text}}}"
+    if cell.colSpan > 1:
+        align = "p{\\linewidth}" if wrap else align_char.get(padded[column], "l")
+        return rf"\multicolumn{{{cell.colSpan}}}{{{align}}}{{{text}}}", cell.colSpan
+    return f"{{{text}}}", 1
 
 
 def _caption_lines(
@@ -248,8 +325,11 @@ def _project_equation(
     block: generated.RenderEquationBlock, policy: generated.RenderPolicy
 ) -> list[str]:
     body = equation_to_latex(block.equation)
-    if policy.longEquationHandling == "SCALE_DOWN":
+    handling = policy.longEquationHandling
+    if handling in {"SCALE_DOWN", "MULTILINE"}:
         body = rf"\fitmath{{{body}}}"
+    elif handling == "TRUNCATE":
+        body = rf"\makebox[\linewidth][l]{{\ensuremath{{\displaystyle {body}}}}}"
     if block.equation.number:
         tagged = rf"{body} \tag{{{escape_latex(block.equation.number)}}}"
         return ["\\begin{equation}", tagged, "\\end{equation}"]

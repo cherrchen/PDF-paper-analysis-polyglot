@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import cast
 
 from document_model.generated import schema_models as generated
+from document_model.tree import walk_semantic_nodes
 
 from pdf_pipeline.ids import stable_uuid
-from pdf_pipeline.math_latex import equation_to_latex
 from pdf_pipeline.resource_store import figure_resource_ids
 
 DEFAULT_PROFILE = generated.RenderProfile(
@@ -33,31 +33,7 @@ _PARAGRAPH_KINDS = {
     "TABLE_CAPTION",
     "FOOTNOTE",
 }
-
-
-def _walk_nodes(semantic: generated.SemanticDocument) -> list[generated.SemanticNode]:
-    by_id = {node.id: node for node in semantic.nodes}
-    ordered: list[generated.SemanticNode] = []
-    seen: set[str] = set()
-
-    def walk(node_id: str) -> None:
-        if node_id in seen:
-            return
-        seen.add(node_id)
-        node = by_id.get(node_id)
-        if node is None:
-            return
-        for child_id in node.children:
-            if child_id in seen:
-                continue
-            child = by_id.get(child_id)
-            if child is None:
-                continue
-            ordered.append(child)
-            walk(child.id)
-
-    walk(semantic.rootId)
-    return ordered
+_PRODUCER = "pdf-pipeline.render-composer"
 
 
 def compose_render_document(
@@ -104,10 +80,11 @@ def compose_render_document(
     }
 
     blocks: list[generated.RenderBlock] = []
+    issues: list[generated.Issue] = []
     bibliography_entries: list[generated.BibliographyEntryContent] = []
     bibliography_block_id: str | None = None
 
-    for node in _walk_nodes(semantic):
+    for node in walk_semantic_nodes(semantic):
         if node.id in bound_figure_caption_ids or node.id in bound_table_caption_ids:
             continue
         content = translations.get(node.id, node.content)
@@ -142,17 +119,18 @@ def compose_render_document(
                 caption_id = caption_node.id
 
         block_id = stable_uuid(semantic.id, "render-block", node.id)
-        blocks.extend(
-            _blocks_for_node(
-                node,
-                content,
-                block_id=block_id,
-                caption=caption,
-                caption_id=caption_id,
-                policy=policy,
-                resources=resource_store,
-            )
+        node_blocks = _blocks_for_node(
+            node,
+            content,
+            block_id=block_id,
+            caption=caption,
+            caption_id=caption_id,
+            resources=resource_store,
         )
+        issues.extend(
+            _policy_issues_for_blocks(semantic.id, policy, node, node_blocks, caption is not None)
+        )
+        blocks.extend(node_blocks)
 
     if bibliography_entries and bibliography_block_id is not None:
         blocks.append(
@@ -163,7 +141,7 @@ def compose_render_document(
             )
         )
 
-    return generated.RenderDocument(
+    document = generated.RenderDocument(
         schemaVersion="0.2.0",
         id=stable_uuid(semantic.id, "render-document", translation.id),
         semanticDocumentId=semantic.id,
@@ -173,6 +151,9 @@ def compose_render_document(
         blocks=blocks,
         provenanceIds=[],
     )
+    if issues:
+        return document.model_copy(update={"issues": generated.IssueStore(issues=issues)})
+    return document
 
 
 def _blocks_for_node(
@@ -182,7 +163,6 @@ def _blocks_for_node(
     block_id: str,
     caption: generated.RichText | None,
     caption_id: str | None,
-    policy: generated.RenderPolicy,
     resources: generated.ResourceStore,
 ) -> list[generated.RenderBlock]:
     if node.kind == "HEADING" and isinstance(content, generated.RichText):
@@ -205,32 +185,27 @@ def _blocks_for_node(
             semantic_node_ids = [node.id]
             if caption is not None and caption_id is not None:
                 semantic_node_ids.append(caption_id)
-            table_kwargs: dict[str, Any] = {
-                "renderKind": "TABLE",
-                "id": block_id,
-                "semanticNodeIds": semantic_node_ids,
-                "table": table_content,
-                "columnAlignments": alignments,
-            }
-            if caption is not None:
-                table_kwargs["caption"] = caption
-            return cast(
-                "list[generated.RenderBlock]",
-                [generated.RenderTableBlock(**table_kwargs)],
+            block = generated.RenderTableBlock(
+                renderKind="TABLE",
+                id=block_id,
+                semanticNodeIds=semantic_node_ids,
+                table=table_content,
+                columnAlignments=alignments,
             )
+            if caption is not None:
+                block = block.model_copy(update={"caption": caption})
+            return [block]
     if node.kind == "EQUATION":
         equation_content = (
             content if isinstance(content, generated.EquationContent) else node.content
         )
         if isinstance(equation_content, generated.EquationContent):
-            latex = equation_to_latex(equation_content)
-            equation = equation_content.model_copy(update={"latex": latex})
             return [
                 generated.RenderEquationBlock(
                     renderKind="EQUATION",
                     id=block_id,
                     semanticNodeIds=[node.id],
-                    equation=equation,
+                    equation=equation_content,
                 )
             ]
     if node.kind == "FIGURE" and isinstance(node.content, generated.FigureContent):
@@ -239,19 +214,101 @@ def _blocks_for_node(
             semantic_node_ids.append(caption_id)
         available = {record.id for record in resources.resources if record.kind == "EMBEDDED_IMAGE"}
         resource_ids = [rid for rid in figure_resource_ids(node.content) if rid in available]
-        figure_kwargs: dict[str, Any] = {
-            "renderKind": "FIGURE",
-            "id": block_id,
-            "semanticNodeIds": semantic_node_ids,
-            "figure": node.content,
-        }
+        block = generated.RenderFigureBlock(
+            renderKind="FIGURE",
+            id=block_id,
+            semanticNodeIds=semantic_node_ids,
+            figure=node.content,
+        )
         if caption is not None:
-            figure_kwargs["caption"] = caption
-        block = generated.RenderFigureBlock(**figure_kwargs)
+            block = block.model_copy(update={"caption": caption})
         if resource_ids:
             block = block.model_copy(update={"resourceIds": resource_ids})
         return [block]
     return []
+
+
+def _policy_issues_for_blocks(
+    document_id: str,
+    policy: generated.RenderPolicy,
+    node: generated.SemanticNode,
+    blocks: list[generated.RenderBlock],
+    has_caption: bool,
+) -> list[generated.Issue]:
+    issues: list[generated.Issue] = []
+    for block in blocks:
+        if block.renderKind == "FIGURE":
+            resource_ids = list(block.resourceIds or [])
+            if len(resource_ids) > 1:
+                issues.append(
+                    _render_issue(
+                        document_id,
+                        "multi-figure-layout",
+                        node.id,
+                        "figure has multiple bound images; original subfigure "
+                        "layout was not restored, so images are stacked",
+                        resource_ids,
+                        fallback="stacked includegraphics",
+                    )
+                )
+            if has_caption and policy.captionPosition == "SOURCE":
+                issues.append(
+                    _render_issue(
+                        document_id,
+                        "caption-source-figure",
+                        node.id,
+                        "captionPosition=SOURCE approximated as BELOW; "
+                        "source caption side is not in Render IR",
+                        [node.id],
+                        fallback="BELOW",
+                    )
+                )
+        if block.renderKind == "TABLE" and has_caption and policy.captionPosition == "SOURCE":
+            issues.append(
+                _render_issue(
+                    document_id,
+                    "caption-source-table",
+                    node.id,
+                    "captionPosition=SOURCE approximated as ABOVE; "
+                    "source caption side is not in Render IR",
+                    [node.id],
+                    fallback="ABOVE",
+                )
+            )
+        if block.renderKind == "EQUATION" and policy.longEquationHandling == "MULTILINE":
+            issues.append(
+                _render_issue(
+                    document_id,
+                    "equation-multiline",
+                    node.id,
+                    "longEquationHandling=MULTILINE has no break points in Render IR; "
+                    "falling back to SCALE_DOWN",
+                    [node.id],
+                    fallback="SCALE_DOWN",
+                )
+            )
+    return issues
+
+
+def _render_issue(
+    document_id: str,
+    token: str,
+    node_id: str,
+    message: str,
+    affected: list[str],
+    *,
+    fallback: str,
+) -> generated.Issue:
+    return generated.Issue(
+        id=stable_uuid(document_id, "issue", "render", token, node_id),
+        category="RENDERING",
+        severity="WARNING",
+        producer=_PRODUCER,
+        message=message,
+        affectedIds=affected,
+        recoverable=True,
+        fallback=fallback,
+    )
 
 
 def _paragraph(
