@@ -148,6 +148,7 @@ export class DualPaneReader {
   async showPage(side: Side, pageIndex: number): Promise<void> {
     const bounded = Math.max(0, Math.min(pageIndex, this.pageCount(side) - 1));
     if (this.currentPage[side] === bounded) {
+      this.renderers[side].invalidate();
       this.redrawOverlay(side);
       return;
     }
@@ -253,6 +254,9 @@ export class DualPaneReader {
         model: this.model,
         revision: this.revision,
         target: this.pdfs.target,
+        targetPage: this.currentPage.target,
+        sourceScrollTop: this.scrollContainer("source").scrollTop,
+        targetScrollTop: this.scrollContainer("target").scrollTop,
       };
       let candidate: LoadedViewerAssets | undefined;
       try {
@@ -270,15 +274,26 @@ export class DualPaneReader {
         ]);
       } catch (error) {
         const swapped = candidate !== undefined && this.pdfs.target === candidate.target;
-        if (swapped) {
-          this.meta = previous.meta;
-          this.model = previous.model;
-          this.revision = previous.revision;
-          this.pdfs.target = previous.target;
-          this.currentPage.target = -1;
-        }
-        if (candidate?.target && this.pdfs.target !== candidate.target) {
-          await candidate.target.loadingTask.destroy();
+        try {
+          if (swapped) {
+            this.meta = previous.meta;
+            this.model = previous.model;
+            this.revision = previous.revision;
+            this.pdfs.target = previous.target;
+            this.currentPage.target = -1;
+            await this.showPage("target", Math.max(0, previous.targetPage));
+            this.scrollContainer("source").scrollTop = previous.sourceScrollTop;
+            this.scrollContainer("target").scrollTop = previous.targetScrollTop;
+            this.redrawOverlay("source");
+            this.redrawOverlay("target");
+            if (this.activeNodeId && previous.targetPage >= 0) {
+              this.focusRegion("target", this.activeNodeId, previous.targetPage);
+            }
+          }
+        } finally {
+          if (candidate?.target && this.pdfs.target !== candidate.target) {
+            await candidate.target.loadingTask.destroy();
+          }
         }
         throw error;
       }

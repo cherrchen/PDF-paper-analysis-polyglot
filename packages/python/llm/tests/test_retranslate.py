@@ -75,6 +75,11 @@ class VersionedProvider:
         return TranslationResult(text=f"{self.label}-v{self.calls}:{request.text}", marks=[])
 
 
+def _text(entry: generated.TranslationEntry) -> str:
+    assert isinstance(entry.content, generated.RichText)
+    return entry.content.text
+
+
 def test_retranslate_records_actual_provider_and_isolates_cache(tmp_path: Path) -> None:
     semantic = _two_paragraphs()
     cache = TranslationCache(tmp_path / "cache.jsonl")
@@ -104,8 +109,8 @@ def test_retranslate_records_actual_provider_and_isolates_cache(tmp_path: Path) 
     by_id = {entry.semanticNodeId: entry for entry in updated.entries}
     assert by_id[PARA_A].providerModel == "openai-compat:model-b"
     assert by_id[PARA_B].providerModel == "openai-compat:model-a"
-    assert str(by_id[PARA_A].content.text).startswith("B-v1:")
-    assert str(by_id[PARA_B].content.text).startswith("A-v")
+    assert _text(by_id[PARA_A]).startswith("B-v1:")
+    assert _text(by_id[PARA_B]).startswith("A-v")
     assert updated.providerModel == "openai-compat:model-b"
     assert second_provider.calls == 1
 
@@ -135,8 +140,8 @@ def test_user_retranslate_skips_cache_read_for_selected_nodes(tmp_path: Path) ->
     )
     assert provider.calls == 3
     by_id = {entry.semanticNodeId: entry for entry in updated.entries}
-    assert str(by_id[PARA_A].content.text).startswith("X-v3:")
-    assert by_id[PARA_B].content.text == original_b.content.text
+    assert _text(by_id[PARA_A]).startswith("X-v3:")
+    assert _text(by_id[PARA_B]) == _text(original_b)
 
 
 def test_retranslate_requires_provider_model_for_non_dummy() -> None:

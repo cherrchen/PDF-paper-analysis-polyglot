@@ -2,10 +2,9 @@
  * Viewer asset loading: manifest-addressed revisions of mapping/meta/PDFs.
  *
  * `_write_viewer_assets` publishes a complete `revisions/<id>/` directory and
- * then flips `manifest.json`. Loading prefers those revision URLs so mapping,
- * meta, and PDFs stay on one revision. Vite's SPA fallback can hide directories
- * created after boot, so a failed revision fetch retries the stable aliases
- * (`/data/mapping.json` and friends) with the same revision cache-buster.
+ * then flips `manifest.json`. Loading uses exactly the URLs in one manifest so
+ * mapping, meta, and PDFs cannot be mixed across revisions. Stable aliases are
+ * only used together when no manifest exists (the legacy boot fallback).
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { type MappingBundle, type PageSize, parseMappingBundle } from "./mapping.js";
@@ -98,10 +97,6 @@ function withRevision(url: string, revision: string): string {
   return `${url}${joiner}r=${encodeURIComponent(revision)}`;
 }
 
-function uniqueUrls(urls: string[]): string[] {
-  return [...new Set(urls)];
-}
-
 async function loadPdfOrThrow(loadPdf: PdfLoader, url: string): Promise<PDFDocumentProxy> {
   const probe = await fetch(url, { method: "HEAD" }).catch(() => undefined);
   if (probe && probe.status !== 405 && probe.status !== 501) {
@@ -121,52 +116,22 @@ export async function loadViewerAssets(
 ): Promise<LoadedViewerAssets> {
   const revision = manifest.revision;
   const includeSource = options?.includeSource ?? true;
-  const mappingCandidates = uniqueUrls([
-    withRevision(manifest.mapping, revision),
-    withRevision(FALLBACK_MANIFEST.mapping, revision),
-  ]);
-  const metaCandidates = uniqueUrls([
-    withRevision(manifest.meta, revision),
-    withRevision(FALLBACK_MANIFEST.meta, revision),
-  ]);
-  const targetCandidates = uniqueUrls([
-    withRevision(manifest.target, revision),
-    withRevision(FALLBACK_MANIFEST.target, revision),
-  ]);
-  const sourceCandidates = uniqueUrls([
-    withRevision(manifest.source, revision),
-    withRevision(FALLBACK_MANIFEST.source, revision),
-  ]);
-  const mappings = parseMappingBundle(await fetchJsonFirst<unknown>(mappingCandidates));
-  const meta = await fetchJsonFirst<ViewerMeta>(metaCandidates);
-  const target = await loadPdfFirst(loadPdf, targetCandidates);
-  const source = includeSource ? await loadPdfFirst(loadPdf, sourceCandidates) : undefined;
+  const mappings = parseMappingBundle(
+    await fetchJson<unknown>(withRevision(manifest.mapping, revision)),
+  );
+  const meta = await fetchJson<ViewerMeta>(withRevision(manifest.meta, revision));
   if (!Array.isArray(meta.sourcePages) || !Array.isArray(meta.targetPages)) {
     throw new Error("invalid viewer meta");
   }
+  const target = await loadPdfOrThrow(loadPdf, withRevision(manifest.target, revision));
+  let source: PDFDocumentProxy | undefined;
+  if (includeSource) {
+    try {
+      source = await loadPdfOrThrow(loadPdf, withRevision(manifest.source, revision));
+    } catch (error) {
+      await target.loadingTask.destroy();
+      throw error;
+    }
+  }
   return { revision, mappings, meta, source, target };
-}
-
-async function fetchJsonFirst<T>(urls: string[]): Promise<T> {
-  let lastError: unknown;
-  for (const url of urls) {
-    try {
-      return await fetchJson<T>(url);
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw lastError instanceof Error ? lastError : new Error("failed to load JSON asset");
-}
-
-async function loadPdfFirst(loadPdf: PdfLoader, urls: string[]): Promise<PDFDocumentProxy> {
-  let lastError: unknown;
-  for (const url of urls) {
-    try {
-      return await loadPdfOrThrow(loadPdf, url);
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw lastError instanceof Error ? lastError : new Error("failed to load PDF asset");
 }

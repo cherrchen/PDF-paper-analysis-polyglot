@@ -65,6 +65,20 @@ describe("ExclusiveRenderer", () => {
     expect(isRenderCancelled({ name: "RenderingCancelledException" })).toBe(true);
     expect(isRenderCancelled(new Error("boom"))).toBe(false);
   });
+
+  it("invalidates an in-flight render even when no replacement render starts", async () => {
+    const renderer = new ExclusiveRenderer<number>();
+    let cancelled = false;
+    const pending = renderer.run(() => ({
+      cancel: () => {
+        cancelled = true;
+      },
+      promise: delay(20).then(() => 1),
+    }));
+    renderer.invalidate();
+    await expect(pending).resolves.toBeUndefined();
+    expect(cancelled).toBe(true);
+  });
 });
 
 describe("viewer meta helpers", () => {

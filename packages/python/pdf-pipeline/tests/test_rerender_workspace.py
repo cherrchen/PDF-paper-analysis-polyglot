@@ -43,6 +43,11 @@ def _load_translation(workspace: Path) -> generated.TranslationLayer:
     return layer
 
 
+def _text(entry: generated.TranslationEntry) -> str:
+    assert isinstance(entry.content, generated.RichText)
+    return entry.content.text
+
+
 @pytest.fixture
 def workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A workspace built by run_pipeline on the smoke fixture (fake compile)."""
@@ -150,7 +155,7 @@ def test_rerender_records_current_provider_identity(
     after = _load_translation(workspace)
     by_id = {entry.semanticNodeId: entry for entry in after.entries}
     assert by_id[node_id].providerModel == "openai-compat:model-b"
-    assert str(by_id[node_id].content.text).startswith("model-b:")
+    assert _text(by_id[node_id]).startswith("model-b:")
     assert by_id[other_id].providerModel == translation.entries[1].providerModel
     assert after.providerModel == "openai-compat:model-b"
     assert labeled.calls >= 1
@@ -207,7 +212,11 @@ def test_rerender_validate_failure_keeps_previous_revision(
     before_manifest = (viewer / "manifest.json").read_text(encoding="utf-8")
     node_id = _load_translation(workspace).entries[0].semanticNodeId
     monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
-    monkeypatch.setattr(pipeline, "validate_bundle_references", lambda *_a, **_k: ["injected"])
+
+    def injected_validation(_bundle: dict[str, object]) -> list[str]:
+        return ["injected"]
+
+    monkeypatch.setattr(pipeline, "validate_bundle_references", injected_validation)
     with pytest.raises(RuntimeError, match="bundle reference issues"):
         rerender_workspace(workspace, viewer_data_dir=viewer, node_ids={node_id})
     assert (workspace / "translation.json").read_text(encoding="utf-8") == before_translation
@@ -231,6 +240,44 @@ def test_rerender_publish_failure_keeps_previous_revision(
         rerender_workspace(workspace, viewer_data_dir=viewer, node_ids={node_id})
     assert (workspace / "translation.json").read_text(encoding="utf-8") == before_translation
     assert (viewer / "manifest.json").read_text(encoding="utf-8") == before_manifest
+
+
+@pytest.mark.parametrize("failed_name", ["target.pdf", "render.json", "manifest.json"])
+def test_rerender_mid_publish_failure_rolls_back_viewer_and_workspace(
+    workspace: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failed_name: str,
+) -> None:
+    viewer = workspace / "viewer" / "data"
+    workspace_paths = [
+        workspace / name for name in ("translation.json", "render.json", "mapping.json")
+    ]
+    viewer_paths = [
+        viewer / name
+        for name in (
+            "mapping.json",
+            "viewer-meta.json",
+            "source.pdf",
+            "target.pdf",
+            "manifest.json",
+        )
+    ]
+    before = {path: path.read_bytes() for path in [*workspace_paths, *viewer_paths]}
+    before_revisions = {path.name for path in (viewer / "revisions").iterdir()}
+    node_id = _load_translation(workspace).entries[0].semanticNodeId
+    monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
+
+    def fail_mid_commit(staged: Path, target: Path) -> None:
+        if target.name == failed_name:
+            raise OSError(f"injected failure at {failed_name}")
+        staged.replace(target)
+
+    monkeypatch.setattr(pipeline, "_commit_prepared_file", fail_mid_commit)
+    with pytest.raises(OSError, match="injected failure"):
+        rerender_workspace(workspace, viewer_data_dir=viewer, node_ids={node_id})
+
+    assert {path: path.read_bytes() for path in before} == before
+    assert {path.name for path in (viewer / "revisions").iterdir()} == before_revisions
 
 
 def test_rerender_keeps_previous_revision_readable(

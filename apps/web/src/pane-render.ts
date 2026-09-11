@@ -49,6 +49,11 @@ export class ExclusiveRenderer<T> {
     return token === this.generation;
   }
 
+  invalidate(): void {
+    this.generation += 1;
+    this.task?.cancel();
+  }
+
   async run(work: (token: number) => Cancelable<T>): Promise<T | undefined> {
     const token = this.generation + 1;
     this.generation = token;
@@ -89,6 +94,10 @@ export class PaneRenderer {
     private readonly getPageCount: () => number,
     private readonly scale = PDF_RENDER_SCALE,
   ) {}
+
+  invalidate(): void {
+    this.exclusive.invalidate();
+  }
 
   async render(pageIndex: number): Promise<RenderCommit | undefined> {
     return this.exclusive.run((token) => {

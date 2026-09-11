@@ -6,7 +6,7 @@
 
 ## Viewer 数据契约 v2
 
-`pdf_pipeline.pipeline._write_viewer_assets` 是 `viewerDataVersion: 2` 包的唯一生产者。每次发布写入完整 `revisions/<id>/`（`mapping.json`、`viewer-meta.json`、`source.pdf`、`target.pdf`），再原子替换 `manifest.json` 指向该 revision；稳定别名 `/data/mapping.json` 等在 manifest 之后更新，供夹具与直接拉取使用。阅读器始终先读 manifest，优先按 revision URL 加载；Vite 对启动后新建的 `revisions/` 可能回退成 `index.html`，此时改拉带同一 revision cache-buster 的稳定别名。dev/preview 通过 `serve-public-data` 插件按请求从 `public/data` 读盘，避免把 `/data/*` 交给 SPA fallback。canonical MappingBundle 字段照常展开（schema 保持 `mapping` 0.1.0，零变更），并附 viewer 私有投影：
+`pdf_pipeline.pipeline._write_viewer_assets` 是 `viewerDataVersion: 2` 包的唯一生产者。每次发布先写完整且不可变的 `revisions/<id>/`（`mapping.json`、`viewer-meta.json`、`source.pdf`、`target.pdf`），再以可回滚文件集替换稳定别名与重译产生的 workspace JSON，最后原子替换 `manifest.json` 指向该 revision。中途失败恢复全部已替换文件并删除未发布 revision。阅读器始终整组加载同一 manifest 的 URL；仅在首次启动缺少 manifest 时整组使用稳定别名，不做单文件回退。dev/preview 通过 `serve-public-data` 插件按请求从 `public/data` 读盘，避免把 `/data/*` 交给 SPA fallback。canonical MappingBundle 字段照常展开（schema 保持 `mapping` 0.1.0，零变更），并附 viewer 私有投影：
 
 | 键 | 内容 |
 | --- | --- |
@@ -36,7 +36,7 @@
 
 `apps/web/src/reader.ts` 的 `DualPaneReader.activate(nodeId, origin, fragment)`：
 
-1. destination pane 渲染 `pickCounterpart` 所在页（每侧 `PaneRenderer` 取消旧 PDF.js 任务，只提交最新 generation；同页只重画 overlay）；
+1. destination pane 渲染 `pickCounterpart` 所在页（每侧 `PaneRenderer` 取消旧 PDF.js 任务，只提交最新 generation；同页请求也先废弃未提交的旧翻页，再重画 overlay）；
 2. 按 `fragment.y / pageHeight × canvasHeight` 把该 fragment 滚到 pane 视口中线（clamp）；
 3. 对 destination 的 overlay 按钮 `focus({preventScroll:true})`；
 4. origin 侧重绘保留 `aria-pressed` 选中态；active 态跨翻页保留。选中态经 `setActiveNode` 统一更新 overlay 与 Inspector。
@@ -54,9 +54,9 @@
 - `GET /api/health`：与 `/health` 同 payload；前端启动探测，`apiAvailable` 才渲染 `#retranslate-button`。
 - `POST /api/retranslate` body `{"nodeIds": [...]}`：200 `{"ok": true, "changed": [...], "revision": "..."}`；非法 body/未知节点/负 `Content-Length` 400；workspace 未初始化 409；`Content-Length` > 4096 字节 413；声明长度超过实际正文时读取超时 408；真实 workspace 缺失 provider 配置 503；其余异常 500。lualatex 输出目录共享，`threading.Lock` 串行化重渲染。
 
-`pdf_pipeline.pipeline.rerender_workspace(workspace_dir, viewer_data_dir=…, node_ids=…)`（FR-TRANS-004：零源 PDF 重解析）：载入 workspace 六份 canonical 文档 → 校验 `node_ids ⊆ translation.entries` 键集 → 用**当前** provider 身份 `retranslate_nodes`（所选节点跳过缓存读取）→ compose → LaTeX 投影 + 暂存编译 → `recover_render_anchors` → 复用旧 mapping 的 source 侧绑定重建 MappingBundle → 校验通过后发布 viewer revision，再写 workspace 三份文档。真实 workspace 缺失 provider 时失败，不用 dummy 覆盖。注意重新投影意味着整文档 target 重编译（lualatex 秒级~几十秒），这是有意的代价集中。
+`pdf_pipeline.pipeline.rerender_workspace(workspace_dir, viewer_data_dir=…, node_ids=…)`（FR-TRANS-004：零源 PDF 重解析）：载入 workspace 六份 canonical 文档 → 校验 `node_ids ⊆ translation.entries` 键集 → 用**当前** provider 身份 `retranslate_nodes`（所选节点跳过缓存读取）→ compose → LaTeX 投影 + 暂存编译 → `recover_render_anchors` → 复用旧 mapping 的 source 侧绑定重建 MappingBundle → 校验通过后写不可变 viewer revision，再把稳定别名、workspace 三份 JSON 与 manifest 纳入可回滚提交。真实 workspace 缺失 provider 时失败，不用 dummy 覆盖。注意重新投影意味着整文档 target 重编译（lualatex 秒级~几十秒），这是有意的代价集中。
 
-前端接线：vite dev/preview 把 `/api` proxy 到 `:8000`，并把 `/data/*` 从 `public/data` 按请求提供；`just serve-reader` 一次起 API + dev server（Playwright webServer 用同一命令）。`main.ts` 只负责启动；`DualPaneReader` 拥有 pane 生命周期、导航与重译状态。重译成功后：按新 manifest 加载候选 mapping/meta/PDF（revision URL 失败则回退稳定别名），成功才切换并销毁旧 target document；失败保留旧阅读状态。状态行 `Node re-translated · <id 前 8 位> · <revision 前 8 位>`，`#viewer` 的 `data-busy` / `data-revision` 供 e2e 等待 busy→idle。
+前端接线：vite dev/preview 把 `/api` proxy 到 `:8000`，并把 `/data/*` 从 `public/data` 按请求提供；`just serve-reader` 一次起 API + dev server（Playwright webServer 用同一命令）。`main.ts` 只负责启动；`DualPaneReader` 拥有 pane 生命周期、导航与重译状态。重译成功后：按新 manifest 整组加载候选 mapping/meta/PDF，成功才切换并销毁旧 target document；加载失败保留旧阅读状态，切换后首屏渲染失败则重绘旧 target 页并恢复页码、overlay、focus 与滚动位置。状态行 `Node re-translated · <id 前 8 位> · <revision 前 8 位>`，`#viewer` 的 `data-busy` / `data-revision` 供 e2e 等待 busy→idle。
 
 正确性修复：[M6 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m6-review-repairs.md)。
 

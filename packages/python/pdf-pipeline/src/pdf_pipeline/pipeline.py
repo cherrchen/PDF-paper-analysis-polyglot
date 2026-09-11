@@ -217,6 +217,57 @@ def _prune_viewer_revisions(data_dir: Path, keep: set[str]) -> None:
             shutil.rmtree(child, ignore_errors=True)
 
 
+def _commit_prepared_file(staged: Path, target: Path) -> None:
+    """Commit one prepared sibling file (a seam for publish fault injection)."""
+    staged.replace(target)
+
+
+def _replace_files_with_rollback(contents: dict[Path, bytes], *, commit_last: Path) -> None:
+    """Atomically replace each file and restore the old set on partial failure.
+
+    Filesystems do not offer a transaction across several paths. Preparing all
+    siblings first, publishing the pointer last, and restoring already-replaced
+    paths on error gives the workspace, stable aliases, and manifest one
+    recoverable commit boundary.
+    """
+    if commit_last not in contents:
+        raise ValueError("commit_last must be present in contents")
+    ordered = [path for path in contents if path != commit_last] + [commit_last]
+    staged: dict[Path, Path] = {}
+    previous: dict[Path, bytes | None] = {}
+    replaced: list[Path] = []
+    token = uuid.uuid4().hex
+    try:
+        for target in ordered:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            previous[target] = target.read_bytes() if target.is_file() else None
+            prepared = target.with_name(f".{target.name}.publish-{token}")
+            prepared.write_bytes(contents[target])
+            staged[target] = prepared
+        for target in ordered:
+            _commit_prepared_file(staged[target], target)
+            replaced.append(target)
+    except BaseException as error:
+        rollback_errors: list[OSError] = []
+        for target in reversed(replaced):
+            try:
+                old = previous[target]
+                if old is None:
+                    target.unlink(missing_ok=True)
+                else:
+                    rollback = target.with_name(f".{target.name}.rollback-{token}")
+                    rollback.write_bytes(old)
+                    rollback.replace(target)
+            except OSError as rollback_error:
+                rollback_errors.append(rollback_error)
+        if rollback_errors:
+            raise RuntimeError("publish failed and rollback was incomplete") from error
+        raise
+    finally:
+        for prepared in staged.values():
+            prepared.unlink(missing_ok=True)
+
+
 def _publish_viewer_revision(
     data_dir: Path,
     *,
@@ -224,13 +275,14 @@ def _publish_viewer_revision(
     meta_text: str,
     source_pdf: bytes,
     target_pdf: bytes,
+    workspace_updates: dict[Path, bytes] | None = None,
 ) -> str:
-    """Write one complete viewer revision, then flip the manifest pointer.
+    """Write one complete viewer revision and commit all mutable pointers.
 
-    Concurrent readers that follow ``manifest.json`` always receive files from a
-    single revision. Stable aliases under ``data_dir`` are updated after the
-    manifest so in-flight `/data/*.json` fetches may still race; the reader
-    itself loads via the manifest.
+    The immutable revision is staged first. Stable aliases and optional
+    workspace documents are replaced with rollback protection, then
+    ``manifest.json`` is committed last. A failure at any point restores every
+    mutable file and removes the unpublished revision.
     """
     data_dir.mkdir(parents=True, exist_ok=True)
     previous = _read_viewer_manifest(data_dir)
@@ -248,13 +300,20 @@ def _publish_viewer_revision(
         "source": f"/data/revisions/{revision}/source.pdf",
         "target": f"/data/revisions/{revision}/target.pdf",
     }
-    _atomic_write_json(data_dir / "manifest.json", manifest)
-    for name in ("mapping.json", "viewer-meta.json", "source.pdf", "target.pdf"):
-        source = rev_dir / name
-        if name.endswith(".pdf"):
-            _atomic_write_bytes(data_dir / name, source.read_bytes())
-        else:
-            _atomic_write_text(data_dir / name, source.read_text(encoding="utf-8"))
+    manifest_path = data_dir / "manifest.json"
+    replacements = {
+        data_dir / "mapping.json": mapping_text.encode(),
+        data_dir / "viewer-meta.json": meta_text.encode(),
+        data_dir / "source.pdf": source_pdf,
+        data_dir / "target.pdf": target_pdf,
+        **(workspace_updates or {}),
+        manifest_path: (json.dumps(manifest, indent=2, ensure_ascii=False) + "\n").encode(),
+    }
+    try:
+        _replace_files_with_rollback(replacements, commit_last=manifest_path)
+    except BaseException:
+        shutil.rmtree(rev_dir, ignore_errors=True)
+        raise
     keep = {revision}
     if previous is not None:
         keep.add(previous["revision"])
@@ -311,6 +370,7 @@ def _write_viewer_assets(
     layout: LayoutDocument,
     semantic: SemanticDocument,
     translation: generated.TranslationLayer,
+    workspace_updates: dict[Path, bytes] | None = None,
 ) -> str:
     """Emit the static fetch targets for the web viewer (M6 bidirectional reader, v2).
 
@@ -382,6 +442,7 @@ def _write_viewer_assets(
         meta_text=json.dumps(meta, indent=2) + "\n",
         source_pdf=source_pdf,
         target_pdf=target_pdf.read_bytes(),
+        workspace_updates=workspace_updates,
     )
 
 
@@ -609,6 +670,16 @@ def rerender_workspace(
         if issues:
             raise RuntimeError(f"bundle reference issues: {issues}")
 
+        workspace_updates = {
+            workspace_dir / name: (
+                json.dumps(dump_document(document), indent=2, ensure_ascii=False) + "\n"
+            ).encode()
+            for name, document in (
+                ("translation.json", new_translation),
+                ("render.json", render),
+                ("mapping.json", new_mapping),
+            )
+        }
         _write_viewer_assets(
             data_dir=viewer_data_dir,
             source_pdf=(workspace_dir / "source.pdf").read_bytes(),
@@ -619,13 +690,8 @@ def rerender_workspace(
             layout=layout,
             semantic=semantic,
             translation=new_translation,
+            workspace_updates=workspace_updates,
         )
-        for name, document in (
-            ("translation.json", new_translation),
-            ("render.json", render),
-            ("mapping.json", new_mapping),
-        ):
-            _atomic_write_json(workspace_dir / name, dump_document(document))
     finally:
         shutil.rmtree(staging_build, ignore_errors=True)
     return sorted(node_ids)

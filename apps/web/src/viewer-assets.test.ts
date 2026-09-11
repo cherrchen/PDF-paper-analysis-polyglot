@@ -1,13 +1,7 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MappingBundle } from "./mapping.js";
-import {
-  FALLBACK_MANIFEST,
-  fetchJson,
-  loadViewerAssets,
-  type ViewerManifest,
-  type ViewerMeta,
-} from "./viewer-assets.js";
+import { fetchJson, loadViewerAssets, type ViewerManifest } from "./viewer-assets.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -39,12 +33,6 @@ const mapping: MappingBundle = {
   provenance: [],
   issues: [],
 };
-const meta: ViewerMeta = {
-  sourcePageCount: 1,
-  targetPageCount: 1,
-  sourcePages: [{ widthPt: 612, heightPt: 792 }],
-  targetPages: [{ widthPt: 612, heightPt: 792 }],
-};
 const fakePdf = { loadingTask: { destroy: async () => undefined } } as unknown as PDFDocumentProxy;
 
 describe("fetchJson", () => {
@@ -58,7 +46,7 @@ describe("fetchJson", () => {
 });
 
 describe("loadViewerAssets", () => {
-  it("falls back to stable aliases when revision URLs return HTML", async () => {
+  it("rejects the whole revision instead of mixing in stable aliases", async () => {
     const manifest: ViewerManifest = {
       revision: "abc",
       mapping: "/data/revisions/abc/mapping.json",
@@ -72,35 +60,17 @@ describe("loadViewerAssets", () => {
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         fetched.push(`${init?.method ?? "GET"} ${url}`);
-        if (url.includes("/revisions/")) {
-          if (init?.method === "HEAD") {
-            return new Response(null, {
-              status: 200,
-              headers: { "content-type": "text/html" },
-            });
-          }
-          return htmlResponse();
-        }
-        if (url.startsWith(FALLBACK_MANIFEST.mapping)) return jsonResponse(mapping);
-        if (url.startsWith(FALLBACK_MANIFEST.meta)) return jsonResponse(meta);
-        if (init?.method === "HEAD") {
-          return new Response(null, {
-            status: 200,
-            headers: { "content-type": "application/pdf" },
-          });
-        }
-        return new Response("not-json", { status: 404 });
+        if (url.includes("mapping.json")) return jsonResponse(mapping);
+        if (url.includes("viewer-meta.json")) return htmlResponse();
+        return new Response(null, {
+          status: init?.method === "HEAD" ? 200 : 404,
+          headers: { "content-type": "application/pdf" },
+        });
       }),
     );
-    const loaded = await loadViewerAssets(async (url) => {
-      if (url.includes("/revisions/")) throw new Error(`unexpected revision pdf ${url}`);
-      return fakePdf;
-    }, manifest);
-    expect(loaded.revision).toBe("abc");
-    expect(loaded.mappings).toEqual(mapping);
-    expect(loaded.meta).toEqual(meta);
-    expect(loaded.target).toBe(fakePdf);
+    await expect(loadViewerAssets(async () => fakePdf, manifest)).rejects.toThrow(/expected JSON/);
     expect(fetched.some((entry) => entry.includes("/revisions/abc/mapping.json"))).toBe(true);
-    expect(fetched.some((entry) => entry.includes("/data/mapping.json"))).toBe(true);
+    expect(fetched.some((entry) => entry.includes("/data/mapping.json"))).toBe(false);
+    expect(fetched.some((entry) => entry.includes("target.pdf"))).toBe(false);
   });
 });
