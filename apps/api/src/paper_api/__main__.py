@@ -3,16 +3,43 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from paper_api import health
-from paper_api.retranslate import MAX_BODY_BYTES, handle_retranslate
+from paper_api.retranslate import BODY_READ_TIMEOUT_S, MAX_BODY_BYTES, handle_retranslate
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+
+def read_limited_body(
+    handler: BaseHTTPRequestHandler,
+) -> tuple[bytes | None, tuple[int, dict[str, object]] | None]:
+    """Read a POST body bounded by MAX_BODY_BYTES, or return an error payload."""
+    try:
+        length = int(handler.headers.get("Content-Length") or "0")
+    except ValueError:
+        return None, (400, {"ok": False, "error": "invalid request body"})
+    if length < 0:
+        return None, (400, {"ok": False, "error": "invalid content-length"})
+    if length > MAX_BODY_BYTES:
+        return None, (413, {"ok": False, "error": "request body too large"})
+    previous_timeout = handler.connection.gettimeout()
+    try:
+        handler.connection.settimeout(BODY_READ_TIMEOUT_S)
+        raw = handler.rfile.read(length)
+    except (TimeoutError, ConnectionError, OSError):
+        return None, (408, {"ok": False, "error": "request body read timed out"})
+    finally:
+        with contextlib.suppress(OSError):
+            handler.connection.settimeout(previous_timeout)
+    if len(raw) != length:
+        return None, (400, {"ok": False, "error": "incomplete request body"})
+    return raw, None
 
 
 def make_handler(workspace: Path, data_dir: Path) -> type[BaseHTTPRequestHandler]:
@@ -38,15 +65,15 @@ def make_handler(workspace: Path, data_dir: Path) -> type[BaseHTTPRequestHandler
             if self.path != "/api/retranslate":
                 self.send_error(404)
                 return
-            try:
-                length = int(self.headers.get("Content-Length") or "0")
-            except ValueError:
-                self._json(400, {"ok": False, "error": "invalid request body"})
+            raw, error = read_limited_body(self)
+            if error is not None:
+                try:
+                    self._json(*error)
+                except OSError:
+                    return
                 return
-            if length > MAX_BODY_BYTES:
-                self._json(413, {"ok": False, "error": "request body too large"})
+            if raw is None:
                 return
-            raw = self.rfile.read(length)
             status, payload = handle_retranslate(
                 raw,
                 workspace=workspace,

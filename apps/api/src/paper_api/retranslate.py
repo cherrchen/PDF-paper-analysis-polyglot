@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 RERENDER_LOCK = threading.Lock()
 
 MAX_BODY_BYTES = 4096
+BODY_READ_TIMEOUT_S = 2.0
 
 
 def parse_node_ids(raw: bytes) -> set[str]:
@@ -71,5 +72,20 @@ def handle_retranslate(
             {"ok": False, "error": "workspace not initialized; run just viewer-fixture"},
         )
     except Exception as error:
+        from paper_llm.translation import TranslationProviderNotConfiguredError  # noqa: PLC0415
+
+        if isinstance(error, TranslationProviderNotConfiguredError):
+            return 503, {"ok": False, "error": str(error)}
         return 500, {"ok": False, "error": str(error)}
-    return 200, {"ok": True, "changed": changed}
+    payload: dict[str, object] = {"ok": True, "changed": changed}
+    manifest_path = data_dir / "manifest.json"
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            manifest = None
+        if isinstance(manifest, dict):
+            revision = manifest.get("revision")
+            if isinstance(revision, str) and revision:
+                payload["revision"] = revision
+    return 200, payload

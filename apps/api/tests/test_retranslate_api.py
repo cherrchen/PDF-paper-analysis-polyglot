@@ -32,13 +32,21 @@ def server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Threadin
         viewer_data_dir: Path,
         node_ids: set[str],
     ) -> list[str]:
-        del viewer_data_dir
         if not (workspace / "semantic.json").exists():
             raise FileNotFoundError(str(workspace / "semantic.json"))
         if "bad" in node_ids:
             raise ValueError(f"not re-translatable nodes: {sorted(node_ids)}")
         if "boom" in node_ids:
             raise RuntimeError("compile exploded")
+        if "noconfig" in node_ids:
+            from paper_llm.translation import TranslationProviderNotConfiguredError
+
+            raise TranslationProviderNotConfiguredError
+        viewer_data_dir.mkdir(parents=True, exist_ok=True)
+        (viewer_data_dir / "manifest.json").write_text(
+            json.dumps({"revision": "rev-test"}),
+            encoding="utf-8",
+        )
         return sorted(node_ids)
 
     monkeypatch.setattr("pdf_pipeline.pipeline.rerender_workspace", fake_rerender)
@@ -93,7 +101,7 @@ def test_retranslate_success(server: ThreadingHTTPServer) -> None:
         server, "POST", "/api/retranslate", json.dumps({"nodeIds": ["n-2", "n-1"]}).encode()
     )
     assert status == 200
-    assert payload == {"ok": True, "changed": ["n-1", "n-2"]}
+    assert payload == {"ok": True, "changed": ["n-1", "n-2"], "revision": "rev-test"}
 
 
 @pytest.mark.parametrize(
@@ -165,3 +173,58 @@ def test_retranslate_wrong_method_is_405(server: ThreadingHTTPServer) -> None:
     assert status == 405
     assert payload is not None
     assert payload["ok"] is False
+
+
+def _call_with_length(
+    server: ThreadingHTTPServer, length: str, body: bytes
+) -> tuple[int, dict[str, object] | None]:
+    connection = HTTPConnection("127.0.0.1", server.server_address[1], timeout=10)
+    try:
+        connection.putrequest("POST", "/api/retranslate")
+        connection.putheader("Content-Type", "application/json")
+        connection.putheader("Content-Length", length)
+        connection.endheaders()
+        if body:
+            connection.send(body)
+        response = connection.getresponse()
+        payload = response.read()
+        try:
+            parsed = json.loads(payload)
+        except json.JSONDecodeError:
+            parsed = None
+        return response.status, parsed if isinstance(parsed, dict) else None
+    finally:
+        connection.close()
+
+
+def test_retranslate_negative_content_length_is_400(server: ThreadingHTTPServer) -> None:
+    status, payload = _call_with_length(server, "-1", b'{"nodeIds":["n-1"]}')
+    assert status == 400
+    assert payload is not None
+    assert payload["ok"] is False
+
+
+def test_retranslate_huge_content_length_is_413(server: ThreadingHTTPServer) -> None:
+    status, payload = _call_with_length(server, "999999999999", b"{}")
+    assert status == 413
+    assert payload is not None
+    assert payload["ok"] is False
+
+
+def test_retranslate_declared_length_longer_than_body_times_out(
+    server: ThreadingHTTPServer,
+) -> None:
+    status, payload = _call_with_length(server, "64", b'{"nodeIds":["n-1"]}')
+    assert status == 408
+    assert payload is not None
+    assert payload["ok"] is False
+
+
+def test_retranslate_missing_provider_is_503(server: ThreadingHTTPServer) -> None:
+    status, payload = call(
+        server, "POST", "/api/retranslate", json.dumps({"nodeIds": ["noconfig"]}).encode()
+    )
+    assert status == 503
+    assert payload is not None
+    assert payload["ok"] is False
+    assert "provider" in str(payload["error"])
