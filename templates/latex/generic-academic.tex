@@ -4,8 +4,10 @@
 % PROFILE
 \usepackage{fontspec}
 % luatexja defaults to HaranoAji, which is not in the CI package set; use Fandol.
+\makeatletter
 \def\ltj@stdmcfont{file:FandolSong-Regular.otf}
 \def\ltj@stdgtfont{file:FandolHei-Regular.otf}
+\makeatother
 \usepackage{luatexja-fontspec}
 \usepackage{graphicx}
 \usepackage{geometry}
