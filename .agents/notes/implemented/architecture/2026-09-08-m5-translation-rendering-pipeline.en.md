@@ -27,6 +27,7 @@ After M4, the translation layer still used a dummy prefix and the render layer o
 - Real LLM use requires `PAPER_LLM_ENDPOINT` and related env vars; golden/E2E remain Dummy-driven for determinism.
 - Equation unicode→LaTeX is a limited deterministic conversion; failures fall back to `\text{...}` without losing content.
 - Review repairs: [M5 review repairs](../bug-fix/2026-09-08-m5-review-repairs.en.md) (placeholder protection, CJK template, source-bound figure resources, cross-page fragment geometry).
+- Fidelity repairs: [M5 fidelity repairs](../bug-fix/2026-09-11-m5-fidelity-repairs.en.md) (equation fallback, multi-image figures, client ownership, cache fingerprints, RenderPolicy).
 - The earlier proposed plan note (`2026-09-07-m5-...`) remains as historical planning reference.
 
 ## Acceptance

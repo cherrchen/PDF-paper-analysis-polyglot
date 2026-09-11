@@ -16,8 +16,8 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 
 ## Current Progress
 
-**Last updated:** 2026-09-08
-**Current position:** M5 Translation & Rendering baseline has landed: structured translation protocol, OpenAI-compatible provider, terminology/cache, ResourceDocument figure chain, table/equation/bibliography LaTeX projection, and dual-hypertarget RenderAnchors. M6 (Bidirectional Reader) is next.
+**Last updated:** 2026-09-11
+**Current position:** M5 Translation & Rendering baseline has landed, including a second fidelity-repair round (equation fallback, multi-image figures, placeholder/cache fingerprints, RenderPolicy follow-through). The full exit gate (reliable translation + complete academic content + natural reflow) is not claimed. M6 (Bidirectional Reader) is next.
 
 README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery baseline (the original phases are not fully closed).
 
@@ -30,7 +30,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M2 Walking Skeleton | Done | All 11 Tier-1 fixtures pass end to end; independent Translation/Render IR, rotated coordinates, and the bidirectional viewer passed renewed acceptance |
 | M3 Layout Recovery Engine | Done | Evidence adapter boundary + mock provider, XY-cut band/column detection, structure-driven ReadingFlowGraph, continuation/caption/footnote recovery; exit gate met after review repairs |
 | M4 Semantic Recovery Engine | Baseline landed | CONTINUATION paragraph merging, numbered headings + SECTION tree, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery; second-round repairs restored table titles, marks, footnote linking, cyclic trees, multi-fragment Viewer, and provenance. 1→N / GROBID / true multi-column tables remain deferred |
-| M5 Translation & Rendering | Baseline landed | schema 0.2.0, structured TranslationRequest/Result, OpenAI-compatible adapter, terminology/cache, readable-single-column Profile/Policy, table/equation/bibliography/figure-resource LaTeX projection, dual-hypertarget RenderAnchors; review repairs in [M5 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.en.md) |
+| M5 Translation & Rendering | Baseline landed | schema 0.2.0, structured TranslationRequest/Result, OpenAI-compatible adapter, terminology/cache, readable-single-column Profile/Policy, table/equation/bibliography/figure-resource LaTeX projection, dual-hypertarget RenderAnchors; review repairs in [M5 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.en.md); fidelity repairs in [M5 fidelity repairs](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.en.md). Not implemented: `source-derived` / `dense-two-column`, MathML, PDF/SVG figure assets |
 | M6 Bidirectional Reader | Not started | — |
 | M7 Parser Ensemble & Quality | Not started | — |
 | M8 Productionization | Not started | — |
@@ -92,21 +92,21 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| 4.1 Paragraph Recovery | Baseline | `pdf_pipeline.sem_paragraphs` consumes CONTINUATION edges; N→1 (column, page, figure interruption); hyphenation de-break; `cross-page-paragraph` asserts merge; 1 Layout→N Semantic is not implemented (target M5) |
+| 4.1 Paragraph Recovery | Baseline | `pdf_pipeline.sem_paragraphs` consumes CONTINUATION edges; N→1 (column, page, figure interruption); hyphenation de-break; `cross-page-paragraph` asserts merge; 1 Layout→N Semantic is not implemented (target M7) |
 | 4.2 Heading & Section Recovery | Baseline | `sem_sections`: numbering pattern → level (`1.1` = 2), nested SECTION tree, FRONT_MATTER (title/author/date/abstract); unnumbered `Introduction` is no longer swallowed as an author; STRUCTURE/METADATA specialist not landed (target M7) |
-| 4.3 Figure Recovery | Baseline | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; `embeddedImageIds` stays empty until a ResourceStore; PDF/SVG/raster asset chain and subfigures wait for M5 |
+| 4.3 Figure Recovery | Baseline | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; embedded rasters bind through `ResourceDocument` in M5 and every `resourceIds` entry is projected; PDF/SVG sources and subfigure layout remain deferred |
 | 4.4 Table Recovery | Baseline | `sem_tables`: line fallback by default; structured TABLE_STRUCTURE path has a synthetic unit test; render no longer drops TABLE_CAPTION; true multi-column tables deferred to an M7 specialist |
-| 4.5 Equation Recovery | Baseline | `sem_equations`: FORMULA/CONTINUATION chains → EQUATION + `number` (rawText fallback, no content loss); INLINE_EQUATION marks; source visual fallback / MathML wait for M5 |
+| 4.5 Equation Recovery | Baseline | `sem_equations`: FORMULA/CONTINUATION chains → EQUATION + `number` (rawText fallback, no content loss); INLINE_EQUATION marks; unicode→LaTeX conversion landed in M5; source visual fallback / MathML remain deferred |
 | 4.6 Footnote Semantic Recovery | Baseline | `sem_footnotes`: match by (page, label); reject `Table 1` false positives; unlinked footnotes report Issues; `FOOTNOTE_REFERENCE` marks (post-M2 freeze additive exception) |
 | 4.7 Bibliography & Citation | Baseline | `sem_bibliography`: numeric-bracket citations + closed-range expansion; translation rebuilds mark offsets with the new text; GROBID / author-year deferred to M7 |
 | 4.8 Source Anchoring | Baseline | `attributes.layoutRegionIds` → multi-fragment SourceAnchor (native N→1); Viewer walks every fragment; 1→N recovery path still missing |
 | 4.9 Semantic Validation | Baseline | `sem_validate`: cycles / parent-child consistency / orphan / tree-order heading jumps / binding / citation / caption / coverage; a bad tree returns Issues instead of crashing |
 
-**M4 exit gate:** The mechanical baseline gate remains `paper-anatomy` plus the semantic/layout benchmarks. Second-round correctness items (table titles, mark offsets, footnote mismatches, cyclic trees, multi-fragment Viewer, provenance) are in the [M4 correctness-repairs note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.en.md). That is not the same as completing all nine original phases: 1 Layout→N Semantic, GROBID, true multi-column tables, figure asset chains, and MathML stay deferred as recorded.
+**M4 exit gate:** The mechanical baseline gate remains `paper-anatomy` plus the semantic/layout benchmarks. Second-round correctness items (table titles, mark offsets, footnote mismatches, cyclic trees, multi-fragment Viewer, provenance) are in the [M4 correctness-repairs note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.en.md). That is not the same as completing all nine original phases: 1 Layout→N Semantic (target M7), GROBID, true multi-column tables, PDF/SVG figure assets, and MathML stay deferred as recorded. The embedded-raster resource chain landed in M5.
 
 ### Recommended next steps
 
-1. Enter M5: Translation & Rendering—real translation provider wiring, table/equation typesetting in RenderDocument, default `readable-single-column` RenderProfile/RenderPolicy (`SourceDerivedProfile` is Post-Initial R2 per PRD §23). References not translated (PRD FR-CITE-004) landed before M5; see [References are not translated](../../.agents/notes/implemented/architecture/2026-09-06-bibliography-not-translated.en.md).
+1. Enter M6: Bidirectional Reader. The M5 baseline and two repair rounds have landed; the full exit gate is not claimed. Deferred: `source-derived` / `dense-two-column` profiles, MathML, PDF/SVG figure assets, and 1 Layout→N Semantic (M7).
 
 ### Maintenance
 
@@ -1745,6 +1745,8 @@ Scope
 
 Support in-paper terminology consistency.
 
+**Current implementation:** Manual glossaries (`PAPER_TERMINOLOGY_FILE`) apply to dummy and real providers. Candidate discovery: dummy mints `[TERM]` preferred translations; the real path sends phrases as consistency candidates in the prompt and does not invent preferred translations.
+
 ---
 
 ### Phase 5.4 Translation Cache
@@ -1762,6 +1764,8 @@ translation configuration
 
 terminology revision
 ```
+
+**Current implementation:** The cache key is a stable digest of node content, locale, model name, endpoint, terminology revision, candidate terms, prompt version, and neighbor context. It never includes the API key. Results that fail placeholder validation are not stored.
 
 ---
 
@@ -1784,6 +1788,8 @@ IEEE-like
 Elsevier-like
 ```
 
+**Current implementation:** Only `readable-single-column` (the generic-academic template) is implemented. `source-derived` is Post-Initial R2; `dense-two-column` is deferred. The schema still accepts profile names, but the LaTeX backend only honors the single-column readable template.
+
 ---
 
 ### Phase 5.6 RenderPolicy
@@ -1803,6 +1809,8 @@ caption behavior
 
 float behavior
 ```
+
+**Current implementation:** `floatFigures` / `floatTables`, `captionPosition` (`SOURCE` is approximated from academic defaults and recorded as an Issue), `wideFigureHandling`, `tableOverflowHandling`, and `longEquationHandling` all participate in projection. Unsupported semantics (for example `MULTILINE` without break points) degrade with an Issue instead of being ignored.
 
 ---
 
@@ -1842,6 +1850,8 @@ float placement
 ```
 
 The system itself does not implement a layout optimizer.
+
+**Current implementation:** Heading / Paragraph / Figure (including stacked multi-resource images) / Table / Equation / Bibliography are projected. WideFigure / WideTable are expressed via the `WIDE_FLOAT` policy as `figure*` / `table*`, not as separate Render IR blocks. Footnotes remain paragraph blocks. PDF/SVG figure assets stay deferred.
 
 ---
 

@@ -33,4 +33,5 @@ The 2026-09-08 code review refused to accept M5. Declared translation, figure-re
 
 - M5 acceptance blockers (protected text, missing CJK glyphs, illegal math commands, dropped rasters, cross-page fragments, wrong figure binding, float anchors, equation renumbering) have mechanical tests.
 - Deferred work is unchanged: MathML, `dense-two-column`, 1 Layout → N Semantic, and true PDF/SVG figure assets.
+- Later fidelity repairs: [M5 fidelity repairs](./2026-09-11-m5-fidelity-repairs.en.md).
 - Current state: [rendering](../../../../docs/architecture/rendering.en.md); packages: [LaTeX](../../../../docs/development/latex.en.md).

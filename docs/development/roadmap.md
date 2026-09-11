@@ -16,8 +16,8 @@ Initial Product 关键约束（摘自 PRD v0.2）：仅 Born-digital PDF；Targe
 
 ## 当前进度追踪
 
-**最后更新：** 2026-09-08
-**当前位置：** M5 Translation & Rendering 基线已落地：结构化翻译协议、OpenAI 兼容 provider、术语/缓存、ResourceDocument 图资源链、表格/公式/书目 LaTeX 排版、双 hypertarget RenderAnchor。下一阶段为 M6（Bidirectional Reader）。
+**最后更新：** 2026-09-11
+**当前位置：** M5 Translation & Rendering 基线已落地，并完成第二轮内容保真修复（公式兜底、多图投影、占位符/缓存指纹、RenderPolicy 兑现）。完整 Exit Gate（可靠翻译 + 完整学术内容 + 自然重排）仍未宣称达成。下一阶段为 M6（Bidirectional Reader）。
 
 README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线（完整原始 Phase 验收仍有延期项）。
 
@@ -30,7 +30,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M2 Walking Skeleton | 已完成 | 11 个 Tier-1 fixture 全链通过；独立 Translation/Render IR、旋转坐标与双向 Viewer 已重新验收 |
 | M3 Layout Recovery Engine | 已完成 | Evidence 适配边界 + mock provider、XY-cut band/column、结构驱动 ReadingFlowGraph、continuation/caption/footnote 恢复；Exit Gate 经审查修复后达成 |
 | M4 Semantic Recovery Engine | 基线落地 | CONTINUATION 段落合并、编号 heading + SECTION 树、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复；第二轮正确性修复后表格标题、marks、脚注关联、环状树、多 fragment Viewer 与 provenance 已补。1→N / GROBID / 真实多列表格仍延期 |
-| M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；审查修复见 [M5 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.md) |
+| M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；审查修复见 [M5 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.md)，保真修复见 [M5 内容保真修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.md)。未实现：`source-derived` / `dense-two-column`、MathML、矢量图 PDF/SVG |
 | M6 Bidirectional Reader | 未开始 | — |
 | M7 Parser Ensemble & Quality | 未开始 | — |
 | M8 Productionization | 未开始 | — |
@@ -92,21 +92,21 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
-| 4.1 Paragraph Recovery | 基线 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；N→1（跨栏、跨页、figure 打断）；连字符去断；`cross-page-paragraph` 断言 merge；1 Layout→N Semantic 未实现（目标 M5） |
+| 4.1 Paragraph Recovery | 基线 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；N→1（跨栏、跨页、figure 打断）；连字符去断；`cross-page-paragraph` 断言 merge；1 Layout→N Semantic 未实现（目标 M7） |
 | 4.2 Heading & Section Recovery | 基线 | `sem_sections`：编号 pattern → level（`1.1` = 2），SECTION 树嵌套，FRONT_MATTER（title/author/date/abstract）；无编号 `Introduction` 不再被吞进作者行；STRUCTURE/METADATA specialist 未落实（目标 M7） |
-| 4.3 Figure Recovery | 基线 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；`embeddedImageIds` 保持空直到 ResourceStore；PDF/SVG/raster 资源链与 subfigure 留给 M5 |
+| 4.3 Figure Recovery | 基线 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；嵌入位图经 `ResourceDocument` 在 M5 绑定并投影全部 `resourceIds`；PDF/SVG 真源与 subfigure 布局仍延期 |
 | 4.4 Table Recovery | 基线 | `sem_tables`：默认行 fallback；结构化 TABLE_STRUCTURE 路径有合成单测；Render 不再丢 TABLE_CAPTION；真实多列表格推迟到 M7 specialist |
-| 4.5 Equation Recovery | 基线 | `sem_equations`：FORMULA/CONTINUATION 链 → EQUATION + `number`（anyOf 兜底 rawText，不丢内容）；INLINE_EQUATION marks；source visual fallback / MathML 留给 M5 |
+| 4.5 Equation Recovery | 基线 | `sem_equations`：FORMULA/CONTINUATION 链 → EQUATION + `number`（anyOf 兜底 rawText，不丢内容）；INLINE_EQUATION marks；unicode→LaTeX 有限转换在 M5；source visual fallback / MathML 仍延期 |
 | 4.6 Footnote Semantic Recovery | 基线 | `sem_footnotes`：按 (page, label) 关联；排除 `Table 1` 误配；未关联写 Issue；`FOOTNOTE_REFERENCE` mark（M2 冻结后 additive 例外） |
 | 4.7 Bibliography & Citation | 基线 | `sem_bibliography`：数字括号引用 + 闭区间展开；翻译后 marks 偏移随文本重建；GROBID / 作者-年推迟到 M7 |
 | 4.8 Source Anchoring | 基线 | `attributes.layoutRegionIds` → 多 fragment SourceAnchor（N→1 原生）；Viewer 遍历全部 fragment；1→N 恢复路径仍缺失 |
 | 4.9 Semantic Validation | 基线 | `sem_validate`：环/父子一致性/orphan/树序 heading 跳变/绑定/引用/caption/覆盖率；坏树返回 Issue 而非崩溃 |
 
-**M4 Exit Gate：** 基线机械门禁仍由 `paper-anatomy` 与 semantic/layout benchmark 覆盖；第二轮正确性项（表格标题、marks 偏移、脚注误配、环状树、多 fragment Viewer、provenance）见 [M4 第二轮审查正确性修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.md)。这不等于原始九个 Phase 全部完成：1 Layout→N Semantic、GROBID、真实多列表格、图资源链与 MathML 仍按记录延期。
+**M4 Exit Gate：** 基线机械门禁仍由 `paper-anatomy` 与 semantic/layout benchmark 覆盖；第二轮正确性项（表格标题、marks 偏移、脚注误配、环状树、多 fragment Viewer、provenance）见 [M4 第二轮审查正确性修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.md)。这不等于原始九个 Phase 全部完成：1 Layout→N Semantic（目标 M7）、GROBID、真实多列表格、矢量图 PDF/SVG 与 MathML 仍按记录延期。嵌入位图资源链已在 M5 落地。
 
 ### 建议下一步
 
-1. 进入 M5：Translation & Rendering——真实翻译 provider 接入、RenderDocument 的表格/公式排版、默认 `readable-single-column` 的 RenderProfile/RenderPolicy（`SourceDerivedProfile` 属 Post-Initial R2，见 PRD §23）。References 不翻译（PRD FR-CITE-004）已在 M5 前落地，见 [参考文献不翻译](../../.agents/notes/implemented/architecture/2026-09-06-bibliography-not-translated.md)。
+1. 进入 M6：Bidirectional Reader。M5 基线与两轮修复已落地；完整 Exit Gate 仍未宣称。延期项：`source-derived` / `dense-two-column` profile、MathML、矢量图 PDF/SVG、1 Layout→N Semantic（M7）。
 
 ### 维护说明
 
@@ -1755,6 +1755,8 @@ Scope
 
 支持论文内术语一致性。
 
+**当前实现：** 手工术语表（`PAPER_TERMINOLOGY_FILE`）对 dummy 与真实 provider 均生效。自动候选发现：dummy 生成 `[TERM]` 优选译文；真实路径把短语作为一致性候选写入提示词，不编造优选译文。
+
 ---
 
 ### Phase 5.4 Translation Cache
@@ -1772,6 +1774,8 @@ translation configuration
 
 terminology revision
 ```
+
+**当前实现：** 缓存键对节点内容、locale、模型名、endpoint、术语修订、候选术语、提示词版本与邻段上下文做稳定摘要；不含 API key。占位符校验失败的结果不入库。
 
 ---
 
@@ -1794,6 +1798,8 @@ IEEE-like
 Elsevier-like
 ```
 
+**当前实现：** 仅 `readable-single-column`（对应 generic-academic 模板）。`source-derived` 属 Post-Initial R2；`dense-two-column` 延期。schema 仍接受 profile 名，但 LaTeX 后端只兑现单栏可读模板。
+
 ---
 
 ### Phase 5.6 RenderPolicy
@@ -1813,6 +1819,8 @@ caption behavior
 
 float behavior
 ```
+
+**当前实现：** `floatFigures` / `floatTables`、`captionPosition`（`SOURCE` 按学术默认近似并记 Issue）、`wideFigureHandling`、`tableOverflowHandling`、`longEquationHandling` 均参与投影；不支持的语义（无断行点的 `MULTILINE`）降级并记 Issue，不再静默忽略。
 
 ---
 
@@ -1852,6 +1860,8 @@ float placement
 ```
 
 系统自身不实现 layout optimizer。
+
+**当前实现：** Heading / Paragraph / Figure（含多资源堆叠）/ Table / Equation / Bibliography 已投影。WideFigure / WideTable 通过 `WIDE_FLOAT` 策略用 `figure*` / `table*` 表达，不是独立 Render IR 块。Footnote 仍作为段落块。矢量图 PDF/SVG 真源延期。
 
 ---
 

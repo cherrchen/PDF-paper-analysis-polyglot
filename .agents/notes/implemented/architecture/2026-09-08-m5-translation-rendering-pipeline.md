@@ -27,6 +27,7 @@ M4 完成后翻译层仍为 dummy 前缀，渲染层仅有段落/标题/图占�
 - 真实 LLM 需设置 `PAPER_LLM_ENDPOINT` 等环境变量；golden/E2E 仍用 Dummy 保证确定性。
 - 公式 unicode→LaTeX 有限转换，失败回退 `\text{...}` 不丢内容。
 - 审查修复见 [M5 Review 修复](../bug-fix/2026-09-08-m5-review-repairs.md)：占位符保护、中文模板、源绑定图资源、跨页 fragment geometry。
+- 保真与配置兑现见 [M5 内容保真修复](../bug-fix/2026-09-11-m5-fidelity-repairs.md)：公式兜底、多图投影、客户端所有权、缓存指纹与 RenderPolicy。
 - 原 proposed 计划 note（`2026-09-07-m5-...`）保留为历史规划参考。
 
 ## 验收

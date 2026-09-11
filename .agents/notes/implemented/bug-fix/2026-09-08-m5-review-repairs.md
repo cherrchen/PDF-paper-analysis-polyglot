@@ -33,4 +33,5 @@ Status: implemented
 
 - M5 验收阻塞项（保护文本、中文缺字、非法公式命令、PNG 丢弃、跨页 fragment、错误配图、浮动锚点、公式重编号）有机械测试。
 - 已知延期不变：MathML、`dense-two-column`、1 Layout → N Semantic、矢量图 PDF/SVG 真源。
+- 后续保真修复见 [M5 内容保真修复](./2026-09-11-m5-fidelity-repairs.md)。
 - 当前态：[渲染](../../../../docs/architecture/rendering.md)；宏包：[LaTeX](../../../../docs/development/latex.md)。
