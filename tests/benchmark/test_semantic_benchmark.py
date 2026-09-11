@@ -212,6 +212,18 @@ def test_semantic_bundle_and_anchors(fixture: str, expectation: dict[str, Any]) 
         f"{fixture}: multi-fragment anchors {multi} < {expectation['multiFragmentAnchors']}"
     )
 
+    # M6 DoD "Validation metrics available": every body node kind that the
+    # reader must navigate to is actually bound in sourceSemanticBindings.
+    bound_nodes = {binding.semanticNodeId for binding in ssb}
+    navigable = [
+        node for node in semantic.nodes if node.kind in {"HEADING", "PARAGRAPH", "FIGURE_CAPTION"}
+    ]
+    covered = [node for node in navigable if node.id in bound_nodes]
+    anchor_coverage = len(covered) / len(navigable) if navigable else 1.0
+    assert anchor_coverage >= 0.8, (
+        f"{fixture}: anchorCoverage {anchor_coverage:.2f} ({len(covered)}/{len(navigable)}) < 0.8"
+    )
+
     mapping = build_mapping_bundle(
         semantic,
         source_anchors=anchors,
