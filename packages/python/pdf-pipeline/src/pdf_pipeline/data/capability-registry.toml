@@ -1,0 +1,50 @@
+# Capability Registry (docs/architecture/document-architecture.md §35).
+#
+# Maps pipeline capabilities to evidence providers. "internal" marks
+# capabilities owned by the recovery engines themselves; third-party
+# providers are evidence sources, never document authorities.
+#
+# Provider names:
+#   pdfium       - canonical physical backend (pdf_pipeline.physical)
+#   mock         - deterministic MinerU-like layout baseline
+#                  (evidence.providers.MockLayoutEvidenceProvider)
+#   docling-sim  - deterministic table-structure specialist
+#                  (evidence.fake_specialists.FakeDoclingTableProvider)
+#   grobid-sim   - deterministic scholarly metadata/bibliography specialist
+#                  (evidence.fake_specialists.FakeGrobidScholarlyProvider)
+#   internal     - pdf_pipeline recovery engines (layout, reading order,
+#                  semantic recovery)
+
+[physical.text]
+primary = "pdfium"
+
+[physical.geometry]
+primary = "pdfium"
+
+[layout.region]
+primary = "mock"
+challenger = "docling-sim"
+
+[layout.reading_order]
+primary = "internal"
+
+[layout.column_detection]
+primary = "internal"
+
+[table.detection]
+primary = "mock"
+challenger = "docling-sim"
+
+[table.structure]
+primary = "docling-sim"
+fallback = "mock"
+
+[scholarly.metadata]
+primary = "grobid-sim"
+
+[scholarly.bibliography]
+primary = "grobid-sim"
+
+# Invariant: SemanticDocument ownership is always internal (§35).
+[semantic.document]
+primary = "internal"

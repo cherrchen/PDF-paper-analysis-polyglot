@@ -52,14 +52,53 @@ class EvidenceProvider(Protocol):
         ...
 
 
-class _CandidateSink:
-    """Accumulates candidates and their per-candidate provenance records."""
+class CandidateSink:
+    """Accumulates candidates and their per-candidate provenance records.
 
-    def __init__(self, fingerprint: str) -> None:
+    ``id_prefix`` namespaces derived IDs per provider so parallel bundles
+    for the same document never collide; the mock keeps the historical
+    (empty-prefix) derivation.
+    """
+
+    def __init__(self, fingerprint: str, producer: str, version: str, id_prefix: str = "") -> None:
         self._fingerprint = fingerprint
+        self._producer = producer
+        self._version = version
+        self._id_prefix = id_prefix
         self._candidates: list[generated.Evidence] = []
         self._records: list[generated.ProvenanceRecord] = []
         self._counter = 0
+
+    def _next_ids(self, operation: str, input_refs: Iterable[str]) -> str:
+        self._counter += 1
+        record_id = stable_uuid(
+            self._fingerprint, "evidence-prov", f"{self._id_prefix}{self._counter}"
+        )
+        self._records.append(
+            generated.ProvenanceRecord(
+                id=record_id,
+                producer=f"evidence.{self._producer}",
+                producerVersion=self._version,
+                operation=operation,
+                inputRefs=list(input_refs),
+            )
+        )
+        return record_id
+
+    def derived_id(self, local: str) -> str:
+        """Deterministic, provider-namespaced evidence ID."""
+        return stable_uuid(self._fingerprint, "evidence", f"{self._id_prefix}{local}")
+
+    def add_evidence(
+        self,
+        candidate: generated.Evidence,
+        *,
+        operation: str,
+        input_refs: Iterable[str] = (),
+    ) -> None:
+        """Register a pre-built candidate, attaching fresh provenance to it."""
+        record_id = self._next_ids(operation, input_refs)
+        self._candidates.append(candidate.model_copy(update={"provenanceIds": [record_id]}))
 
     def add_region(
         self,
@@ -73,17 +112,8 @@ class _CandidateSink:
         input_refs: Iterable[str] = (),
     ) -> None:
         self._counter += 1
-        evidence_id = stable_uuid(self._fingerprint, "evidence", self._counter)
-        record_id = stable_uuid(self._fingerprint, "evidence-prov", self._counter)
-        self._records.append(
-            generated.ProvenanceRecord(
-                id=record_id,
-                producer=f"evidence.{MOCK_PROVIDER}",
-                producerVersion=MOCK_PROVIDER_VERSION,
-                operation=f"region-candidate:{provider_label}",
-                inputRefs=list(input_refs),
-            )
-        )
+        evidence_id = self.derived_id(str(self._counter))
+        record_id = self._next_ids(f"region-candidate:{provider_label}", input_refs)
         self._candidates.append(
             generated.RegionCandidate(
                 evidenceType="REGION",
@@ -119,7 +149,7 @@ class MockLayoutEvidenceProvider:
 
     def collect(self, physical: generated.PhysicalDocument) -> generated.EvidenceBundle:
         fingerprint = self._explicit_fingerprint or physical.sourceFingerprint or physical.id
-        sink = _CandidateSink(fingerprint)
+        sink = CandidateSink(fingerprint, MOCK_PROVIDER, MOCK_PROVIDER_VERSION)
         body_font_by_page: dict[str, float] = {}
         page_body_spans: dict[str, list[generated.TextSpan]] = {}
         page_headers: dict[str, list[generated.TextSpan]] = {}
@@ -274,7 +304,7 @@ def table_region_candidates(
 
 
 def _emit_region_candidate(
-    sink: _CandidateSink,
+    sink: CandidateSink,
     cluster: list[generated.TextSpan],
     body_font: float,
 ) -> None:
