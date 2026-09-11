@@ -18,7 +18,7 @@ Status: implemented
 6. **Unicode 偏移**：marks 使用 Unicode code point；Inspector 经 `sliceByCodePoint` 切片，覆盖数学字母与补充汉字。
 7. **HTTP 边界**：拒绝负 `Content-Length`（400）；超限 413；读取超时 408。
 8. **E2E**：每次点击绑定对应 `waitForResponse`，等待 busy→idle 与新 revision。
-9. **`pickCounterpart`**：仍是节点内落点启发式（绑定决定身份；缺字符级 mapping 时用页码/y）。不改算法；补充两侧分页显著不同的样例。点击走 `hitTest` 最小面积优先；`setActiveNode` 统一刷新 Inspector。
+10. **风格收口**：`DualPaneReader` 拥有 pane 生命周期、导航与重译状态；`NodeContent` / marks / confidence 从生成类型 `Pick` 投影，加载边界 `parseMappingBundle` 做运行时校验。Provider 协议与 JSON 边界的 pyright 豁免收到具体行，不再关闭整个模块。
 
 ## 考虑过的替代方案
 

@@ -1,7 +1,7 @@
 /**
  * M6 (6.5/6.6) Semantic Inspector: per-node provenance, text, translation,
  * relations, confidence, terminology, and citations for the selected region.
- * Pure DOM rendering; navigation callbacks are injected by main.ts.
+ * Pure DOM rendering; navigation callbacks are injected by DualPaneReader.
  */
 import type {
   NodeContent,

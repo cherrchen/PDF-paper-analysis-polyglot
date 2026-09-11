@@ -34,7 +34,7 @@ The bidirectional-jump architecture lives in [`document-architecture.en.md`](doc
 
 `Pair = { sources: Fragment[]; targets: Fragment[] }` in `apps/web/src/mapping.ts` collects every fragment on both sides (multi-fragment is first-class). Node identity comes from bindings. `pickCounterpart(pair, origin, originRect)` is an **intra-node landing heuristic** used when character-level mapping is absent: among counterpart fragments on the smallest page at/after the origin page, the closest y; when none exists at/after, the first counterpart. It does not decide FR-SYNC-004 identity. Pointer clicks go through spatial-index `hitTest` (smallest area first); keyboard activation still uses the focused button's fragment.
 
-`activate(nodeId, origin, fragment)` in `apps/web/src/main.ts`:
+`activate(nodeId, origin, fragment)` in `apps/web/src/reader.ts` (`DualPaneReader`):
 
 1. render the destination pane on the `pickCounterpart` page (each side's `PaneRenderer` cancels the previous PDF.js task and commits only the latest generation; same-page updates redraw the overlay only);
 2. scroll that fragment to the vertical center of the pane viewport via `fragment.y / pageHeight × canvasHeight` (clamped);
@@ -56,7 +56,7 @@ Sync scroll (`#sync-scroll`, off by default): a ±12 pt band around the scrollin
 
 `pdf_pipeline.pipeline.rerender_workspace(workspace_dir, viewer_data_dir=…, node_ids=…)` (FR-TRANS-004: zero source-PDF re-parsing): load the six canonical workspace documents → validate `node_ids ⊆ translation.entries` keys → `retranslate_nodes` with the **current** provider identity (selected nodes skip cache reads) → compose → LaTeX projection + staged compile → `recover_render_anchors` → rebuild the MappingBundle reusing the source-side bindings from the old mapping → publish the viewer revision after validation, then rewrite the three workspace documents. A real workspace with no provider configured fails rather than falling back to dummy. Note that re-projecting recompiles the whole target document (seconds to tens of seconds); concentrating that cost in one compile is intentional.
 
-Frontend wiring: the Vite `dev` and preview servers proxy `/api` to `:8000` and serve `/data/*` from `public/data` per request; `just serve-reader` starts both (the Playwright webServer uses the same command). After a successful retranslate the reader loads candidate mapping/meta/PDF from the new manifest (falling back to stable aliases if a revision URL fails) and only then swaps, destroying the old target document; failure keeps the previous reading state. Status line `Node re-translated · <first 8 chars> · <revision 8 chars>`; `#viewer` `data-busy` / `data-revision` let e2e wait for busy→idle.
+Frontend wiring: the Vite `dev` and preview servers proxy `/api` to `:8000` and serve `/data/*` from `public/data` per request; `just serve-reader` starts both (the Playwright webServer uses the same command). `main.ts` only boots the app; `DualPaneReader` owns pane lifecycle, navigation, and retranslate state. After a successful retranslate the reader loads candidate mapping/meta/PDF from the new manifest (falling back to stable aliases if a revision URL fails) and only then swaps, destroying the old target document; failure keeps the previous reading state. Status line `Node re-translated · <first 8 chars> · <revision 8 chars>`; `#viewer` `data-busy` / `data-revision` let e2e wait for busy→idle.
 
 Correctness repairs: [M6 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-11-m6-review-repairs.en.md).
 

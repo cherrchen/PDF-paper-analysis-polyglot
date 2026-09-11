@@ -1,4 +1,3 @@
-# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 """Reader API business logic: node re-translation via the pipeline workspace.
 
 Kept out of ``__main__`` so the HTTP layer stays a thin adapter and the
@@ -11,7 +10,7 @@ from __future__ import annotations
 
 import json
 import threading
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -24,6 +23,15 @@ MAX_BODY_BYTES = 4096
 BODY_READ_TIMEOUT_S = 2.0
 
 
+def _json_object(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise TypeError("expected JSON object")
+    typed: dict[str, object] = {}
+    for key, item in value.items():  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+        typed[str(key)] = item  # pyright: ignore[reportUnknownArgumentType]
+    return typed
+
+
 def parse_node_ids(raw: bytes) -> set[str]:
     """Extract nodeIds from a POST body.
 
@@ -31,17 +39,15 @@ def parse_node_ids(raw: bytes) -> set[str]:
     marks a well-shaped body with non-string ids, which the handler maps the
     same way.
     """
-    payload = json.loads(raw.decode("utf-8"))
-    if not isinstance(payload, dict):
-        raise TypeError("nodeIds must be a JSON object body")
-    node_ids = payload.get("nodeIds")
-    if not isinstance(node_ids, list) or not node_ids:
+    payload = _json_object(json.loads(raw.decode("utf-8")))
+    node_ids_obj: object = payload.get("nodeIds")
+    if not isinstance(node_ids_obj, list) or not node_ids_obj:
         raise ValueError("nodeIds must be a non-empty list")
     ids: list[str] = []
-    for node_id in node_ids:
-        if not isinstance(node_id, str) or not node_id:
+    for raw_id in cast("list[object]", node_ids_obj):
+        if not isinstance(raw_id, str) or not raw_id:
             raise TypeError("nodeIds entries must be non-empty strings")
-        ids.append(node_id)
+        ids.append(raw_id)
     return set(ids)
 
 
@@ -81,10 +87,10 @@ def handle_retranslate(
     manifest_path = data_dir / "manifest.json"
     if manifest_path.is_file():
         try:
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+            manifest = _json_object(json.loads(manifest_path.read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError, TypeError):
             manifest = None
-        if isinstance(manifest, dict):
+        if manifest is not None:
             revision = manifest.get("revision")
             if isinstance(revision, str) and revision:
                 payload["revision"] = revision

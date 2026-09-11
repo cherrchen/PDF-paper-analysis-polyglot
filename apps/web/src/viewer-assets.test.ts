@@ -27,7 +27,18 @@ function htmlResponse(): Response {
   });
 }
 
-const mapping: MappingBundle = { viewerDataVersion: 2 } as MappingBundle;
+const mapping: MappingBundle = {
+  viewerDataVersion: 2,
+  sourceSemanticBindings: [],
+  sourceAnchors: [],
+  semanticNodes: [],
+  semanticRelations: [],
+  sourceRegions: [],
+  renderAnchors: [],
+  translation: { targetLocale: "zh-CN", entries: [] },
+  provenance: [],
+  issues: [],
+};
 const meta: ViewerMeta = {
   sourcePageCount: 1,
   targetPageCount: 1,

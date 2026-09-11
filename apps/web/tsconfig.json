@@ -9,5 +9,8 @@
     "noEmit": false
   },
   "include": ["src"],
-  "references": [{ "path": "../../packages/typescript/ui" }]
+  "references": [
+    { "path": "../../packages/typescript/document-model" },
+    { "path": "../../packages/typescript/ui" }
+  ]
 }

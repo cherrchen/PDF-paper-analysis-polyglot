@@ -56,6 +56,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@paper/document-model':
+        specifier: workspace:*
+        version: link:../../packages/typescript/document-model
       '@paper/ui':
         specifier: workspace:*
         version: link:../../packages/typescript/ui

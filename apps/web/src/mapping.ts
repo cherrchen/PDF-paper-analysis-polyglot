@@ -1,96 +1,89 @@
 /**
  * Viewer data contract v2 (`viewerDataVersion: 2`) — M6 bidirectional reader.
  *
- * These types are a deliberately narrow, hand-written projection of the
- * viewer package that `pdf_pipeline.pipeline._write_viewer_assets` emits.
- * The package embeds the canonical MappingBundle fields but adds viewer-only
- * sections (translation, render anchors, per-page sizes), so it is NOT the
- * canonical schema; importing @paper/document-model here would pin the
- * viewer to full canonical types it never consumes. The canonical source of
- * truth stays in schemas/.
+ * The viewer package is not a canonical schema: it embeds MappingBundle fields
+ * plus viewer-only sections (translation, render anchors, per-page sizes).
+ * Field shapes are projections of `@paper/document-model` generated types so
+ * NodeContent / marks / confidence cannot drift from schemas/. Canonical
+ * source of truth stays in schemas/.
  */
+import type * as documentModel from "@paper/document-model";
 import { type IndexedFragment, PageSpatialIndex } from "./spatial.js";
 
-export type Rect = { kind: "rect"; x: number; y: number; width: number; height: number };
-export type Fragment = { pageIndex: number; geometry: Rect };
-export type SourceFragment = { fragmentType: "layoutRegion"; layoutRegionId: string };
+/** Viewer JSON may serialize absent optionals as `null`. */
+type JsonOptional<T> = T | null;
+
+export type Rect = documentModel.generated.Common.Rect;
+export type Fragment = {
+  pageIndex: documentModel.generated.Mapping.PDFRenderFragment["pageIndex"];
+  geometry: Rect;
+};
+export type SourceFragment = Pick<
+  documentModel.generated.Mapping.LayoutRegionRef,
+  "fragmentType" | "layoutRegionId"
+>;
 export type SourceRegion = Fragment & { id: string };
 
-export type InlineMark = {
-  type: string;
-  start: number;
-  end: number;
-  targetNodeId?: string | null;
-  label?: string | null;
+export type InlineMark = Pick<
+  documentModel.generated.SemanticDocument.InlineMark,
+  "type" | "start" | "end"
+> & {
+  targetNodeId?: JsonOptional<
+    NonNullable<documentModel.generated.SemanticDocument.InlineMark["targetNodeId"]>
+  >;
+  href?: JsonOptional<NonNullable<documentModel.generated.SemanticDocument.InlineMark["href"]>>;
+  label?: JsonOptional<NonNullable<documentModel.generated.SemanticDocument.InlineMark["label"]>>;
 };
-export type RichTextContent = { text: string; marks: InlineMark[] };
-export type NodeContent =
-  | RichTextContent
-  | { label?: string | null; resources?: { embeddedImageIds: string[] } }
-  | {
-      rows: number;
-      columns: number;
-      cells: { row: number; column: number; content: RichTextContent }[];
-      visualResourceId?: string | null;
-    }
-  | {
-      latex?: string | null;
-      mathml?: string | null;
-      unicodeText?: string | null;
-      rawText?: string | null;
-      previewResourceId?: string | null;
-    };
+export type RichTextContent = Pick<documentModel.generated.SemanticDocument.RichText, "text"> & {
+  marks: InlineMark[];
+};
+export type FigureContent = documentModel.generated.SemanticDocument.FigureContent;
+export type TableCellView = Omit<documentModel.generated.SemanticDocument.TableCell, "content"> & {
+  content: RichTextContent;
+};
+export type TableContent = Omit<documentModel.generated.SemanticDocument.TableContent, "cells"> & {
+  cells: TableCellView[];
+};
+export type EquationContent = documentModel.generated.SemanticDocument.EquationContent;
+export type NodeContent = RichTextContent | FigureContent | TableContent | EquationContent;
+export type NodeConfidence = documentModel.generated.SemanticDocument.NodeConfidence;
 
-export type SemanticNodeView = {
-  id: string;
-  kind: string;
-  parentId?: string;
+export type SemanticNodeView = Pick<
+  documentModel.generated.SemanticDocument.SemanticNode,
+  "id" | "kind" | "provenanceIds"
+> & {
+  parentId?: JsonOptional<
+    NonNullable<documentModel.generated.SemanticDocument.SemanticNode["parentId"]>
+  >;
   content: NodeContent;
-  confidence: { score: number; reason?: string | null };
-  provenanceIds: string[];
+  confidence: NodeConfidence;
 };
 
-export type SemanticRelationView = {
-  id: string;
-  type: string;
-  source: string;
-  target: string;
-  confidence?: number | null;
+export type SemanticRelationView = Pick<
+  documentModel.generated.SemanticDocument.SemanticRelation,
+  "id" | "type" | "source" | "target"
+> & {
+  confidence?: JsonOptional<
+    NonNullable<documentModel.generated.SemanticDocument.SemanticRelation["confidence"]>
+  >;
 };
 
-export type TranslationEntryView = {
-  semanticNodeId: string;
-  content: NodeContent;
-  confidence?: number | null;
-  providerModel?: string | null;
-  cacheKey?: string | null;
-};
+type TranslationEntry = documentModel.generated.TranslationLayer.TranslationEntry;
+export type TranslationEntryView = Pick<TranslationEntry, "semanticNodeId"> &
+  Partial<Pick<TranslationEntry, "providerModel" | "cacheKey">> & {
+    content: NodeContent;
+    confidence?: JsonOptional<NonNullable<TranslationEntry["confidence"]>>;
+  };
 
-export type TermView = {
-  term: string;
-  preferredTranslation: string;
-  source: string;
-  confidence: number;
-  scope: string;
-};
-
-export type ProvenanceRecordView = {
-  id: string;
-  producer: string;
-  producerVersion: string;
-  operation: string;
-  inputRefs: string[];
-};
-
-export type IssueView = {
-  id: string;
-  category: string;
-  severity: string;
-  producer: string;
-  message: string;
-  affectedIds: string[];
-  recoverable: boolean;
-};
+export type TermView = documentModel.generated.TranslationLayer.Term;
+export type ProvenanceRecordView = Pick<
+  documentModel.generated.Common.ProvenanceRecord,
+  "id" | "producer" | "producerVersion" | "operation" | "inputRefs"
+>;
+export type IssueView = Pick<
+  documentModel.generated.Common.Issue,
+  "id" | "category" | "severity" | "producer" | "message" | "affectedIds" | "recoverable"
+>;
 
 export type MappingBundle = {
   viewerDataVersion: number;
@@ -119,6 +112,79 @@ export type MappingBundle = {
   provenance: ProvenanceRecordView[];
   issues: IssueView[];
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requireArray(value: unknown, label: string): unknown[] {
+  if (!Array.isArray(value)) throw new Error(`invalid mapping bundle: ${label}`);
+  return value;
+}
+
+function assertMarks(marks: unknown, label: string): void {
+  if (!Array.isArray(marks)) throw new Error(`invalid mapping bundle: ${label} marks`);
+  for (const mark of marks) {
+    if (!isRecord(mark)) throw new Error(`invalid mapping bundle: ${label} mark`);
+    if (typeof mark.type !== "string")
+      throw new Error(`invalid mapping bundle: ${label} mark type`);
+    if (typeof mark.start !== "number" || typeof mark.end !== "number") {
+      throw new Error(`invalid mapping bundle: ${label} mark offsets`);
+    }
+  }
+}
+
+function assertNodeContent(content: unknown, label: string): void {
+  if (!isRecord(content)) throw new Error(`invalid mapping bundle: ${label} content`);
+  if ("marks" in content) assertMarks(content.marks, label);
+  if ("cells" in content) {
+    if (!Array.isArray(content.cells)) throw new Error(`invalid mapping bundle: ${label} cells`);
+    for (const cell of content.cells) {
+      if (!isRecord(cell) || !isRecord(cell.content)) {
+        throw new Error(`invalid mapping bundle: ${label} cell`);
+      }
+      assertMarks(cell.content.marks, `${label} cell`);
+    }
+  }
+}
+
+function assertSemanticNode(value: unknown): void {
+  if (!isRecord(value)) throw new Error("invalid mapping bundle: semantic node");
+  if (typeof value.id !== "string" || typeof value.kind !== "string") {
+    throw new Error("invalid mapping bundle: semantic node identity");
+  }
+  if (!isRecord(value.confidence) || typeof value.confidence.score !== "number") {
+    throw new Error("invalid mapping bundle: semantic node confidence");
+  }
+  assertNodeContent(value.content, `node ${value.id}`);
+}
+
+/** Runtime check at the viewer load boundary; types remain a generated projection. */
+export function parseMappingBundle(value: unknown): MappingBundle {
+  if (!isRecord(value)) throw new Error("invalid mapping bundle");
+  if (value.viewerDataVersion !== 2) {
+    throw new Error(`unsupported viewer data version: ${String(value.viewerDataVersion)}`);
+  }
+  requireArray(value.sourceSemanticBindings, "sourceSemanticBindings");
+  requireArray(value.sourceAnchors, "sourceAnchors");
+  requireArray(value.sourceRegions, "sourceRegions");
+  requireArray(value.renderAnchors, "renderAnchors");
+  requireArray(value.semanticRelations, "semanticRelations");
+  requireArray(value.provenance, "provenance");
+  requireArray(value.issues, "issues");
+  const nodes = requireArray(value.semanticNodes, "semanticNodes");
+  for (const node of nodes) assertSemanticNode(node);
+  if (!isRecord(value.translation) || !Array.isArray(value.translation.entries)) {
+    throw new Error("invalid mapping bundle: translation");
+  }
+  for (const entry of value.translation.entries) {
+    if (!isRecord(entry) || typeof entry.semanticNodeId !== "string") {
+      throw new Error("invalid mapping bundle: translation entry");
+    }
+    assertNodeContent(entry.content, `translation ${entry.semanticNodeId}`);
+  }
+  return value as MappingBundle;
+}
 
 export type Side = "source" | "target";
 

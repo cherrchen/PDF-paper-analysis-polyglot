@@ -1,14 +1,12 @@
 """Structured translation protocol types."""
 
-# pyright: reportUnknownVariableType=false
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from document_model.generated import schema_models as generated
+    from document_model.generated.schema_models import InlineMark, Term
 
 
 @dataclass(frozen=True)
@@ -28,9 +26,9 @@ class TranslationRequest:
     """One translatable text segment with marks and context."""
 
     text: str
-    marks: list[generated.InlineMark] = field(default_factory=list)
+    marks: list[InlineMark] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
     context: TranslationContext = field(default_factory=TranslationContext)
-    terminology: tuple[generated.Term, ...] = ()
+    terminology: tuple[Term, ...] = ()
     node_kind: str | None = None
     semantic_node_id: str | None = None
     candidate_terms: tuple[str, ...] = ()
@@ -41,7 +39,7 @@ class TranslationResult:
     """Provider output for one translated segment."""
 
     text: str
-    marks: list[generated.InlineMark] = field(default_factory=list)
+    marks: list[InlineMark] = field(default_factory=list)  # pyright: ignore[reportUnknownVariableType]
     confidence: float = 1.0
 
 

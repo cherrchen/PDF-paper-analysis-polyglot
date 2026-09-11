@@ -71,6 +71,8 @@ describe("nodePlainText", () => {
     const cells = Array.from({ length: 25 }, (_, i) => ({
       row: i,
       column: 0,
+      rowSpan: 1,
+      colSpan: 1,
       content: { text: `c${i}`, marks: [] },
     }));
     const rendered = nodePlainText({ rows: 25, columns: 1, cells });

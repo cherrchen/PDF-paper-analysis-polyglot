@@ -34,7 +34,7 @@
 
 `apps/web/src/mapping.ts` 的 `Pair = { sources: Fragment[]; targets: Fragment[] }` 收集双侧全部 fragments（多 fragment 是一等公民）。节点身份来自绑定。`pickCounterpart(pair, origin, originRect)` 是字符级 mapping 缺席时的**节点内落点启发式**：在对侧「不小于 origin 页码」的最小页上取 y 最近者；不存在则取对侧第 0 个。它不承担 FR-SYNC-004 的身份判定。点击选择走空间索引 `hitTest`（最小面积优先）；键盘激活仍使用获焦按钮对应的 fragment。
 
-`apps/web/src/main.ts` 的 `activate(nodeId, origin, fragment)`：
+`apps/web/src/reader.ts` 的 `DualPaneReader.activate(nodeId, origin, fragment)`：
 
 1. destination pane 渲染 `pickCounterpart` 所在页（每侧 `PaneRenderer` 取消旧 PDF.js 任务，只提交最新 generation；同页只重画 overlay）；
 2. 按 `fragment.y / pageHeight × canvasHeight` 把该 fragment 滚到 pane 视口中线（clamp）；
@@ -56,7 +56,7 @@
 
 `pdf_pipeline.pipeline.rerender_workspace(workspace_dir, viewer_data_dir=…, node_ids=…)`（FR-TRANS-004：零源 PDF 重解析）：载入 workspace 六份 canonical 文档 → 校验 `node_ids ⊆ translation.entries` 键集 → 用**当前** provider 身份 `retranslate_nodes`（所选节点跳过缓存读取）→ compose → LaTeX 投影 + 暂存编译 → `recover_render_anchors` → 复用旧 mapping 的 source 侧绑定重建 MappingBundle → 校验通过后发布 viewer revision，再写 workspace 三份文档。真实 workspace 缺失 provider 时失败，不用 dummy 覆盖。注意重新投影意味着整文档 target 重编译（lualatex 秒级~几十秒），这是有意的代价集中。
 
-前端接线：vite dev/preview 把 `/api` proxy 到 `:8000`，并把 `/data/*` 从 `public/data` 按请求提供；`just serve-reader` 一次起 API + dev server（Playwright webServer 用同一命令）。重译成功后：按新 manifest 加载候选 mapping/meta/PDF（revision URL 失败则回退稳定别名），成功才切换并销毁旧 target document；失败保留旧阅读状态。状态行 `Node re-translated · <id 前 8 位> · <revision 前 8 位>`，`#viewer` 的 `data-busy` / `data-revision` 供 e2e 等待 busy→idle。
+前端接线：vite dev/preview 把 `/api` proxy 到 `:8000`，并把 `/data/*` 从 `public/data` 按请求提供；`just serve-reader` 一次起 API + dev server（Playwright webServer 用同一命令）。`main.ts` 只负责启动；`DualPaneReader` 拥有 pane 生命周期、导航与重译状态。重译成功后：按新 manifest 加载候选 mapping/meta/PDF（revision URL 失败则回退稳定别名），成功才切换并销毁旧 target document；失败保留旧阅读状态。状态行 `Node re-translated · <id 前 8 位> · <revision 前 8 位>`，`#viewer` 的 `data-busy` / `data-revision` 供 e2e 等待 busy→idle。
 
 正确性修复：[M6 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m6-review-repairs.md)。
 

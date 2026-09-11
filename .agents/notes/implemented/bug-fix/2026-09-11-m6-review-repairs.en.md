@@ -19,6 +19,7 @@ The 2026-09-11 code review kept M6 as a landed functional baseline but required 
 7. **HTTP bounds**: reject negative `Content-Length` (400); oversize stays 413; body-read timeout is 408.
 8. **E2E**: each click is bound to its own `waitForResponse` and a busy→idle revision change.
 9. **`pickCounterpart`**: remains an intra-node landing heuristic (bindings decide identity; page/y are used only when character-level mapping is absent). The algorithm is unchanged; tests now cover widely different pagination. Clicks go through `hitTest` (smallest area first); `setActiveNode` is the single selection entry that refreshes the Inspector.
+10. **Style follow-up**: `DualPaneReader` owns pane lifecycle, navigation, and retranslate state. `NodeContent` / marks / confidence are `Pick` projections of generated types, with `parseMappingBundle` at the load boundary. Provider-protocol and JSON-boundary pyright exemptions are line-scoped instead of module-wide.
 
 ## Alternatives considered
 

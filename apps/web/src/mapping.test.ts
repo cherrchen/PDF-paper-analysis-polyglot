@@ -5,6 +5,7 @@ import {
   type Fragment,
   fragmentsForSide,
   type MappingBundle,
+  parseMappingBundle,
   pickCounterpart,
 } from "./mapping.js";
 
@@ -116,6 +117,11 @@ describe("viewer mapping pairs (v2)", () => {
     expect(() => buildPairs({ ...crossPageBundle(), viewerDataVersion: 1 })).toThrow(
       "unsupported viewer data version: 1",
     );
+  });
+
+  it("rejects malformed JSON at the load boundary", () => {
+    expect(() => parseMappingBundle({ viewerDataVersion: 2 })).toThrow(/invalid mapping bundle/);
+    expect(() => parseMappingBundle(crossPageBundle())).not.toThrow();
   });
 });
 

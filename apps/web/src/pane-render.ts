@@ -5,7 +5,7 @@
  * overlay clicks, and sync-scroll can all request a render independently;
  * only the latest request may commit page metrics and overlay state.
  */
-import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
 export type Cancelable<T> = {
   cancel: () => void;
@@ -93,7 +93,7 @@ export class PaneRenderer {
   async render(pageIndex: number): Promise<RenderCommit | undefined> {
     return this.exclusive.run((token) => {
       let cancelled = false;
-      let pdfTask: { cancel: () => void } | null = null;
+      let pdfTask: RenderTask | null = null;
       const promise = (async (): Promise<RenderCommit> => {
         const pdf = this.getPdf();
         if (!pdf) throw new Error("pdf document unavailable");

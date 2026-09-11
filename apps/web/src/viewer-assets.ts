@@ -8,7 +8,7 @@
  * (`/data/mapping.json` and friends) with the same revision cache-buster.
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import type { MappingBundle, PageSize } from "./mapping.js";
+import { type MappingBundle, type PageSize, parseMappingBundle } from "./mapping.js";
 
 export type ViewerMeta = {
   sourcePageCount: number;
@@ -91,7 +91,7 @@ export type LoadedViewerAssets = {
   target: PDFDocumentProxy;
 };
 
-type PdfLoader = (url: string) => Promise<PDFDocumentProxy>;
+export type PdfLoader = (url: string) => Promise<PDFDocumentProxy>;
 
 function withRevision(url: string, revision: string): string {
   const joiner = url.includes("?") ? "&" : "?";
@@ -137,13 +137,10 @@ export async function loadViewerAssets(
     withRevision(manifest.source, revision),
     withRevision(FALLBACK_MANIFEST.source, revision),
   ]);
-  const mappings = await fetchJsonFirst<MappingBundle>(mappingCandidates);
+  const mappings = parseMappingBundle(await fetchJsonFirst<unknown>(mappingCandidates));
   const meta = await fetchJsonFirst<ViewerMeta>(metaCandidates);
   const target = await loadPdfFirst(loadPdf, targetCandidates);
   const source = includeSource ? await loadPdfFirst(loadPdf, sourceCandidates) : undefined;
-  if (mappings.viewerDataVersion !== 2) {
-    throw new Error(`unsupported viewer data version: ${String(mappings.viewerDataVersion)}`);
-  }
   if (!Array.isArray(meta.sourcePages) || !Array.isArray(meta.targetPages)) {
     throw new Error("invalid viewer meta");
   }
