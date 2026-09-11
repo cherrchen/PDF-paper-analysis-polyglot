@@ -6,7 +6,7 @@ The bidirectional-jump architecture lives in [`document-architecture.en.md`](doc
 
 ## Viewer data contract v2
 
-`pdf_pipeline.pipeline._write_viewer_assets` is the only producer of the `viewerDataVersion: 2` package (`mapping.json` + `viewer-meta.json`, written atomically). Canonical MappingBundle fields expand as before (the `mapping` schema stays at 0.1.0, zero changes), plus a viewer-private projection:
+`pdf_pipeline.pipeline._write_viewer_assets` is the only producer of the `viewerDataVersion: 2` package. Each publish writes a complete `revisions/<id>/` directory (`mapping.json`, `viewer-meta.json`, `source.pdf`, `target.pdf`) and then atomically replaces `manifest.json` to point at that revision; stable aliases such as `/data/mapping.json` are updated after the manifest for fixtures and direct fetches. The reader always loads the manifest first and prefers the revision URLs. Vite can SPA-fallback newly created `revisions/` paths to `index.html`; in that case the reader retries the stable aliases with the same revision cache-buster. The Vite `serve-public-data` plugin serves `/data/*` from `public/data` on every request so those paths never hit the SPA fallback. Canonical MappingBundle fields expand as before (the `mapping` schema stays at 0.1.0, zero changes), plus a viewer-private projection:
 
 | Key | Contents |
 | --- | --- |
@@ -28,35 +28,37 @@ The bidirectional-jump architecture lives in [`document-architecture.en.md`](doc
 
 - a fragment registers into every cell its rect covers; point and band queries gather deduplicated cell candidates, then exact rect-test them.
 - `hitTest(page, x, y)`: fragments containing the point, ascending by area. `inBand(page, yMin, yMax)`: fragments intersecting the horizontal band, ascending by rect.y. Zero-area rects and unknown pages return empty, never throw.
-- Paper-scale fragment counts stay < 10³, so the grid's O(1) is enough; a real R-tree can replace the internals behind the same interface (see the [M6 note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.en.md)).
+- Paper-scale fragment counts stay < 10³, so cell lookup is O(1); a dense cell still scans its candidates. A real R-tree can replace the internals behind the same interface (see the [M6 note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.en.md)).
 
 ## Navigation behavior (6.3/6.4)
 
-`Pair = { sources: Fragment[]; targets: Fragment[] }` in `apps/web/src/mapping.ts` collects every fragment on both sides (multi-fragment is first-class). `pickCounterpart(pair, origin, originRect)` chooses the destination: among counterpart fragments on the smallest page at/after the origin page, the closest y; when none exists at/after, the first counterpart. Jumping therefore depends only on bindings and geometry — never on a `source page ≈ target page` assumption (FR-SYNC-004).
+`Pair = { sources: Fragment[]; targets: Fragment[] }` in `apps/web/src/mapping.ts` collects every fragment on both sides (multi-fragment is first-class). Node identity comes from bindings. `pickCounterpart(pair, origin, originRect)` is an **intra-node landing heuristic** used when character-level mapping is absent: among counterpart fragments on the smallest page at/after the origin page, the closest y; when none exists at/after, the first counterpart. It does not decide FR-SYNC-004 identity. Pointer clicks go through spatial-index `hitTest` (smallest area first); keyboard activation still uses the focused button's fragment.
 
 `activate(nodeId, origin, fragment)` in `apps/web/src/main.ts`:
 
-1. render the destination pane on the `pickCounterpart` page;
+1. render the destination pane on the `pickCounterpart` page (each side's `PaneRenderer` cancels the previous PDF.js task and commits only the latest generation; same-page updates redraw the overlay only);
 2. scroll that fragment to the vertical center of the pane viewport via `fragment.y / pageHeight × canvasHeight` (clamped);
 3. `focus({preventScroll:true})` the destination overlay button;
-4. the origin side redraws keeping its `aria-pressed` selection; the active state survives page turns.
+4. the origin side redraws keeping its `aria-pressed` selection; the active state survives page turns. Selection updates go through `setActiveNode` so the overlay and Inspector stay in sync.
 
 Sync scroll (`#sync-scroll`, off by default): a ±12 pt band around the scrolling pane's viewport midline goes through `inBand` → first hit with a paired node → `pickCounterpart` → the other side renders and scrolls into place. When no node is found, nothing happens (page-number-guess fallbacks are forbidden). Programmatic scrolls suppress the opposite side's scroll events for 250 ms to break loops.
 
 ## Semantic Inspector (6.5)
 
-`apps/web/src/inspector.ts::renderInspector(root, model, nodeId, opts)`. Stable ids double as e2e selectors: `#inspector-node-id` (full SemanticNodeID), `#inspector-kind`, `#inspector-anchors` (per-side `source p{n} [x,y w×h]` lines), `#inspector-source-text`, `#inspector-translation` (`Not translatable` when there is no entry — BIBLIOGRAPHY_ENTRY is deliberately not translated per PRD FR-CITE-004), `#inspector-relations` (two-way relation buttons jump), `#inspector-confidence` (node score + reason + target anchor confidence), `#inspector-provenance`, `#inspector-issues` (only when non-empty), `#inspector-terminology`, `#inspector-citations` (six reference mark types sliced from source/translation text with jumpable `targetNodeId`; out-of-range marks render `mark out of range` without throwing). Viewing original vs. translation is the two-pane reading itself; no pane content switching.
+`apps/web/src/inspector.ts::renderInspector(root, model, nodeId, opts)`. Stable ids double as e2e selectors: `#inspector-node-id` (full SemanticNodeID), `#inspector-kind`, `#inspector-anchors` (per-side `source p{n} [x,y w×h]` lines), `#inspector-source-text`, `#inspector-translation` (`Not translatable` when there is no entry — BIBLIOGRAPHY_ENTRY is deliberately not translated per PRD FR-CITE-004), `#inspector-relations` (two-way relation buttons jump), `#inspector-confidence` (node score + reason + target anchor confidence), `#inspector-provenance`, `#inspector-issues` (only when non-empty), `#inspector-terminology`, `#inspector-citations` (six reference mark types sliced from source/translation text at Unicode code-point offsets with jumpable `targetNodeId`; out-of-range marks render `mark out of range` without throwing). Viewing original vs. translation is the two-pane reading itself; no pane content switching.
 
 ## Reader API and local re-render (6.6)
 
 `apps/api` (stdlib ThreadingHTTPServer, no web framework):
 
 - `GET /api/health` — same payload as `/health`; the frontend probes at startup and only renders `#retranslate-button` when `apiAvailable`.
-- `POST /api/retranslate`, body `{"nodeIds": [...]}` — 200 `{"ok": true, "changed": [...]}`; 400 for malformed bodies and unknown nodes; 409 for an uninitialized workspace; 413 when `Content-Length` > 4096 bytes; 500 otherwise. A module-level `threading.Lock` serializes rerenders (shared lualatex output directory).
+- `POST /api/retranslate`, body `{"nodeIds": [...]}` — 200 `{"ok": true, "changed": [...], "revision": "..."}`; 400 for malformed bodies, unknown nodes, and negative `Content-Length`; 409 for an uninitialized workspace; 413 when `Content-Length` > 4096 bytes; 408 when the declared length exceeds the body and the read times out; 503 when a real workspace has no provider configured; 500 otherwise. A module-level `threading.Lock` serializes rerenders (shared lualatex output directory).
 
-`pdf_pipeline.pipeline.rerender_workspace(workspace_dir, viewer_data_dir=…, node_ids=…)` (FR-TRANS-004: zero source-PDF re-parsing): load the six canonical workspace documents → validate `node_ids ⊆ translation.entries` keys → `retranslate_nodes` → compose → LaTeX projection + compile → `recover_render_anchors` → rebuild the MappingBundle reusing the source-side bindings from the old mapping → rewrite the three workspace documents plus the viewer package. Note that re-projecting recompiles the whole target document (seconds to tens of seconds); concentrating that cost in one compile is intentional.
+`pdf_pipeline.pipeline.rerender_workspace(workspace_dir, viewer_data_dir=…, node_ids=…)` (FR-TRANS-004: zero source-PDF re-parsing): load the six canonical workspace documents → validate `node_ids ⊆ translation.entries` keys → `retranslate_nodes` with the **current** provider identity (selected nodes skip cache reads) → compose → LaTeX projection + staged compile → `recover_render_anchors` → rebuild the MappingBundle reusing the source-side bindings from the old mapping → publish the viewer revision after validation, then rewrite the three workspace documents. A real workspace with no provider configured fails rather than falling back to dummy. Note that re-projecting recompiles the whole target document (seconds to tens of seconds); concentrating that cost in one compile is intentional.
 
-Frontend wiring: the Vite `dev` and preview servers proxy `/api` to `:8000`; `just serve-reader` starts both (the Playwright webServer uses the same command). After a successful retranslate: refetch mapping/meta with cache busting → destroy and reload the target pdf.js document (layout changed) → rebuild the ReaderModel/indexes → redraw both overlays and the Inspector, status line `Node re-translated · <first 8 chars>`.
+Frontend wiring: the Vite `dev` and preview servers proxy `/api` to `:8000` and serve `/data/*` from `public/data` per request; `just serve-reader` starts both (the Playwright webServer uses the same command). After a successful retranslate the reader loads candidate mapping/meta/PDF from the new manifest (falling back to stable aliases if a revision URL fails) and only then swaps, destroying the old target document; failure keeps the previous reading state. Status line `Node re-translated · <first 8 chars> · <revision 8 chars>`; `#viewer` `data-busy` / `data-revision` let e2e wait for busy→idle.
+
+Correctness repairs: [M6 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-11-m6-review-repairs.en.md).
 
 ## Fixture
 

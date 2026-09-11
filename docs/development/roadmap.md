@@ -113,7 +113,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | 6.3 Bidirectional Navigation | 基线 | `pickCounterpart`（最小合格页 + 最近 y）+ `activate` 滚动居中 + `focus`；`#sync-scroll` ±12 pt 条带、查不到不回退、250 ms 防回环；`tests/e2e/viewer-multifragment.spec.ts` 与 `viewer-navigation.spec.ts` |
 | 6.4 Multi-Fragment Highlight | 基线 | active 节点在当前页全部 fragment 均 `aria-pressed`，翻页保留；e2e 断言 pressed 数 == 该页 fragment 数 |
 | 6.5 Semantic Inspector | 基线 | `apps/web/src/inspector.ts`：id/kind/anchors/原文/译文/relations/confidence/provenance/issues/术语/citations，稳定 `#inspector-*` id；`tests/e2e/viewer-inspector.spec.ts` |
-| 6.6 Translation Interaction | 基线 | 双栏原文/译文 + Inspector 术语/引用；`POST /api/retranslate`（`apps/api`，400/409/413/405 契约）→ `pdf_pipeline.rerender_workspace` 零源重解析（pytest 注入 `extract_physical_document` raise 证明）→ 前端重建 target document 并回稳（`viewer-retranslate.spec.ts`） |
+| 6.6 Translation Interaction | 基线 | 双栏原文/译文 + Inspector 术语/引用；`POST /api/retranslate`（`apps/api`，400/408/409/413/405/503 契约）→ `pdf_pipeline.rerender_workspace` 零源重解析、当前 provider 身份、所选节点跳过缓存、manifest revision 发布；前端原子刷新并回稳（`viewer-retranslate.spec.ts`） |
 
 **M6 Exit Gate：** 定位原文↔译文不依赖页码对应——`viewer-navigation.spec.ts` 对每个多 fragment anchor 断言 source 与 target 页码分布不同，且跳转/滚动全部由绑定 + 几何产生。真实 LLM 环境的译文变化以手工验证为承诺边界（dummy 输出确定，e2e 锁定协议）。
 

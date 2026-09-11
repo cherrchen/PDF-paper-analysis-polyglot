@@ -34,3 +34,4 @@ M5 后 Viewer（`apps/web`，M2 骨架）仍是点击跳转的对照桌：target
 - viewer 包新增字段只扩展 viewer 发射逻辑，canonical schema 零变更；若未来发现 Inspector 需要 canonical 缺失字段，另开 schema note，不在 M6 内升版。
 - 验证：`just test-python`、`pnpm exec vitest run`（37）、`just test-integration`、`just test-e2e`（12，含多 fragment 高亮、同步滚动、Inspector、浏览器内真实重译）全绿。`tests/benchmark/test_semantic_benchmark.py` 新增 `anchorCoverage ≥ 0.8` 度量。
 - 文档：[`docs/architecture/reader.md`](../../../../docs/architecture/reader.md)（[English](../../../../docs/architecture/reader.en.md)）为当前态真源。
+- 后续正确性修复见 [M6 Review 修复](../bug-fix/2026-09-11-m6-review-repairs.md)。

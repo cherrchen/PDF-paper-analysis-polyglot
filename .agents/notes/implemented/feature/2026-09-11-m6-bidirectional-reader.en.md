@@ -34,6 +34,7 @@ After M5 the viewer (`apps/web`, the M2 skeleton) was still a click-to-jump comp
 - New viewer-package fields only extend viewer emission; the canonical schema is untouched. Any future canonical gap gets its own schema note, not an M6 version bump.
 - Verification: `just test-python`, `pnpm exec vitest run` (37), `just test-integration`, and `just test-e2e` (12, including multi-fragment highlight, sync scroll, Inspector, and a real in-browser re-translate) are green. `tests/benchmark/test_semantic_benchmark.py` gains an `anchorCoverage ≥ 0.8` metric.
 - Docs: [`docs/architecture/reader.en.md`](../../../../docs/architecture/reader.en.md) (中文 companion at `reader.md`) is the current-state source of truth.
+- Later correctness repairs: [M6 review repairs](../bug-fix/2026-09-11-m6-review-repairs.en.md).
 
 ## Acceptance
 
