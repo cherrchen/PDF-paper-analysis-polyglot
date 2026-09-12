@@ -17,9 +17,9 @@ Initial Product 关键约束（摘自 PRD v0.2）：仅 Born-digital PDF；Targe
 ## 当前进度追踪
 
 **最后更新：** 2026-09-12
-**当前位置：** M7 Parser Ensemble & Quality 基线已落地。M8 准入已收口为分级证据：三项 PRD 表面均为已实现 + 合成夹具通过；真实 MinerU/Docling/GROBID 工具输出未验证，不阻塞初版 A–D，阻塞生产 registry 替换。字符级 mapping、`source-derived`/`dense-two-column`、Annotation 层、独立 MathML 交付已从延期清单剔除（非 Initial Product）。M8 初版尚未开工，计划见 [M8 准入与初版开发计划](m8.md)。详见 [M8 准入收口](../../.agents/notes/implemented/process/2026-09-12-m8-admission-closeout.md)、[PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)、[可选真实 parser 依赖](../../.agents/notes/implemented/architecture/2026-09-12-optional-parser-adapters.md)、[区域级标注真值](../../.agents/notes/implemented/architecture/2026-09-12-region-level-layout-truth.md)、[Figure PDF fragment](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.md) 与 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。
+**当前位置：** M7 Parser Ensemble & Quality 基线已落地。M8 准入已收口为分级证据：三项 PRD 表面均为已实现 + 合成夹具通过；真实 MinerU/Docling/GROBID 工具输出未验证，不阻塞初版 A–D，阻塞生产 registry 替换。字符级 mapping、`source-derived`/`dense-two-column`、Annotation 层、独立 MathML 交付已从延期清单剔除（非 Initial Product）。M8 初版批次 A（本地 workspace 与阶段状态）已落地，见 [存储](../architecture/storage.md)；批次 B–F 未开工，计划见 [M8 准入与初版开发计划](m8.md)。详见 [M8 准入收口](../../.agents/notes/implemented/process/2026-09-12-m8-admission-closeout.md)、[PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)、[可选真实 parser 依赖](../../.agents/notes/implemented/architecture/2026-09-12-optional-parser-adapters.md)、[区域级标注真值](../../.agents/notes/implemented/architecture/2026-09-12-region-level-layout-truth.md)、[Figure PDF fragment](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.md) 与 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。
 
-README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线 + Parser Ensemble。M8 准入分级见 [m8.md](m8.md)。
+README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线 + Parser Ensemble + M8 批次 A 本地 workspace。M8 准入分级见 [m8.md](m8.md)。
 
 ### Milestone 总览
 
@@ -33,7 +33,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；审查修复见 [M5 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.md)，保真修复见 [M5 内容保真修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.md)。`source-derived` / `dense-two-column` 已按 PRD R2 / §43 从初版验收剔除；矢量 Figure 的 PDF fragment 见 [Figure PDF fragment](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.md) |
 | M6 Bidirectional Reader | 基线落地 | viewerDataVersion 2（semanticNodes 全量/relations/translation/provenance/issues + 逐页尺寸）、前端 `PageSpatialIndex` 网格、`pickCounterpart` 几何跳转（无页码猜测）、多 fragment 高亮、同步滚动、Semantic Inspector、stdlib reader API + `rerender_workspace`（FR-TRANS-004 零源重解析）；决策见 [M6 落地 note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.md)；当前态见 [`docs/architecture/reader.md`](../architecture/reader.md)。字符级 mapping 与 annotation 层已按 PRD NG4 / §47 从初版验收剔除；跨文档多窗口仍非初版 |
 | M7 Parser Ensemble & Quality | 基线落地 | DocumentProbe + Capability Registry（TOML）+ Adaptive Routing + authority 冲突解决；1 Layout→N Semantic、结构化表格（物理层单元格拆分 + 网格检测）、作者-年引用、Scholarly metadata 并入；校准/质量报告 + `just benchmark` 基线门禁（PR CI）。三项 PRD 表面准入分级见 [m8.md](m8.md) |
-| M8 Productionization | 准入完成，初版未开工 | 初版：本地 workspace / 恢复 / 缓存 / 失败隔离 / 兼容 / parser 接入。Typst、HTML、Analysis Layer 为后续扩展。计划：[m8.md](m8.md) |
+| M8 Productionization | 批次 A 已落地，B–F 未开工 | 初版：本地 workspace（A，已完成：阶段状态 + 原子提交 + 中断恢复，见 [storage.md](../architecture/storage.md)）/ 任务编排（B）/ 缓存（C）/ 失败隔离（D）/ 兼容与 parser 接入（E–F）。Typst、HTML、Analysis Layer 为后续扩展。计划：[m8.md](m8.md) |
 
 ### M0 明细
 
