@@ -124,10 +124,10 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | 7.1 DocumentProbe | 基线 | `pdf_pipeline/probe.py`：native/scanned ratio、math/table/image density、estimated_columns（detect_bands 众数）、layout_complexity；`run_pipeline` 产出 ad-hoc `probe.json` |
 | 7.2 Capability Registry | 基线 | `pdf_pipeline/capabilities.py` + `data/capability-registry.toml`（stdlib tomllib）；不变量：reading_order/column_detection/semantic 恒 internal；`fake_specialists.py` 的 docling-sim（TABLE_STRUCTURE）与 grobid-sim（METADATA/STRUCTURE）为确定性 specialist |
 | 7.3 Adaptive Routing | 基线 | `pdf_pipeline/routing.py::route_providers` 纯函数：表格密集 → docling-sim、数学密集 → formula capability、scholarly 常规运行；`pipeline.py` 用 routed ensemble 替换硬编码 mock，`probe.json` 记录 RoutingPlan |
-| 7.4 Conflict Resolution | 基线 | `fusion.py` 标签投票 = confidence × authority 权重（primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8）；冲突 fixture 单测证明 authority 覆盖 naive majority |
-| 7.5 Confidence Calibration | 诊断就绪 | `pdf_pipeline/calibration.py` 分桶 + 单调性诊断；数值校准待区域级标注真值（绝对精度不作门禁，基线相对回归检测保留） |
-| 7.6 Quality Metrics | 基线 | `metrics.py::quality_report`：text coverage、region recall/precision、ordering、truth 期望满足度、table-structure coverage、citation resolution、source/render mapping coverage、issue 计数；不可测指标为 null |
-| 7.7 Regression Benchmark | 基线 | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`；`just benchmark` 门禁（epsilon 1e-3，回归非零退出）；nightly 接入 |
+| 7.4 Conflict Resolution | 基线 | `fusion.py` 先聚类同一区域候选再按 confidence × 角色权重投票（primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8）；`fuse_page` 交换 primary 的页面级测试证明仲裁生效 |
+| 7.5 Confidence Calibration | 诊断就绪 | `pdf_pipeline/calibration.py` 分桶 + 单调性诊断；数值校准待区域级标注真值（`compare()` 只记 diagnostic，不进 REGRESSED） |
+| 7.6 Quality Metrics | 基线 | `metrics.py::quality_report`：text coverage、region recall/precision、ordering、`semanticExpectationCoverage`、table-structure coverage、citation resolution、source/render mapping coverage、issue 的 category/severity 计数；不可测准确率为 null |
+| 7.7 Regression Benchmark | 基线 | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`；缺失 fixture / 可测指标变 null / ERROR+FATAL 增加即非零退出；nightly 接入 |
 
 **M7 Exit Gate：** 基线达成——provider/算法升级现在可以通过 `just benchmark` 与 baseline 对比量化 improved/unchanged/regressed；真源延后项（真实 parser adapter、区域级标注真值）见落地 note。决策见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。
 

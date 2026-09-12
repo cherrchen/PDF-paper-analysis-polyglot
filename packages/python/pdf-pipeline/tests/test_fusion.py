@@ -6,10 +6,13 @@ from typing import cast
 
 import pytest
 from document_model.generated import schema_models as generated
-from pdf_pipeline.capabilities import load_registry
+from pdf_pipeline.capabilities import Capability, load_registry
 from pdf_pipeline.evidence.normalize import NormalizedCandidate
 from pdf_pipeline.fusion import (
+    AUTHORITY_WEIGHT_FALLBACK,
+    NON_AUTHORITY_WEIGHT,
     RegionDraft,
+    authority_weight,
     draft_region,
     fuse_candidate_labels,
     fuse_page,
@@ -31,6 +34,7 @@ def _candidate(  # noqa: PLR0917 - geometry shorthand mirrors Rect fields
     label: generated.LayoutLabel = "PARAGRAPH_LIKE",
     confidence: float = 0.6,
     preview: str = "",
+    provider: str = "mock",
 ) -> NormalizedCandidate:
     return NormalizedCandidate(
         evidenceId=evidence_id,
@@ -38,7 +42,7 @@ def _candidate(  # noqa: PLR0917 - geometry shorthand mirrors Rect fields
         rect=generated.Rect(kind="rect", x=x, y=y, width=width, height=height),
         label=label,
         providerLabel=label.lower(),
-        provider="mock",
+        provider=provider,
         confidence=confidence,
         textPreview=preview,
         provenanceIds=(),
@@ -240,3 +244,124 @@ def test_unlisted_provider_keeps_reduced_voice() -> None:
     label, share = fuse_candidate_labels(candidates, registry=load_registry())
     assert label == "PARAGRAPH_LIKE"
     assert share == pytest.approx(0.5)
+
+
+def test_authority_weight_uses_named_roles() -> None:
+    """Empty slots must not promote fallback to challenger or unlisted to challenger."""
+    registry = load_registry()
+    assert authority_weight(registry, "TABLE", "mock") == AUTHORITY_WEIGHT_FALLBACK
+    assert authority_weight(registry, "FORMULA", "unknown") == NON_AUTHORITY_WEIGHT
+
+
+def _layout_registry(primary: str, challenger: str) -> dict[str, Capability]:
+    overlay = dict(load_registry())
+    slot = overlay["layout.region"]
+    overlay["layout.region"] = Capability(
+        name=slot.name,
+        primary=primary,
+        challenger=challenger,
+        fallback=slot.fallback,
+    )
+    return overlay
+
+
+def test_fuse_page_arbitrates_after_aggregating_providers() -> None:
+    """Swapping layout.region primary must change which overlapping label wins."""
+    draft = draft_region(
+        region_id="d1",
+        page_id="page",
+        rect=_rect(10, 10, 100, 40),
+        label="PARAGRAPH_LIKE",
+        confidence=0.5,
+        reason="geometric-block",
+    )
+    heading = _candidate(
+        "ev-h", 10, 10, 100, 40, label="HEADING_LIKE", confidence=0.6, provider="mock"
+    )
+    paragraph = _candidate(
+        "ev-p", 10, 10, 100, 40, label="PARAGRAPH_LIKE", confidence=0.6, provider="docling-sim"
+    )
+    mock_primary = fuse_page(
+        drafts=[draft],
+        candidates=[heading, paragraph],
+        region_id_fn=lambda i: f"r{i}",
+        registry=_layout_registry("mock", "docling-sim"),
+    )
+    assert mock_primary[0].labels[0].label == "HEADING_LIKE"
+
+    draft_swapped = draft_region(
+        region_id="d1",
+        page_id="page",
+        rect=_rect(10, 10, 100, 40),
+        label="PARAGRAPH_LIKE",
+        confidence=0.5,
+        reason="geometric-block",
+    )
+    swapped = fuse_page(
+        drafts=[draft_swapped],
+        candidates=[heading, paragraph],
+        region_id_fn=lambda i: f"r{i}",
+        registry=_layout_registry("docling-sim", "mock"),
+    )
+    assert swapped[0].labels[0].label == "PARAGRAPH_LIKE"
+
+
+def test_fuse_page_low_confidence_does_not_get_unit_share() -> None:
+    """A 0.1 candidate must not receive fused_share 1.0 just because it was alone."""
+    draft = draft_region(
+        region_id="d1",
+        page_id="page",
+        rect=_rect(10, 10, 100, 40),
+        label="PARAGRAPH_LIKE",
+        confidence=0.5,
+        reason="geometric-block",
+    )
+    low = _candidate("ev-low", 10, 10, 100, 40, label="HEADING_LIKE", confidence=0.1)
+    high = _candidate("ev-high", 10, 10, 100, 40, label="PARAGRAPH_LIKE", confidence=0.9)
+    regions = fuse_page(drafts=[draft], candidates=[low, high], region_id_fn=lambda i: f"r{i}")
+    assert regions[0].labels[0].label == "PARAGRAPH_LIKE"
+    assert regions[0].labels[0].confidence == pytest.approx(0.9)
+
+
+def test_fuse_page_structured_authority_beats_confidence() -> None:
+    """TABLE/FORMULA clusters vote with authority weights, not a fixed 1.5."""
+    draft = draft_region(
+        region_id="d1",
+        page_id="page",
+        rect=_rect(0, 0, 100, 50),
+        label="PARAGRAPH_LIKE",
+        confidence=0.5,
+        reason="geometric-block",
+    )
+    table = _candidate("ev-t", 0, 0, 100, 50, label="TABLE", confidence=0.5, provider="docling-sim")
+    formula = _candidate("ev-f", 0, 0, 100, 50, label="FORMULA", confidence=0.8, provider="unknown")
+    default = fuse_page(
+        drafts=[draft],
+        candidates=[table, formula],
+        region_id_fn=lambda i: f"r{i}",
+        registry=load_registry(),
+    )
+    # table.structure primary 0.5*1.5=0.75 beats unlisted formula 0.8*0.8=0.64
+    assert default[0].kind == "TABLE"
+
+    overlay = dict(load_registry())
+    slot = overlay["formula.detection"]
+    overlay["formula.detection"] = Capability(
+        name=slot.name, primary="unknown", challenger=slot.challenger, fallback=slot.fallback
+    )
+    draft_swapped = draft_region(
+        region_id="d1",
+        page_id="page",
+        rect=_rect(0, 0, 100, 50),
+        label="PARAGRAPH_LIKE",
+        confidence=0.5,
+        reason="geometric-block",
+    )
+    swapped = fuse_page(
+        drafts=[draft_swapped],
+        candidates=[table, formula],
+        region_id_fn=lambda i: f"r{i}",
+        registry=overlay,
+    )
+    # unknown becomes formula.detection primary: 0.8*1.5=1.2 beats 0.75
+    assert swapped[0].kind == "FORMULA"

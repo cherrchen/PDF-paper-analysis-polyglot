@@ -88,10 +88,11 @@ def columns_separated(spans: list[generated.TextSpan], column_count: int) -> boo
     """
     if column_count < 2:
         return True
+    centers = _column_x_clusters(spans, column_count)
     columns: list[list[generated.TextSpan]] = [[] for _ in range(column_count)]
     for span in spans:
         rect = as_rect(span.geometry)
-        columns[column_index(rect.x, _column_x_clusters(spans, column_count))].append(span)
+        columns[column_index(rect.x, centers)].append(span)
     bounds: list[tuple[float, float, float]] = []
     for cells in columns:
         if not cells:

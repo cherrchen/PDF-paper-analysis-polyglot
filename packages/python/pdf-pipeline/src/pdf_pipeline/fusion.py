@@ -66,9 +66,9 @@ def capability_for_label(label: str) -> str:
 def authority_weight(registry: Registry, label: str, provider: str) -> float:
     """Confidence multiplier for a provider's vote on a label.
 
-    Rank-based so the challenger still counts if the primary disagrees;
-    unlisted providers keep a reduced but non-zero voice (cross-source
-    evidence stays usable).
+    Role-based (not compact index after empty slots): primary 1.5,
+    challenger 1.2, fallback 1.0, unlisted 0.8. Empty challenger/fallback
+    slots must not promote a later role or an unlisted provider.
     """
     rank = authority_rank(registry, capability_for_label(label), provider)
     return _RANK_WEIGHTS.get(rank, NON_AUTHORITY_WEIGHT)
@@ -409,8 +409,6 @@ def dominant_label(region: InternalRegion) -> str:
 # Structured candidates absorb overlapping text blocks instead of merely
 # voting on labels: table cells and formula lines are one region.
 _STRUCTURED_LABELS = {"TABLE", "FORMULA"}
-# Weight of a structured candidate over text-block label hypotheses.
-_STRUCTURED_WEIGHT = 1.5
 
 
 def _draft_label(draft: RegionDraft) -> str:
@@ -419,6 +417,186 @@ def _draft_label(draft: RegionDraft) -> str:
 
 def _draft_text(draft: RegionDraft) -> str:
     return " ".join(line.text for line in draft.lines)
+
+
+def _absorb_draft(base: RegionDraft, extra: RegionDraft) -> None:
+    """Merge one draft's geometry, lines, and hypotheses into another."""
+    base.physical_object_ids.extend(extra.physical_object_ids)
+    base.add_lines(extra.lines)
+    base.label_hypotheses.extend(extra.label_hypotheses)
+    base.match_notes.extend(extra.match_notes)
+    base.cover(extra.rect)
+    if base.column_tag is None:
+        base.column_tag = extra.column_tag
+
+
+def _matching_drafts(
+    candidate: NormalizedCandidate,
+    open_drafts: list[RegionDraft],
+    *,
+    ignore_label: bool,
+) -> list[tuple[RegionDraft, MatchResult]]:
+    matches: list[tuple[RegionDraft, MatchResult]] = []
+    for draft in open_drafts:
+        match = match_candidate(
+            candidate,
+            rect=draft.rect,
+            label=_draft_label(draft),
+            text=_draft_text(draft),
+            ignore_label=ignore_label,
+        )
+        if match is not None:
+            matches.append((draft, match))
+    return matches
+
+
+def _candidates_overlap(left: NormalizedCandidate, right: NormalizedCandidate) -> bool:
+    """True when two provider candidates describe the same visual region."""
+    return (
+        match_candidate(
+            left,
+            rect=right.rect,
+            label=right.label,
+            text=right.textPreview,
+            ignore_label=True,
+        )
+        is not None
+    )
+
+
+@dataclass
+class _CandidateCluster:
+    """Candidates that describe one region, awaiting a single authority vote."""
+
+    candidates: list[NormalizedCandidate]
+    base: RegionDraft | None
+
+
+def _find_cluster(
+    candidate: NormalizedCandidate,
+    matches: list[tuple[RegionDraft, MatchResult]],
+    clusters: list[_CandidateCluster],
+) -> _CandidateCluster | None:
+    matched_ids = {id(draft) for draft, _ in matches}
+    for cluster in clusters:
+        if cluster.base is not None and id(cluster.base) in matched_ids:
+            return cluster
+        if any(_candidates_overlap(candidate, other) for other in cluster.candidates):
+            return cluster
+    return None
+
+
+def _attach_structured(
+    candidate: NormalizedCandidate,
+    matches: list[tuple[RegionDraft, MatchResult]],
+    cluster: _CandidateCluster,
+    open_drafts: list[RegionDraft],
+) -> None:
+    cluster.candidates.append(candidate)
+    for draft, _ in matches:
+        if cluster.base is None:
+            cluster.base = draft
+            continue
+        if draft is not cluster.base and draft in open_drafts:
+            _absorb_draft(cluster.base, draft)
+            open_drafts.remove(draft)
+
+
+def _new_structured_cluster(
+    candidate: NormalizedCandidate,
+    matches: list[tuple[RegionDraft, MatchResult]],
+    open_drafts: list[RegionDraft],
+) -> _CandidateCluster:
+    if not matches:
+        return _CandidateCluster(candidates=[candidate], base=None)
+    base = matches[0][0]
+    for extra, _ in matches[1:]:
+        _absorb_draft(base, extra)
+        open_drafts.remove(extra)
+    return _CandidateCluster(candidates=[candidate], base=base)
+
+
+def _apply_structured_cluster(
+    cluster: _CandidateCluster,
+    open_drafts: list[RegionDraft],
+    *,
+    registry: Registry | None,
+) -> generated.Rect:
+    """Vote among clustered structured candidates and stamp the winner."""
+    fused_label, fused_share = fuse_candidate_labels(cluster.candidates, registry=registry)
+    first = cluster.candidates[0]
+    base = cluster.base
+    if base is None:
+        base = draft_region(
+            region_id="pending",
+            page_id=first.pageId,
+            rect=first.rect,
+            label=fused_label,
+            confidence=fused_share,
+            reason=f"evidence-only:{first.provider}:{first.providerLabel}",
+        )
+        open_drafts.append(base)
+        cluster.base = base
+    else:
+        base.add_label(fused_label, fused_share)
+        base.kind = kind_for_label(fused_label)
+    for candidate in cluster.candidates:
+        base.cover(candidate.rect)
+        base.evidence_ids.append(candidate.evidenceId)
+        base.match_notes.append(
+            f"evidence:{candidate.provider}:structured:{candidate.providerLabel}"
+        )
+    return base.rect
+
+
+def _best_draft_match(
+    matches: list[tuple[RegionDraft, MatchResult]],
+) -> tuple[RegionDraft, MatchResult]:
+    best_index = max(
+        range(len(matches)),
+        key=lambda index: (matches[index][1].score, -index),
+    )
+    return matches[best_index]
+
+
+def _cluster_unmatched(candidates: list[NormalizedCandidate]) -> list[list[NormalizedCandidate]]:
+    groups: list[list[NormalizedCandidate]] = []
+    for candidate in candidates:
+        host: list[NormalizedCandidate] | None = None
+        for group in groups:
+            if any(_candidates_overlap(candidate, other) for other in group):
+                host = group
+                break
+        if host is None:
+            groups.append([candidate])
+        else:
+            host.append(candidate)
+    return groups
+
+
+def _evidence_only_draft(
+    group: list[NormalizedCandidate],
+    *,
+    registry: Registry | None,
+) -> RegionDraft:
+    fused_label, fused_share = fuse_candidate_labels(group, registry=registry)
+    first = group[0]
+    draft = draft_region(
+        region_id="pending",
+        page_id=first.pageId,
+        rect=first.rect,
+        label=fused_label,
+        confidence=fused_share,
+        reason=f"evidence-only:{first.provider}:{first.providerLabel}",
+    )
+    for candidate in group:
+        draft.cover(candidate.rect)
+        draft.evidence_ids.append(candidate.evidenceId)
+        if candidate is not first:
+            draft.match_notes.append(
+                f"evidence-only:{candidate.provider}:{candidate.providerLabel}"
+            )
+    return draft
 
 
 def fuse_page(
@@ -430,11 +608,12 @@ def fuse_page(
 ) -> list[InternalRegion]:
     """Fuse one page's geometric drafts with normalized provider candidates.
 
-    Deterministic order: structured candidates (TABLE/FORMULA) absorb the
-    text blocks they cover; remaining text candidates fold into their best
-    matching block as weighted label evidence; candidates matching nothing
-    become evidence-only regions. Final ids are assigned in page reading
-    order so repeated runs are byte-identical.
+    Candidates that describe the same region are clustered first, then a
+    single authority-weighted vote decides the label. Structured
+    candidates (TABLE/FORMULA) absorb the text blocks they cover; remaining
+    text candidates fold into their best matching block; unmatched
+    evidence becomes its own region. Final ids are assigned in page
+    reading order so repeated runs are byte-identical.
     """
     ordered = sorted(
         candidates,
@@ -445,78 +624,48 @@ def fuse_page(
         ),
     )
     open_drafts = list(drafts)
-    consumed_candidates: set[str] = set()
-    structured_rects: list[generated.Rect] = []
+    structured_clusters: list[_CandidateCluster] = []
 
     for candidate in ordered:
-        structured = candidate.label in _STRUCTURED_LABELS
-        matches: list[tuple[RegionDraft, MatchResult]] = []
-        for draft in open_drafts:
-            match = match_candidate(
-                candidate,
-                rect=draft.rect,
-                label=_draft_label(draft),
-                text=_draft_text(draft),
-                ignore_label=structured,
-            )
-            if match is not None:
-                matches.append((draft, match))
-
-        if structured:
-            if matches:
-                base = matches[0][0]
-                for draft, _ in matches[1:]:
-                    base.physical_object_ids.extend(draft.physical_object_ids)
-                    base.add_lines(draft.lines)
-                    base.label_hypotheses.extend(draft.label_hypotheses)
-                    base.match_notes.extend(draft.match_notes)
-                    base.cover(draft.rect)
-                    open_drafts.remove(draft)
-                base.add_label(candidate.label, _STRUCTURED_WEIGHT)
-                base.kind = kind_for_label(candidate.label)
-                base.cover(candidate.rect)
-                base.evidence_ids.append(candidate.evidenceId)
-                base.match_notes.append(
-                    f"evidence:{candidate.provider}:structured:{candidate.providerLabel}"
-                )
-                structured_rects.append(candidate.rect)
-                consumed_candidates.add(candidate.evidenceId)
-                continue
-            # No internal block matched: the candidate still describes a
-            # region, and cell noise inside it must be suppressed below.
-            structured_rects.append(candidate.rect)
-
-        # Text candidates inside an absorbed structured region are cell
-        # noise; drop them. Structured candidates own their rects and pass.
-        if not structured and any(
-            containment(rect, candidate.rect) >= MATCH_CONTAINMENT for rect in structured_rects
-        ):
-            consumed_candidates.add(candidate.evidenceId)
+        if candidate.label not in _STRUCTURED_LABELS:
             continue
+        matches = _matching_drafts(candidate, open_drafts, ignore_label=True)
+        cluster = _find_cluster(candidate, matches, structured_clusters)
+        if cluster is None:
+            structured_clusters.append(_new_structured_cluster(candidate, matches, open_drafts))
+        else:
+            _attach_structured(candidate, matches, cluster, open_drafts)
+
+    structured_rects = [
+        _apply_structured_cluster(cluster, open_drafts, registry=registry)
+        for cluster in structured_clusters
+    ]
+    consumed = {
+        candidate.evidenceId for cluster in structured_clusters for candidate in cluster.candidates
+    }
+
+    text_matches: dict[int, list[tuple[NormalizedCandidate, MatchResult]]] = {}
+    unmatched: list[NormalizedCandidate] = []
+    for candidate in ordered:
+        if candidate.evidenceId in consumed:
+            continue
+        if any(containment(rect, candidate.rect) >= MATCH_CONTAINMENT for rect in structured_rects):
+            continue
+        matches = _matching_drafts(candidate, open_drafts, ignore_label=False)
         if matches:
-            # Deterministic tiebreak: reading-order draft position wins.
-            best_index = max(
-                range(len(matches)),
-                key=lambda index: (matches[index][1].score, -index),
-            )
-            best_draft, best_match = matches[best_index]
-            fuse_matched_candidates(best_draft, [(candidate, best_match)], registry=registry)
-            consumed_candidates.add(candidate.evidenceId)
-            continue
+            best_draft, best_match = _best_draft_match(matches)
+            text_matches.setdefault(id(best_draft), []).append((candidate, best_match))
+        else:
+            unmatched.append(candidate)
 
-        # Unmatched evidence becomes its own draft: providers may see
-        # regions the geometric baseline missed. Dropping them would lose
-        # recall (Roadmap Phase 3.2 validation).
-        evidence_draft = draft_region(
-            region_id="pending",
-            page_id=candidate.pageId,
-            rect=candidate.rect,
-            label=candidate.label,
-            confidence=candidate.confidence,
-            reason=f"evidence-only:{candidate.provider}:{candidate.providerLabel}",
-        )
-        evidence_draft.evidence_ids.append(candidate.evidenceId)
-        open_drafts.append(evidence_draft)
+    for draft in open_drafts:
+        clustered = text_matches.get(id(draft))
+        if clustered:
+            fuse_matched_candidates(draft, clustered, registry=registry)
+
+    open_drafts.extend(
+        _evidence_only_draft(group, registry=registry) for group in _cluster_unmatched(unmatched)
+    )
 
     open_drafts.sort(key=lambda draft: (draft.rect.y, draft.rect.x, _draft_text(draft)))
     return [

@@ -200,6 +200,14 @@ def issue_counts(semantic: generated.SemanticDocument) -> dict[str, int]:
     return counts
 
 
+def issue_severity_counts(semantic: generated.SemanticDocument) -> dict[str, int]:
+    """Issue counts by severity (ERROR/FATAL are the blocking gate)."""
+    counts: dict[str, int] = {}
+    for issue in semantic.issues.issues if semantic.issues else []:
+        counts[issue.severity] = counts.get(issue.severity, 0) + 1
+    return counts
+
+
 def quality_report(
     *,
     physical: generated.PhysicalDocument,
@@ -222,26 +230,28 @@ def quality_report(
     snippets = [str(snippet) for snippet in snippet_list]
     order = order_metrics(snippets, list(layout.primaryFlow), region_texts)
     semantic_truth: dict[str, Any] = truth_data.get("semantic") or {}
-    errors = sum(
-        1
-        for issue in (semantic.issues.issues if semantic.issues else [])
-        if issue.severity == "ERROR"
-    )
+    # Paragraph/section *accuracy* needs region-level annotated truth that
+    # this corpus does not have. Report the checks we can actually run
+    # under their real names; the accuracy slots stay null.
     return {
         "physicalTextCoverage": physical_text_coverage(physical, region_texts),
         "regionRecall": round(order.region_recall, 4),
         "regionPrecision": round(order.region_precision, 4),
         "pairwiseOrderingAccuracy": order.pairwise_ordering_accuracy,
         "sequenceAccuracy": order.sequence_accuracy,
-        "paragraphRecoveryAccuracy": None
+        "paragraphRecoveryAccuracy": None,
+        "sectionHierarchyAccuracy": None,
+        "semanticExpectationCoverage": None
         if not semantic_truth
         else round(_expectation_score(semantic, semantic_truth), 4),
-        "sectionHierarchyAccuracy": None if not semantic_truth else (1.0 if errors == 0 else 0.0),
         "tableStructureCoverage": table_structure_coverage(semantic),
         "citationResolutionRate": citation_resolution_rate(semantic),
         "sourceMappingCoverage": source_mapping_coverage(semantic),
         "renderMappingCoverage": render_mapping_coverage(semantic, mapping),
-        "issues": issue_counts(semantic),
+        "issues": {
+            "byCategory": issue_counts(semantic),
+            "bySeverity": issue_severity_counts(semantic),
+        },
     }
 
 
@@ -277,6 +287,7 @@ __all__ = [
     "OrderMetrics",
     "citation_resolution_rate",
     "issue_counts",
+    "issue_severity_counts",
     "order_metrics",
     "physical_text_coverage",
     "quality_report",

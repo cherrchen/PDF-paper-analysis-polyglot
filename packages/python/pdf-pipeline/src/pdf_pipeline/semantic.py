@@ -42,7 +42,7 @@ from pdf_pipeline.sem_paragraphs import (
     continuation_pairs,
     group_continuation_confidence,
     merged_region_text,
-    split_region_paragraphs,
+    paragraph_pieces_for_group,
 )
 from pdf_pipeline.sem_sections import (
     classify_front_matter,
@@ -484,24 +484,11 @@ class _Recovery:
         """Split a paragraph group into pieces (1 Layout -> N Semantic).
 
         Returns None when no region yields more than one paragraph: the
-        group keeps the classic merge behaviour.
+        group keeps the classic merge behaviour. Split groups still join
+        continuation at region boundaries so a hyphenated cross-page word
+        is not torn apart.
         """
-        pieces: list[ParagraphPiece] = []
-        for region_id in group:
-            region_pieces = split_region_paragraphs(region_id, self._lines.get(region_id, []))
-            if len(region_pieces) > 1:
-                pieces.extend(region_pieces)
-            else:
-                pieces.append(
-                    ParagraphPiece(
-                        region_id=region_id,
-                        text=merged_region_text([region_id], self._texts),
-                        is_heading=False,
-                    )
-                )
-        if len(pieces) <= len(group):
-            return None
-        return pieces
+        return paragraph_pieces_for_group(group, self._lines, self._texts)
 
     def _emit_paragraph(self, parent_id: str, group: Sequence[str], claims: _Claims) -> None:
         pieces = self._paragraph_pieces(group)
@@ -569,9 +556,10 @@ class _Recovery:
                     score=CONFIDENCE_PARAGRAPH,
                     reason="split: multiple paragraphs in one region",
                 )
-            self._bind_regions(node_id, [piece.region_id])
+            self._bind_regions(node_id, list(piece.region_ids))
             claims.parents[node_id] = parent_id
-            claims.region_nodes.setdefault(piece.region_id, node_id)
+            for region_id in piece.region_ids:
+                claims.region_nodes.setdefault(region_id, node_id)
 
     def _metadata_fields(self) -> dict[str, str]:
         """Scholarly metadata from the ensemble (grobid-sim class)."""

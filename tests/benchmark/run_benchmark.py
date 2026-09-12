@@ -21,7 +21,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parents[2]
 BUILD_DIR = ROOT / "tests/fixtures/source/latex/build"
@@ -32,13 +32,14 @@ BASELINE_PATH = ROOT / "tests/benchmark/baseline.json"
 # below the baseline by more than this tolerance.
 METRIC_EPSILON = 1e-3
 
-# Metrics compared against the baseline (higher is better, null skipped).
+# Metrics compared against the baseline (higher is better). A previously
+# measurable value becoming null is a regression, not a skip.
 _METRICS = (
     "physicalTextCoverage",
     "regionRecall",
     "regionPrecision",
     "pairwiseOrderingAccuracy",
-    "paragraphRecoveryAccuracy",
+    "semanticExpectationCoverage",
     "tableStructureCoverage",
     "citationResolutionRate",
     "sourceMappingCoverage",
@@ -113,44 +114,108 @@ def run_corpus() -> dict[str, Any]:
 
 
 def compare(report: dict[str, Any], baseline: dict[str, Any]) -> list[str]:
-    """Human-readable improved/unchanged/regressed lines against the baseline."""
+    """Human-readable improved/unchanged/regressed lines against the baseline.
+
+    Calibration accuracy is diagnostic only (region-level truth is too
+    sparse to gate). Missing baseline fixtures, or a metric that used to
+    be measurable becoming null, are regressions. Blocking issues are
+    ERROR/FATAL counts, not a single category.
+    """
     lines: list[str] = []
     fixtures = report.get("fixtures", {})
     baseline_fixtures = baseline.get("fixtures", {})
     for name in sorted(set(fixtures) | set(baseline_fixtures)):
-        current = fixtures.get(name, {})
-        previous = baseline_fixtures.get(name, {})
-        for metric in _METRICS:
-            now, before = current.get(metric), previous.get(metric)
-            if now is None or before is None:
-                continue
-            if now > before + METRIC_EPSILON:
-                lines.append(f"improved   {name}.{metric}: {before} -> {now}")
-            elif now < before - METRIC_EPSILON:
-                lines.append(f"REGRESSED  {name}.{metric}: {before} -> {now}")
-            else:
-                lines.append(f"unchanged  {name}.{metric}: {now}")
-        now_errors = _error_count(current)
-        before_errors = _error_count(previous)
-        if now_errors > before_errors:
-            lines.append(f"REGRESSED  {name}.errorIssues: {before_errors} -> {now_errors}")
-    calibration_now = report.get("calibration", {})
-    calibration_before = baseline.get("calibration", {})
-    now_accuracy = calibration_now.get("accuracy")
-    before_accuracy = calibration_before.get("accuracy")
-    if now_accuracy is not None and before_accuracy is not None:
-        if now_accuracy > before_accuracy + METRIC_EPSILON:
-            lines.append(f"improved   calibration.accuracy: {before_accuracy} -> {now_accuracy}")
-        elif now_accuracy < before_accuracy - METRIC_EPSILON:
-            lines.append(f"REGRESSED  calibration.accuracy: {before_accuracy} -> {now_accuracy}")
+        lines.extend(
+            _compare_fixture(
+                name, _report_dict(fixtures.get(name)), _report_dict(baseline_fixtures.get(name))
+            )
+        )
+    lines.extend(
+        _compare_calibration(
+            _report_dict(report.get("calibration", {})) or {},
+            _report_dict(baseline.get("calibration", {})) or {},
+        )
+    )
     return [line for line in lines if not line.startswith("unchanged ")] or [
         "unchanged (all metrics within tolerance)"
     ]
 
 
+def _report_dict(value: object) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return cast("dict[str, Any]", value)
+    return None
+
+
+def _compare_fixture(
+    name: str,
+    current: dict[str, Any] | None,
+    previous: dict[str, Any] | None,
+) -> list[str]:
+    if previous is not None and current is None:
+        return [f"REGRESSED  {name}: missing fixture"]
+    if current is None:
+        return []
+    if previous is None:
+        return [f"improved   {name}: new fixture"]
+    lines: list[str] = []
+    for metric in _METRICS:
+        now, before = current.get(metric), previous.get(metric)
+        if before is not None and now is None:
+            lines.append(f"REGRESSED  {name}.{metric}: {before} -> null")
+        elif now is None or before is None:
+            continue
+        elif now > before + METRIC_EPSILON:
+            lines.append(f"improved   {name}.{metric}: {before} -> {now}")
+        elif now < before - METRIC_EPSILON:
+            lines.append(f"REGRESSED  {name}.{metric}: {before} -> {now}")
+        else:
+            lines.append(f"unchanged  {name}.{metric}: {now}")
+    now_errors = _error_count(current)
+    before_errors = _error_count(previous)
+    if now_errors > before_errors:
+        lines.append(f"REGRESSED  {name}.errorIssues: {before_errors} -> {now_errors}")
+    return lines
+
+
+def _compare_calibration(
+    calibration_now: dict[str, Any],
+    calibration_before: dict[str, Any],
+) -> list[str]:
+    now_accuracy = calibration_now.get("accuracy")
+    before_accuracy = calibration_before.get("accuracy")
+    if now_accuracy is None or before_accuracy is None:
+        return []
+    if now_accuracy > before_accuracy + METRIC_EPSILON:
+        return [f"diagnostic calibration.accuracy: {before_accuracy} -> {now_accuracy} (improved)"]
+    if now_accuracy < before_accuracy - METRIC_EPSILON:
+        return [f"diagnostic calibration.accuracy: {before_accuracy} -> {now_accuracy} (declined)"]
+    return []
+
+
 def _error_count(fixture_report: dict[str, Any]) -> int:
-    issues = fixture_report.get("issues", {})
-    return int(issues.get("SECTION_STRUCTURE", 0))
+    """Blocking issue count: ERROR + FATAL, independent of category."""
+    issues = fixture_report.get("issues")
+    if not isinstance(issues, dict):
+        return 0
+    issues_map = cast("dict[str, Any]", issues)
+    severity_raw: object = issues_map.get("bySeverity")
+    if not isinstance(severity_raw, dict):
+        return 0
+    counts = cast("dict[str, Any]", severity_raw)
+    return _as_int(counts.get("ERROR")) + _as_int(counts.get("FATAL"))
+
+
+def _as_int(value: object) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

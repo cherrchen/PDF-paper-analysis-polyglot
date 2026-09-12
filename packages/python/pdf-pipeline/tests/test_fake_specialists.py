@@ -7,9 +7,17 @@ and the registry must keep internal capabilities internal-owned.
 
 from __future__ import annotations
 
+from typing import cast
+
+import pytest
 from document_model import dump_document, load_document
 from document_model.generated import schema_models as generated
-from pdf_pipeline.capabilities import authority_rank, is_authority, load_registry
+from pdf_pipeline.capabilities import (
+    Capability,
+    authority_rank,
+    is_authority,
+    load_registry,
+)
 from pdf_pipeline.evidence.fake_specialists import (
     FakeDoclingTableProvider,
     FakeGrobidScholarlyProvider,
@@ -94,6 +102,18 @@ def test_authority_rank_orders_providers() -> None:
     assert unlisted > ranks[-1]
     assert is_authority(registry, "table.structure", "docling-sim")
     assert not is_authority(registry, "table.structure", "unknown-provider")
+    assert authority_rank(registry, "table.structure", "mock") == 2
+    assert authority_rank(registry, "formula.detection", "unknown-provider") == 3
+
+
+def test_load_registry_does_not_leak_mutations() -> None:
+    registry = load_registry()
+    mutable = cast("dict[str, Capability]", registry)
+    with pytest.raises(TypeError):
+        mutable["layout.region"] = registry["layout.region"]
+    overlay = dict(registry)
+    overlay.pop("layout.region")
+    assert "layout.region" in load_registry()
 
 
 # --- FakeDoclingTableProvider --------------------------------------------

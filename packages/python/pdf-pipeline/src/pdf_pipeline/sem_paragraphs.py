@@ -110,9 +110,19 @@ def group_continuation_confidence(
 class ParagraphPiece:
     """One paragraph of a possibly split layout region (1 -> N baseline)."""
 
-    region_id: str
+    region_ids: tuple[str, ...]
     text: str
     is_heading: bool
+
+    @property
+    def region_id(self) -> str:
+        """First source region (stable id for node derivation)."""
+        return self.region_ids[0]
+
+
+def _is_numbered_heading_line(text: str) -> bool:
+    """True when a line is a numbered scholarly heading, math-guarded."""
+    return heading_decision(text.strip(), None, numbered_only=True) is not None
 
 
 def split_region_paragraphs(
@@ -123,9 +133,11 @@ def split_region_paragraphs(
 
     Boundaries: a line gap beyond ``PARAGRAPH_GAP_FACTOR *`` line height,
     or an embedded numbered heading line ("2 Methods") that does not open
-    the region. A region that is already one paragraph returns a single
-    piece. Heading pieces are single short heading lines; heading runs
-    longer than one line stay paragraphs (conservative baseline).
+    the region. Heading detection reuses :func:`heading_decision` so math
+    fragments such as ``2 dx = dy`` do not split a paragraph. A region
+    that is already one paragraph returns a single piece. Heading pieces
+    are single short heading lines; heading runs longer than one line
+    stay paragraphs (conservative baseline).
     """
     if not lines:
         return []
@@ -135,12 +147,10 @@ def split_region_paragraphs(
         rect = line.rect
         gap = rect.y - (previous_rect.y + previous_rect.height)
         line_height = max(previous_rect.height, rect.height, 1.0)
-        starts_heading = bool(_SPLIT_HEADING.match(line.text.strip()))
+        starts_heading = _is_numbered_heading_line(line.text)
         # A single heading line already closed as its own piece ends the
         # heading: following prose is a separate paragraph.
-        heading_ended = bool(
-            _SPLIT_HEADING.match(pieces[-1][0].text.strip()) and len(pieces[-1]) == 1
-        )
+        heading_ended = len(pieces[-1]) == 1 and _is_numbered_heading_line(pieces[-1][0].text)
         if (
             (gap > PARAGRAPH_GAP_FACTOR * line_height and line.text.strip())
             or starts_heading
@@ -155,15 +165,56 @@ def split_region_paragraphs(
         text = _join_piece_lines(piece)
         if not text:
             continue
-        is_heading = len(piece) == 1 and (
-            heading_decision(text, None, numbered_only=True) is not None
-        )
-        result.append(ParagraphPiece(region_id=region_id, text=text, is_heading=is_heading))
-    return result or [ParagraphPiece(region_id=region_id, text="", is_heading=False)]
+        is_heading = len(piece) == 1 and _is_numbered_heading_line(text)
+        result.append(ParagraphPiece(region_ids=(region_id,), text=text, is_heading=is_heading))
+    return result or [ParagraphPiece(region_ids=(region_id,), text="", is_heading=False)]
 
 
-# Heading lines that justify a split: numbered scholarly headings only.
-_SPLIT_HEADING = re.compile(r"^\d+(?:\.\d+)*[.\s]\s*\S")
+def paragraph_pieces_for_group(
+    group: Sequence[str],
+    lines_by_region: Mapping[str, Sequence[RegionLine]],
+    texts: Mapping[str, str],
+) -> list[ParagraphPiece] | None:
+    """Split a continuation group, then rejoin pieces that still continue.
+
+    Returns None when no region actually splits, so the caller keeps the
+    classic N→1 merge. When any region yields more than one paragraph,
+    boundary pieces that are not headings stay joined with
+    :func:`join_region_text` and keep every source region on the piece.
+    """
+    any_split = False
+    pieces: list[ParagraphPiece] = []
+    for region_id in group:
+        region_pieces = split_region_paragraphs(region_id, lines_by_region.get(region_id, []))
+        if len(region_pieces) > 1:
+            any_split = True
+            incoming = list(region_pieces)
+        else:
+            incoming = [
+                ParagraphPiece(
+                    region_ids=(region_id,),
+                    text=merged_region_text([region_id], texts),
+                    is_heading=False,
+                )
+            ]
+        if not pieces:
+            pieces = incoming
+            continue
+        first, rest = incoming[0], incoming[1:]
+        if not pieces[-1].is_heading and not first.is_heading and pieces[-1].text and first.text:
+            seen = set(pieces[-1].region_ids)
+            extra = tuple(rid for rid in first.region_ids if rid not in seen)
+            pieces[-1] = ParagraphPiece(
+                region_ids=(*pieces[-1].region_ids, *extra),
+                text=join_region_text(pieces[-1].text, first.text),
+                is_heading=False,
+            )
+            pieces.extend(rest)
+        else:
+            pieces.extend(incoming)
+    if not any_split:
+        return None
+    return pieces
 
 
 def _join_piece_lines(piece: Sequence[RegionLine]) -> str:

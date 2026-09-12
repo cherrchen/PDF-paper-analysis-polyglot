@@ -12,7 +12,7 @@ from pdf_pipeline.sem_footnotes import (
     body_reference_spans,
     footnote_marker_label,
 )
-from pdf_pipeline.sem_paragraphs import split_region_paragraphs
+from pdf_pipeline.sem_paragraphs import paragraph_pieces_for_group, split_region_paragraphs
 from pdf_pipeline.sem_sections import classify_front_matter
 from pdf_pipeline.sem_tables import table_content
 
@@ -158,6 +158,39 @@ def test_split_region_math_line_is_not_heading() -> None:
     lines = [_line(100, "Prose line one."), _line(130, "2 dx = dy")]
     pieces = split_region_paragraphs("r1", lines)
     assert all(not piece.is_heading for piece in pieces)
+
+
+def test_split_region_math_line_does_not_break_paragraph() -> None:
+    """Math-guarded heading detection must run at split time, not only at emit."""
+    lines = [
+        _line(100, "The identity"),
+        _line(114, "2 dx = dy"),
+        _line(128, "holds throughout."),
+    ]
+    pieces = split_region_paragraphs("r1", lines)
+    assert len(pieces) == 1
+    assert pieces[0].text == "The identity 2 dx = dy holds throughout."
+
+
+def test_split_group_keeps_cross_region_continuation() -> None:
+    """A 1→N split on one region must still hyphen-join the continuation boundary."""
+    first = [_line(100, "meth-")]
+    second = [
+        _line(500, "od across the page."),
+        _line(570, "A later paragraph after a gap."),
+    ]
+    pieces = paragraph_pieces_for_group(
+        ["r1", "r2"],
+        {"r1": first, "r2": second},
+        {"r1": "meth-", "r2": "od across the page. A later paragraph after a gap."},
+    )
+    assert pieces is not None
+    assert [piece.text for piece in pieces] == [
+        "method across the page.",
+        "A later paragraph after a gap.",
+    ]
+    assert pieces[0].region_ids == ("r1", "r2")
+    assert pieces[1].region_ids == ("r2",)
 
 
 # --- Phase 4.7 (M7): author-year citations --------------------------------
