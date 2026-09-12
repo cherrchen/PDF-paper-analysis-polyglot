@@ -15,10 +15,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from pdf_pipeline.capabilities import load_registry
+from pdf_pipeline.evidence.docling import DoclingEvidenceProvider
 from pdf_pipeline.evidence.fake_specialists import (
     FakeDoclingTableProvider,
     FakeGrobidScholarlyProvider,
 )
+from pdf_pipeline.evidence.grobid import GrobidEvidenceProvider
+from pdf_pipeline.evidence.mineru import MinerUEvidenceProvider
 from pdf_pipeline.evidence.providers import EvidenceProvider, MockLayoutEvidenceProvider
 
 if TYPE_CHECKING:
@@ -127,6 +130,12 @@ def build_provider(name: str, fingerprint: str | None = None) -> EvidenceProvide
         return FakeDoclingTableProvider(fingerprint)
     if name == "grobid-sim":
         return FakeGrobidScholarlyProvider(fingerprint)
+    if name == "mineru":
+        return MinerUEvidenceProvider(fingerprint)
+    if name == "docling":
+        return DoclingEvidenceProvider(fingerprint)
+    if name == "grobid":
+        return GrobidEvidenceProvider(fingerprint)
     raise KeyError(f"no provider implementation registered for {name!r}")
 
 

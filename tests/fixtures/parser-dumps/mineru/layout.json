@@ -1,0 +1,29 @@
+{
+  "pdf_info": [
+    {
+      "page_idx": 0,
+      "para_blocks": [
+        {
+          "type": "title",
+          "bbox": [72, 60, 500, 90],
+          "lines": [{ "spans": [{ "content": "Dump Paper Title" }] }]
+        },
+        {
+          "type": "plain text",
+          "bbox": [72, 110, 500, 160],
+          "lines": [{ "spans": [{ "content": "A recorded MinerU paragraph." }] }]
+        },
+        {
+          "type": "display_formula",
+          "bbox": [120, 180, 420, 220],
+          "latex": "E = mc^{2}",
+          "text": "E = mc^2"
+        },
+        {
+          "type": "image",
+          "bbox": [100, 250, 400, 400]
+        }
+      ]
+    }
+  ]
+}

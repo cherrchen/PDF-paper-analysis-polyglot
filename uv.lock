@@ -357,6 +357,7 @@ requires-dist = [
     { name = "paper-llm", editable = "packages/python/llm" },
     { name = "pypdfium2", specifier = ">=4.30,<5" },
 ]
+provides-extras = ["mineru", "docling", "grobid"]
 
 [[package]]
 name = "pluggy"

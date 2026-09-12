@@ -1,0 +1,10 @@
+{
+  "title": "Dump Paper Title",
+  "authors": ["Alice Example"],
+  "abstract": "A recorded GROBID abstract.",
+  "sections": [
+    { "role": "ABSTRACT", "text": "Abstract", "page_idx": 0 },
+    { "role": "SECTION", "text": "1 Introduction", "page_idx": 0, "bbox": [72, 200, 400, 220] },
+    { "role": "REFERENCES", "text": "References", "page_idx": 0 }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "texts": [
+    {
+      "label": "paragraph",
+      "text": "Docling dump paragraph.",
+      "prov": [{ "page_no": 1, "bbox": { "l": 72, "t": 100, "r": 500, "b": 140 } }]
+    }
+  ],
+  "tables": [
+    {
+      "prov": [{ "page_no": 1, "bbox": { "l": 72, "t": 200, "r": 400, "b": 280 } }],
+      "data": {
+        "num_rows": 2,
+        "num_cols": 2,
+        "grid": [
+          [
+            { "text": "H1", "row": 0, "column": 0, "row_span": 1, "col_span": 1 },
+            { "text": "H2", "row": 0, "column": 1, "row_span": 1, "col_span": 1 }
+          ],
+          [
+            { "text": "a", "row": 1, "column": 0, "row_span": 1, "col_span": 1 },
+            { "text": "b", "row": 1, "column": 1, "row_span": 1, "col_span": 1 }
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -115,19 +115,19 @@ class CandidateSink:
         self._counter += 1
         evidence_id = self.derived_id(str(self._counter))
         record_id = self._next_ids(f"region-candidate:{provider_label}", input_refs)
-        self._candidates.append(
-            generated.RegionCandidate(
-                evidenceType="REGION",
-                id=evidence_id,
-                pageId=page_id,
-                geometry=rect,
-                normalizedLabel=normalized_label,
-                providerLabel=provider_label,
-                textPreview=text_preview or None,
-                confidence=confidence,
-                provenanceIds=[record_id],
-            )
-        )
+        payload: dict[str, object] = {
+            "evidenceType": "REGION",
+            "id": evidence_id,
+            "pageId": page_id,
+            "geometry": rect,
+            "normalizedLabel": normalized_label,
+            "providerLabel": provider_label,
+            "confidence": confidence,
+            "provenanceIds": [record_id],
+        }
+        if text_preview:
+            payload["textPreview"] = text_preview
+        self._candidates.append(generated.RegionCandidate.model_validate(payload))
 
     def finish(self) -> tuple[list[generated.Evidence], generated.ProvenanceStore]:
         return self._candidates, generated.ProvenanceStore(records=self._records)

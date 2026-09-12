@@ -64,6 +64,18 @@ _LABEL_MAP: dict[str, generated.LayoutLabel] = {
     "plain text": "PARAGRAPH_LIKE",
     "display_formula": "FORMULA",
     "abandon": "UNKNOWN",
+    "discard": "UNKNOWN",
+    "picture": "FIGURE",
+    "list_item": "LIST",
+    "page_header": "HEADER",
+    "page_footer": "FOOTER",
+    "page_number": "FOOTER",
+    "section_header": "HEADING_LIKE",
+    "document_index": "TEXT",
+    "code": "TEXT",
+    "reference": "TEXT",
+    "aside_text": "TEXT",
+    "inline_formula": "FORMULA",
 }
 
 # Quantization step (PDF points) for candidate matching keys. Candidates
