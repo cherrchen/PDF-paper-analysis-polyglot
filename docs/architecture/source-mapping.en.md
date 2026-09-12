@@ -12,4 +12,4 @@ PhysicalLayoutBinding → SourceAnchor → SourceSemanticBinding
 
 Supports N Layout ↔ N Semantic (e.g. cross-column paragraphs). Bidirectional navigation uses semantic blocks such as Heading and Paragraph, not Section as the primary geometric unit.
 
-v0.1 excludes character-level mapping. `SourceFragment` is `LayoutRegionRef` only.
+Initial Product excludes character-level mapping (PRD NG4, FR-SYNC-005, §43). `SourceFragment` is `LayoutRegionRef` only. That is not leftover debt; see [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md).

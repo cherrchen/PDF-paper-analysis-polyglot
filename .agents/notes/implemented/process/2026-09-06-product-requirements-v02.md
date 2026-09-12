@@ -77,3 +77,4 @@ Status: implemented
 - M5 启动检查须包含：默认单栏 RenderProfile、born-digital 输入拒绝（或等效 UX）。References 不翻译已在 M5 前落地，见 [参考文献不翻译（FR-CITE-004）](../architecture/2026-09-06-bibliography-not-translated.md)。
 - Architecture v0.1 与 Roadmap v0.1 仍为技术契约真源，但与产品冲突时以 PRD v0.2 为准并记录对齐项。
 - [产品需求文档 v0.1 建立](./2026-09-06-product-requirements.md) 中「§36 待闭合」的表述由本 note 取代。
+- M7 后 roadmap 延期清单的过滤见 [PRD 过滤 roadmap 延期项](./2026-09-12-prd-filters-roadmap-deferrals.md)。

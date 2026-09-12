@@ -32,7 +32,7 @@
 
 ## 导航行为（6.3/6.4）
 
-`apps/web/src/mapping.ts` 的 `Pair = { sources: Fragment[]; targets: Fragment[] }` 收集双侧全部 fragments（多 fragment 是一等公民）。节点身份来自绑定。`pickCounterpart(pair, origin, originRect)` 是字符级 mapping 缺席时的**节点内落点启发式**：在对侧「不小于 origin 页码」的最小页上取 y 最近者；不存在则取对侧第 0 个。它不承担 FR-SYNC-004 的身份判定。点击选择走空间索引 `hitTest`（最小面积优先）；键盘激活仍使用获焦按钮对应的 fragment。
+`apps/web/src/mapping.ts` 的 `Pair = { sources: Fragment[]; targets: Fragment[] }` 收集双侧全部 fragments（多 fragment 是一等公民）。节点身份来自绑定。`pickCounterpart(pair, origin, originRect)` 是 Initial Product 下的**节点内落点启发式**（PRD 不要求字符级 mapping）：在对侧「不小于 origin 页码」的最小页上取 y 最近者；不存在则取对侧第 0 个。它不承担 FR-SYNC-004 的身份判定。点击选择走空间索引 `hitTest`（最小面积优先）；键盘激活仍使用获焦按钮对应的 fragment。
 
 `apps/web/src/reader.ts` 的 `DualPaneReader.activate(nodeId, origin, fragment)`：
 

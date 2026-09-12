@@ -77,3 +77,4 @@ The review also called excluding `BIBLIOGRAPHY_ENTRY` an M5 task, which conflict
 - M5 kickoff checklist must cover: default single-column RenderProfile, born-digital input rejection (or equivalent UX). References-not-translated landed before M5; see [References are not translated (FR-CITE-004)](../architecture/2026-09-06-bibliography-not-translated.en.md).
 - Architecture v0.1 and Roadmap v0.1 remain technical contract baselines; on product conflict, PRD v0.2 wins and alignment items are recorded.
 - The “§36 must close” wording in [PRD v0.1 establishment](./2026-09-06-product-requirements.en.md) is superseded by this note.
+- Filtering of the post-M7 roadmap leftover list: [PRD filters roadmap deferrals](./2026-09-12-prd-filters-roadmap-deferrals.en.md).

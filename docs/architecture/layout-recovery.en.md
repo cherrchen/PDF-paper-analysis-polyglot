@@ -20,6 +20,6 @@ Key points:
 
 - **Determinism**: identical input bytes produce a byte-identical LayoutDocument; all IDs derive from the source fingerprint.
 - **Structure before blocking**: full-width lines bridge the two columns, so band/column detection must run before text blocking.
-- **Evidence is the only external input channel**: third-party parser output enters fusion exclusively as `EvidenceBundle` candidates; provider types never cross that boundary. The current provider is the deterministic `MockLayoutEvidenceProvider`; a real MinerU adapter plugs into the same Protocol.
+- **Evidence is the only external input channel**: third-party parser output enters fusion exclusively as `EvidenceBundle` candidates; provider types never cross that boundary. The default ensemble is deterministic `mock` / `docling-sim` / `grobid-sim`; real MinerU/Docling/GROBID adapters plug into the same Protocol (recorded dumps + optional live services) without changing the default registry.
 - **Primary order is band/column-driven; within a column it is still geometric**: bands top-down, columns left-right, (y, x) inside a column (y quantized to 4pt). Continuation/caption/footnotes are edges with reason+confidence. There is no document-wide `sort(y, x)`.
-- **Evaluation**: `tests/fixtures/layout-truth/` (ground truth) + `pdf_pipeline.metrics` (Region Recall / pairwise / sequence accuracy) + `tests/benchmark/test_layout_benchmark.py`.
+- **Evaluation**: `tests/fixtures/layout-truth/` (reading-order snippets plus reviewed `regions[]`) + `pdf_pipeline.metrics` (Region Recall/Precision at IoU ≥ 0.5 with matching labels, pairwise / sequence accuracy) + `tests/benchmark/test_layout_benchmark.py`.

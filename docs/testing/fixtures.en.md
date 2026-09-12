@@ -14,7 +14,7 @@ Each non-trivial fixture has metadata in `tests/fixtures/metadata/`. Corpus mani
 
 ## Tier 1 synthetic corpus
 
-The Tier 1 benchmark corpus (12 documents) lives under `tests/fixtures/source/latex/`:
+The Tier 1 benchmark corpus (13 documents) lives under `tests/fixtures/source/latex/`:
 
 ```text
 smoke                  — single-column baseline
@@ -29,7 +29,12 @@ mixed-bands            — full-width bands + columns
 tikz-vector            — vector figure (TikZ)
 figure-caption         — raster figure with caption
 paper-anatomy          — composite paper anatomy (M4 exit gate: title block, abstract, nested sections, figure, table, numbered equation, footnote, bibliography + citations)
+author-year-citations  — author-year citations (including the 2020a suffix)
 ```
+
+Each fixture has reading-order snippets in `tests/fixtures/layout-truth/<name>.json` plus reviewed `regions[]` (`pageIndex` + `LayoutLabel` + canonical `geometry`; no drifting LayoutRegionIDs). Region precision/recall use IoU ≥ 0.5 and matching labels. Uncertain boxes are omitted so current output is not frozen as precision=1.0.
+
+Native parser dumps live under `tests/fixtures/parser-dumps/{mineru,docling,grobid}/` for adapter contract tests only; they are not the default ensemble.
 
 Tier 4 scanned PDFs are not committed; placeholder metadata: `tests/fixtures/metadata/scanned-external.yaml`.
 

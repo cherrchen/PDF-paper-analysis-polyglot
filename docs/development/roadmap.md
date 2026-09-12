@@ -17,9 +17,9 @@ Initial Product 关键约束（摘自 PRD v0.2）：仅 Born-digital PDF；Targe
 ## 当前进度追踪
 
 **最后更新：** 2026-09-12
-**当前位置：** M7 Parser Ensemble & Quality 基线已落地（DocumentProbe、Capability Registry、Adaptive Routing、capability-authority 冲突解决、置信度校准诊断、质量报告与基线回归门禁），M4/M5 的「目标 M7」延期项（1 Layout→N Semantic、结构化表格、作者-年引用、Scholarly metadata）同步并入；全部基于确定性模拟 specialist provider（docling-sim / grobid-sim），真实 adapter 按同一 Protocol 接入。详见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。下一阶段为 M8（Productionization & Extensibility）。
+**当前位置：** M7 Parser Ensemble & Quality 基线已落地；进入 M8 前的三项 PRD 对齐缺口也已收口：真实 MinerU/Docling/GROBID adapter（录制 dump + 可选活服务）、区域级标注真值、矢量 Figure 的 PDF fragment。字符级 mapping、`source-derived`/`dense-two-column`、Annotation 层、独立 MathML 交付已从延期清单剔除（非 Initial Product）。M8 尚未开始。详见 [PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)、[可选真实 parser 依赖](../../.agents/notes/implemented/architecture/2026-09-12-optional-parser-adapters.md)、[区域级标注真值](../../.agents/notes/implemented/architecture/2026-09-12-region-level-layout-truth.md)、[Figure PDF fragment](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.md) 与 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。
 
-README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线（完整原始 Phase 验收仍有延期项）。
+README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线 + Parser Ensemble。进入 M8 前的三项 PRD 缺口已收口。
 
 ### Milestone 总览
 
@@ -29,10 +29,10 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M1 Core Document Contracts | 已完成 | 六套 schema `0.1.0`；生成绑定 + 跨语言 roundtrip |
 | M2 Walking Skeleton | 已完成 | 11 个 Tier-1 fixture 全链通过；独立 Translation/Render IR、旋转坐标与双向 Viewer 已重新验收 |
 | M3 Layout Recovery Engine | 已完成 | Evidence 适配边界 + mock provider、XY-cut band/column、结构驱动 ReadingFlowGraph、continuation/caption/footnote 恢复；Exit Gate 经审查修复后达成 |
-| M4 Semantic Recovery Engine | 基线落地 | CONTINUATION 段落合并、编号 heading + SECTION 树、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复；第二轮正确性修复后表格标题、marks、脚注关联、环状树、多 fragment Viewer 与 provenance 已补。1→N / GROBID / 真实多列表格仍延期 |
-| M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；审查修复见 [M5 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.md)，保真修复见 [M5 内容保真修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.md)。未实现：`source-derived` / `dense-two-column`、MathML、矢量图 PDF/SVG |
-| M6 Bidirectional Reader | 基线落地 | viewerDataVersion 2（semanticNodes 全量/relations/translation/provenance/issues + 逐页尺寸）、前端 `PageSpatialIndex` 网格、`pickCounterpart` 几何跳转（无页码猜测）、多 fragment 高亮、同步滚动、Semantic Inspector、stdlib reader API + `rerender_workspace`（FR-TRANS-004 零源重解析）；决策见 [M6 落地 note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.md)；当前态见 [`docs/architecture/reader.md`](../architecture/reader.md)。未实现：字符级 mapping、跨文档多窗口、annotation |
-| M7 Parser Ensemble & Quality | 基线落地 | DocumentProbe + Capability Registry（TOML）+ Adaptive Routing + authority 冲突解决；1 Layout→N Semantic、结构化表格（物理层单元格拆分 + 网格检测）、作者-年引用、Scholarly metadata 并入；校准/质量报告 + `just benchmark` 基线门禁；真实 parser adapter 与区域级标注真值延期 |
+| M4 Semantic Recovery Engine | 基线落地 | CONTINUATION 段落合并、编号 heading + SECTION 树、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复；第二轮正确性修复后表格标题、marks、脚注关联、环状树、多 fragment Viewer 与 provenance 已补。1→N / 结构化表格 / 作者-年 / scholarly metadata 已并入 M7。MathML 独立交付非初版需求（FR-EQ-002） |
+| M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；审查修复见 [M5 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.md)，保真修复见 [M5 内容保真修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.md)。`source-derived` / `dense-two-column` 已按 PRD R2 / §43 从初版验收剔除；矢量 Figure 的 PDF fragment 见 [Figure PDF fragment](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.md) |
+| M6 Bidirectional Reader | 基线落地 | viewerDataVersion 2（semanticNodes 全量/relations/translation/provenance/issues + 逐页尺寸）、前端 `PageSpatialIndex` 网格、`pickCounterpart` 几何跳转（无页码猜测）、多 fragment 高亮、同步滚动、Semantic Inspector、stdlib reader API + `rerender_workspace`（FR-TRANS-004 零源重解析）；决策见 [M6 落地 note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.md)；当前态见 [`docs/architecture/reader.md`](../architecture/reader.md)。字符级 mapping 与 annotation 层已按 PRD NG4 / §47 从初版验收剔除；跨文档多窗口仍非初版 |
+| M7 Parser Ensemble & Quality | 基线落地 | DocumentProbe + Capability Registry（TOML）+ Adaptive Routing + authority 冲突解决；1 Layout→N Semantic、结构化表格（物理层单元格拆分 + 网格检测）、作者-年引用、Scholarly metadata 并入；校准/质量报告 + `just benchmark` 基线门禁。PRD 收口：真实 parser adapter、区域级标注真值、Figure PDF fragment |
 | M8 Productionization | 未开始 | — |
 
 ### M0 明细
@@ -78,7 +78,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
 | 3.1 Evidence Normalization | 已完成 | `pdf_pipeline.evidence`：`EvidenceProvider` Protocol + 确定性 mock provider（全候选类型 + provenance）；label/coordinate normalization 幂等且有测试 |
-| 3.2 Region Fusion | 已完成 | `pdf_pipeline.fusion`：IoU/containment/text-overlap/label-相似度/置信度加权；结构化候选吸收与 cell-noise 丢弃；Region Recall ≥ 0.9；precision 待区域级标注 |
+| 3.2 Region Fusion | 已完成 | `pdf_pipeline.fusion`：IoU/containment/text-overlap/label-相似度/置信度加权；结构化候选吸收与 cell-noise 丢弃；Region Recall ≥ 0.9；precision 用 `layout-truth.regions[]`（IoU≥0.5 且标签一致） |
 | 3.3 Page Band Detection | 已完成 | `pdf_pipeline.page_structure` 递归 XY-cut：mixed-bands/spanning-figure 断言 SPANNING band；标题→双栏→通栏图→双栏成立 |
 | 3.4 Column Recovery | 已完成 | XY-cut 竖切 + 窄岛合并 + 非平衡栏保持阅读顺序；加长后的合成夹具断言 `MULTI_COLUMN`；BERT / Attention 为 `@pytest.mark.slow` |
 | 3.5 ReadingFlowGraph | 已完成 | 主序由 band/column 驱动，列内仍按几何 (y, x)；每边 reason+confidence；pairwise ≥ 0.95、sequence 全对 |
@@ -92,17 +92,17 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 
 | Phase | 状态 | 证据 |
 | --- | --- | --- |
-| 4.1 Paragraph Recovery | 基线 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；N→1（跨栏、跨页、figure 打断）；连字符去断；`cross-page-paragraph` 断言 merge；1 Layout→N Semantic 未实现（目标 M7） |
-| 4.2 Heading & Section Recovery | 基线 | `sem_sections`：编号 pattern → level（`1.1` = 2），SECTION 树嵌套，FRONT_MATTER（title/author/date/abstract）；无编号 `Introduction` 不再被吞进作者行；STRUCTURE/METADATA specialist 未落实（目标 M7） |
-| 4.3 Figure Recovery | 基线 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；嵌入位图经 `ResourceDocument` 在 M5 绑定并投影全部 `resourceIds`；PDF/SVG 真源与 subfigure 布局仍延期 |
-| 4.4 Table Recovery | 基线 | `sem_tables`：默认行 fallback；结构化 TABLE_STRUCTURE 路径有合成单测；Render 不再丢 TABLE_CAPTION；真实多列表格推迟到 M7 specialist |
-| 4.5 Equation Recovery | 基线 | `sem_equations`：FORMULA/CONTINUATION 链 → EQUATION + `number`（anyOf 兜底 rawText，不丢内容）；INLINE_EQUATION marks；unicode→LaTeX 有限转换在 M5；source visual fallback / MathML 仍延期 |
+| 4.1 Paragraph Recovery | 基线 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；N→1（跨栏、跨页、figure 打断）；连字符去断；`cross-page-paragraph` 断言 merge；1 Layout→N Semantic 已并入 M7 |
+| 4.2 Heading & Section Recovery | 基线 | `sem_sections`：编号 pattern → level（`1.1` = 2），SECTION 树嵌套，FRONT_MATTER（title/author/date/abstract）；无编号 `Introduction` 不再被吞进作者行；STRUCTURE/METADATA specialist 已并入 M7（grobid-sim / 真实 GROBID adapter） |
+| 4.3 Figure Recovery | 基线 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；嵌入位图经 `ResourceDocument` 绑定并投影；矢量 Figure 按区域裁剪为 `PDF_FRAGMENT`（FR-FIG）；SVG 真源非 FR；subfigure 布局仍非初版 |
+| 4.4 Table Recovery | 基线 | `sem_tables`：默认行 fallback；结构化 TABLE_STRUCTURE 由 M7 docling-sim / 真实 Docling adapter 消费 |
+| 4.5 Equation Recovery | 基线 | `sem_equations`：FORMULA/CONTINUATION 链 → EQUATION + `number`（anyOf 兜底 rawText，不丢内容）；INLINE_EQUATION marks；unicode→LaTeX 有限转换在 M5；MathML 为 schema 可选字段，非 Exit Gate（FR-EQ-002） |
 | 4.6 Footnote Semantic Recovery | 基线 | `sem_footnotes`：按 (page, label) 关联；排除 `Table 1` 误配；未关联写 Issue；`FOOTNOTE_REFERENCE` mark（M2 冻结后 additive 例外） |
-| 4.7 Bibliography & Citation | 基线 | `sem_bibliography`：数字括号引用 + 闭区间展开；翻译后 marks 偏移随文本重建；GROBID / 作者-年推迟到 M7 |
-| 4.8 Source Anchoring | 基线 | `attributes.layoutRegionIds` → 多 fragment SourceAnchor（N→1 原生）；Viewer 遍历全部 fragment；1→N 恢复路径仍缺失 |
+| 4.7 Bibliography & Citation | 基线 | `sem_bibliography`：数字括号引用 + 闭区间展开；翻译后 marks 偏移随文本重建；作者-年已并入 M7；真实 GROBID adapter 已落地（dump + 可选 HTTP，默认仍 grobid-sim） |
+| 4.8 Source Anchoring | 基线 | `attributes.layoutRegionIds` → 多 fragment SourceAnchor（N→1 原生）；Viewer 遍历全部 fragment；1→N 恢复路径已并入 M7 |
 | 4.9 Semantic Validation | 基线 | `sem_validate`：环/父子一致性/orphan/树序 heading 跳变/绑定/引用/caption/覆盖率；坏树返回 Issue 而非崩溃 |
 
-**M4 Exit Gate：** 基线机械门禁仍由 `paper-anatomy` 与 semantic/layout benchmark 覆盖；第二轮正确性项（表格标题、marks 偏移、脚注误配、环状树、多 fragment Viewer、provenance）见 [M4 第二轮审查正确性修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.md)。这不等于原始九个 Phase 全部完成：1 Layout→N Semantic（目标 M7）、GROBID、真实多列表格、矢量图 PDF/SVG 与 MathML 仍按记录延期。嵌入位图资源链已在 M5 落地。
+**M4 Exit Gate：** 基线机械门禁仍由 `paper-anatomy` 与 semantic/layout benchmark 覆盖；第二轮正确性项（表格标题、marks 偏移、脚注误配、环状树、多 fragment Viewer、provenance）见 [M4 第二轮审查正确性修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.md)。1 Layout→N Semantic、结构化表格、作者-年引用已并入 M7。MathML 独立交付与 SVG 真源已按 PRD 从初版验收剔除。矢量 Figure 的 PDF fragment 与真实 GROBID adapter 已按 PRD 收口。嵌入位图资源链已在 M5 落地。
 
 ### M6 明细
 
@@ -125,15 +125,22 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | 7.2 Capability Registry | 基线 | `pdf_pipeline/capabilities.py` + `data/capability-registry.toml`（stdlib tomllib）；不变量：reading_order/column_detection/semantic 恒 internal；`fake_specialists.py` 的 docling-sim（TABLE_STRUCTURE）与 grobid-sim（METADATA/STRUCTURE）为确定性 specialist |
 | 7.3 Adaptive Routing | 基线 | `pdf_pipeline/routing.py::route_providers` 纯函数：表格密集 → docling-sim、数学密集 → formula capability、scholarly 常规运行；`pipeline.py` 用 routed ensemble 替换硬编码 mock，`probe.json` 记录 RoutingPlan |
 | 7.4 Conflict Resolution | 基线 | `fusion.py` 先聚类同一区域候选再按 confidence × 角色权重投票（primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8）；`fuse_page` 交换 primary 的页面级测试证明仲裁生效 |
-| 7.5 Confidence Calibration | 诊断就绪 | `pdf_pipeline/calibration.py` 分桶 + 单调性诊断；数值校准待区域级标注真值（`compare()` 只记 diagnostic，不进 REGRESSED） |
+| 7.5 Confidence Calibration | 诊断就绪 | `pdf_pipeline/calibration.py` 分桶 + 单调性诊断；区域级 `regions[]` 已落地，校准仍是 diagnostic（审计融合公式，不进 REGRESSED） |
 | 7.6 Quality Metrics | 基线 | `metrics.py::quality_report`：text coverage、region recall/precision、ordering、`semanticExpectationCoverage`、table-structure coverage、citation resolution、source/render mapping coverage、issue 的 category/severity 计数；不可测准确率为 null |
 | 7.7 Regression Benchmark | 基线 | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`；缺失 fixture / 可测指标变 null / ERROR+FATAL 增加即非零退出；nightly 接入 |
 
-**M7 Exit Gate：** 基线达成——provider/算法升级现在可以通过 `just benchmark` 与 baseline 对比量化 improved/unchanged/regressed；真源延后项（真实 parser adapter、区域级标注真值）见落地 note。决策见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。
+**M7 Exit Gate：** 基线达成——provider/算法升级现在可以通过 `just benchmark` 与 baseline 对比量化 improved/unchanged/regressed。进入 M8 前的三项 PRD 缺口已收口。决策见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)；延期清单过滤见 [PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)。
 
 ### 建议下一步
 
-1. 进入 M8：Productionization & Extensibility。M7 基线已落地（当前态见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)）。遗留延期项：真实 MinerU/Docling/GROBID adapter、区域级标注真值（数值校准前置）、`source-derived` / `dense-two-column` profile、MathML、矢量图 PDF/SVG、字符级 mapping、annotation 层。
+1. M8 Productionization 尚未开始。进入 M8 前的三项 PRD 缺口已收口：真实 MinerU/Docling/GROBID adapter、区域级标注真值、矢量 Figure 的 PDF fragment。
+2. **已按 PRD v0.2 从延期清单剔除（非 Initial Product，不再当作进入 M8 的欠债）：**
+   - 字符级 mapping — [NG4](../product/requirements.md)、FR-SYNC-005、§43「Character Mapping：不要求」。
+   - `source-derived` / `dense-two-column` — FR-LAYOUT-004、§43「是否继承原双栏：初版不要求」、[R2 Post-Initial](../product/requirements.md)。
+   - Annotation 层 — §47 未来扩展；§43 SemanticDocument 用户编辑初版不支持。
+   - MathML 作为独立交付 — FR-EQ-002 未点名 MathML；schema 可选字段保留。
+   - SVG 作为矢量图真源 — FR-FIG 要求保持原图，由 PDF fragment 满足；SVG 编码不是 FR。
+   裁定见 [PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)。
 
 ### 维护说明
 
@@ -1266,7 +1273,7 @@ confidence weighting
 
 ```text
 Region Recall ≥ 0.9
-Region Precision（待区域级标注）
+Region Precision（`layout-truth.regions[]`，IoU≥0.5 且标签一致）
 ```
 
 评估。当前 snippet 级 ground truth 只支撑 recall 与顺序指标。
@@ -1601,7 +1608,7 @@ display equation
 inline equation
 
 LaTeX candidate
-MathML optional
+MathML optional（schema 字段，非 Initial Product Exit Gate；见 FR-EQ-002）
 raw glyph
 source visual fallback
 ```
@@ -1825,7 +1832,7 @@ IEEE-like
 Elsevier-like
 ```
 
-**当前实现：** 仅 `readable-single-column`（对应 generic-academic 模板）。`source-derived` 属 Post-Initial R2；`dense-two-column` 延期。schema 仍接受 profile 名，但 LaTeX 后端只兑现单栏可读模板。
+**当前实现：** 仅 `readable-single-column`（对应 generic-academic 模板）。`source-derived` 与 `dense-two-column` 属 Post-Initial R2 / 非初版需求（PRD §43、R2），已从进入 M8 的延期清单剔除。schema 仍接受 profile 名，但 LaTeX 后端只兑现单栏可读模板。
 
 ---
 
@@ -1888,7 +1895,7 @@ float placement
 
 系统自身不实现 layout optimizer。
 
-**当前实现：** Heading / Paragraph / Figure（含多资源堆叠）/ Table / Equation / Bibliography 已投影。WideFigure / WideTable 通过 `WIDE_FLOAT` 策略用 `figure*` / `table*` 表达，不是独立 Render IR 块。Footnote 仍作为段落块。矢量图 PDF/SVG 真源延期。
+**当前实现：** Heading / Paragraph / Figure（含多资源堆叠）/ Table / Equation / Bibliography 已投影。WideFigure / WideTable 通过 `WIDE_FLOAT` 策略用 `figure*` / `table*` 表达，不是独立 Render IR 块。Footnote 仍作为段落块。矢量 Figure 按区域裁剪为 `PDF_FRAGMENT` 并优先 `\includegraphics`；SVG 真源非 FR。
 
 ---
 

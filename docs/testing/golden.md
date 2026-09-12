@@ -11,4 +11,4 @@
 1. 实现是错的，或
 2. 期望契约有意变更
 
-只有 (2) 才允许 `just test-update-golden`。提交前审阅 diff。
+只有 (2) 才允许 `just test-update-golden`。提交前审阅 diff。`tests/benchmark/baseline.json` 适用同一纪律：真值粒度变化（例如新增 `regions[]`）可以更新数字，但必须在提交说明里写理由，禁止为了转绿盲改。

@@ -21,6 +21,8 @@ Parser 输出**永远不是** LayoutDocument 或 SemanticDocument。
 3. 保留原始 confidence 与 geometry，供 Recovery 消费。
 4. 不向上游泄漏 provider schema 类型。
 
+当前实现：默认 capability registry 仍是 `mock` / `docling-sim` / `grobid-sim`。`mineru` / `docling` / `grobid` 把录制 dump（可选活服务）映射为 `EvidenceBundle`；第三方 schema 不得出 adapter。升级须走 §11 benchmark，禁止因为 adapter 存在就替换 production provider。
+
 ## Capability 归属
 
 Parser 按 capability 注册，不按“全家桶”默认全跑。权威分配见 Document Architecture §35 Capability Registry。

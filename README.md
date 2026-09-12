@@ -4,7 +4,7 @@
 
 面向 PDF 论文分析、文档理解、翻译、结构重建与 PDF 渲染的多语言单仓。
 
-**状态：** M1 核心契约、M2 Walking Skeleton 与 M3 Layout Recovery Engine 已完成。M4 语义恢复基线已实现，第二轮正确性缺陷已修复；GROBID、1 Layout→N Semantic、真实多列表格与图资源链仍为记录在案的延期项，原始九个 Phase 的完整验收尚未关闭。当前进度以[开发路线图](docs/development/roadmap.md)为准。
+**状态：** M1–M3 完成；M4–M7 基线已落地（含 1 Layout→N Semantic、结构化表格、作者-年引用与 parser ensemble）。进入 M8 前的三项 PRD 缺口已收口（真实 parser adapter、区域级标注真值、矢量 Figure 的 PDF fragment）。M8 尚未开始。当前进度以[开发路线图](docs/development/roadmap.md)为准。
 
 ## 渲染
 

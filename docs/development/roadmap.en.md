@@ -17,9 +17,9 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-12
-**Current position:** The M7 Parser Ensemble & Quality baseline has landed (DocumentProbe, Capability Registry, Adaptive Routing, capability-authority conflict resolution, calibration diagnostics, quality report and baseline regression gate), with the M4/M5 items marked "target M7" (1 Layout→N Semantic, structured tables, author-year citations, scholarly metadata) folded in; everything runs on deterministic simulated specialists (docling-sim / grobid-sim), with real adapters joining via the same Protocol. See the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md). M8 (Productionization & Extensibility) is next.
+**Current position:** The M7 Parser Ensemble & Quality baseline has landed; the three PRD-aligned gaps before M8 are also closed: real MinerU/Docling/GROBID adapters (recorded dumps + optional live services), region-level annotated truth, and vector-figure PDF fragments. Character-level mapping, `source-derived`/`dense-two-column`, the Annotation layer, and standalone MathML are removed from the leftover list (not Initial Product). M8 has not started. See [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md), [optional real parser adapters](../../.agents/notes/implemented/architecture/2026-09-12-optional-parser-adapters.en.md), [region-level layout truth](../../.agents/notes/implemented/architecture/2026-09-12-region-level-layout-truth.en.md), [figure PDF fragments](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.en.md), and the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md).
 
-README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery baseline (the original phases are not fully closed).
+README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery baseline plus the Parser Ensemble. The three PRD gaps before M8 are closed.
 
 ### Milestone overview
 
@@ -29,10 +29,10 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M1 Core Document Contracts | Done | Six schemas at `0.1.0`; generated bindings + cross-language roundtrip |
 | M2 Walking Skeleton | Done | All 11 Tier-1 fixtures pass end to end; independent Translation/Render IR, rotated coordinates, and the bidirectional viewer passed renewed acceptance |
 | M3 Layout Recovery Engine | Done | Evidence adapter boundary + mock provider, XY-cut band/column detection, structure-driven ReadingFlowGraph, continuation/caption/footnote recovery; exit gate met after review repairs |
-| M4 Semantic Recovery Engine | Baseline landed | CONTINUATION paragraph merging, numbered headings + SECTION tree, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery; second-round repairs restored table titles, marks, footnote linking, cyclic trees, multi-fragment Viewer, and provenance. 1→N / GROBID / true multi-column tables remain deferred |
-| M5 Translation & Rendering | Baseline landed | schema 0.2.0, structured TranslationRequest/Result, OpenAI-compatible adapter, terminology/cache, readable-single-column Profile/Policy, table/equation/bibliography/figure-resource LaTeX projection, dual-hypertarget RenderAnchors; review repairs in [M5 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.en.md); fidelity repairs in [M5 fidelity repairs](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.en.md). Not implemented: `source-derived` / `dense-two-column`, MathML, PDF/SVG figure assets |
-| M6 Bidirectional Reader | Baseline landed | viewerDataVersion 2 (full semanticNodes/relations/translation/provenance/issues + per-page sizes), frontend `PageSpatialIndex` grid, `pickCounterpart` geometry jumps (no page guessing), multi-fragment highlight, sync scroll, the Semantic Inspector, stdlib reader API + `rerender_workspace` (FR-TRANS-004, zero source re-parsing); decisions in the [M6 landing note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.en.md); current state in [`docs/architecture/reader.en.md`](../architecture/reader.en.md). Not implemented: character-level mapping, multi-window, annotations |
-| M7 Parser Ensemble & Quality | Baseline landed | DocumentProbe + Capability Registry (TOML) + Adaptive Routing + authority conflict resolution; deferred items folded in (1 Layout→N Semantic, structured tables via physical cell splitting + grid detection, author-year citations, scholarly metadata); calibration/quality report + `just benchmark` baseline gate; real parser adapters and region-level annotated truth deferred |
+| M4 Semantic Recovery Engine | Baseline landed | CONTINUATION paragraph merging, numbered headings + SECTION tree, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery; second-round repairs restored table titles, marks, footnote linking, cyclic trees, multi-fragment Viewer, and provenance. 1→N / structured tables / author-year / scholarly metadata folded into M7. Standalone MathML is not an Initial Product requirement (FR-EQ-002) |
+| M5 Translation & Rendering | Baseline landed | schema 0.2.0, structured TranslationRequest/Result, OpenAI-compatible adapter, terminology/cache, readable-single-column Profile/Policy, table/equation/bibliography/figure-resource LaTeX projection, dual-hypertarget RenderAnchors; review repairs in [M5 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.en.md); fidelity repairs in [M5 fidelity repairs](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.en.md). `source-derived` / `dense-two-column` removed from v1 acceptance per PRD R2 / §43; vector-figure PDF fragments: [figure PDF fragments](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.en.md) |
+| M6 Bidirectional Reader | Baseline landed | viewerDataVersion 2 (full semanticNodes/relations/translation/provenance/issues + per-page sizes), frontend `PageSpatialIndex` grid, `pickCounterpart` geometry jumps (no page guessing), multi-fragment highlight, sync scroll, the Semantic Inspector, stdlib reader API + `rerender_workspace` (FR-TRANS-004, zero source re-parsing); decisions in the [M6 landing note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.en.md); current state in [`docs/architecture/reader.en.md`](../architecture/reader.en.md). Character-level mapping and the annotation layer removed from v1 acceptance per PRD NG4 / §47; cross-document multi-window remains out of v1 |
+| M7 Parser Ensemble & Quality | Baseline landed | DocumentProbe + Capability Registry (TOML) + Adaptive Routing + authority conflict resolution; deferred items folded in (1 Layout→N Semantic, structured tables via physical cell splitting + grid detection, author-year citations, scholarly metadata); calibration/quality report + `just benchmark` baseline gate. PRD closeout: real parser adapters, region-level annotated truth, figure PDF fragments |
 | M8 Productionization | Not started | — |
 
 ### M0 detail
@@ -78,7 +78,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | 3.1 Evidence Normalization | Done | `pdf_pipeline.evidence`: `EvidenceProvider` Protocol + deterministic mock provider (all candidate types + provenance); idempotent label/coordinate normalization, tested |
-| 3.2 Region Fusion | Done | `pdf_pipeline.fusion`: IoU/containment/text-overlap/label-similarity/confidence weighting; structured absorption and cell-noise drop; Region Recall ≥ 0.9; precision waits for region-level annotation |
+| 3.2 Region Fusion | Done | `pdf_pipeline.fusion`: IoU/containment/text-overlap/label-similarity/confidence weighting; structured absorption and cell-noise drop; Region Recall ≥ 0.9; precision uses `layout-truth.regions[]` (IoU ≥ 0.5 and matching labels) |
 | 3.3 Page Band Detection | Done | recursive XY-cut in `pdf_pipeline.page_structure`: mixed-bands/spanning-figure assert SPANNING bands; title → 2 columns → wide figure → 2 columns holds |
 | 3.4 Column Recovery | Done | XY-cut vertical cuts + narrow-island merge + unbalanced-column order preserved; lengthened synthetic fixtures assert `MULTI_COLUMN`; BERT / Attention are `@pytest.mark.slow` |
 | 3.5 ReadingFlowGraph | Done | primary order driven by band/column structure, geometric (y, x) within a column; every edge carries reason+confidence; pairwise ≥ 0.95, all sequences exact |
@@ -92,17 +92,17 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| 4.1 Paragraph Recovery | Baseline | `pdf_pipeline.sem_paragraphs` consumes CONTINUATION edges; N→1 (column, page, figure interruption); hyphenation de-break; `cross-page-paragraph` asserts merge; 1 Layout→N Semantic is not implemented (target M7) |
-| 4.2 Heading & Section Recovery | Baseline | `sem_sections`: numbering pattern → level (`1.1` = 2), nested SECTION tree, FRONT_MATTER (title/author/date/abstract); unnumbered `Introduction` is no longer swallowed as an author; STRUCTURE/METADATA specialist not landed (target M7) |
-| 4.3 Figure Recovery | Baseline | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; embedded rasters bind through `ResourceDocument` in M5 and every `resourceIds` entry is projected; PDF/SVG sources and subfigure layout remain deferred |
-| 4.4 Table Recovery | Baseline | `sem_tables`: line fallback by default; structured TABLE_STRUCTURE path has a synthetic unit test; render no longer drops TABLE_CAPTION; true multi-column tables deferred to an M7 specialist |
-| 4.5 Equation Recovery | Baseline | `sem_equations`: FORMULA/CONTINUATION chains → EQUATION + `number` (rawText fallback, no content loss); INLINE_EQUATION marks; unicode→LaTeX conversion landed in M5; source visual fallback / MathML remain deferred |
+| 4.1 Paragraph Recovery | Baseline | `pdf_pipeline.sem_paragraphs` consumes CONTINUATION edges; N→1 (column, page, figure interruption); hyphenation de-break; `cross-page-paragraph` asserts merge; 1 Layout→N Semantic folded into M7 |
+| 4.2 Heading & Section Recovery | Baseline | `sem_sections`: numbering pattern → level (`1.1` = 2), nested SECTION tree, FRONT_MATTER (title/author/date/abstract); unnumbered `Introduction` is no longer swallowed as an author; STRUCTURE/METADATA specialist folded into M7 (grobid-sim / real GROBID adapter) |
+| 4.3 Figure Recovery | Baseline | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; embedded rasters bind through `ResourceDocument` and every `resourceIds` entry is projected; vector figures crop to `PDF_FRAGMENT` (FR-FIG); SVG-as-true-source is not an FR; subfigure layout remains out of v1 |
+| 4.4 Table Recovery | Baseline | `sem_tables`: line fallback by default; structured TABLE_STRUCTURE consumed by the M7 docling-sim / real Docling adapter |
+| 4.5 Equation Recovery | Baseline | `sem_equations`: FORMULA/CONTINUATION chains → EQUATION + `number` (rawText fallback, no content loss); INLINE_EQUATION marks; unicode→LaTeX conversion landed in M5; MathML is an optional schema field, not an Exit Gate (FR-EQ-002) |
 | 4.6 Footnote Semantic Recovery | Baseline | `sem_footnotes`: match by (page, label); reject `Table 1` false positives; unlinked footnotes report Issues; `FOOTNOTE_REFERENCE` marks (post-M2 freeze additive exception) |
-| 4.7 Bibliography & Citation | Baseline | `sem_bibliography`: numeric-bracket citations + closed-range expansion; translation rebuilds mark offsets with the new text; GROBID / author-year deferred to M7 |
-| 4.8 Source Anchoring | Baseline | `attributes.layoutRegionIds` → multi-fragment SourceAnchor (native N→1); Viewer walks every fragment; 1→N recovery path still missing |
+| 4.7 Bibliography & Citation | Baseline | `sem_bibliography`: numeric-bracket citations + closed-range expansion; translation rebuilds mark offsets with the new text; author-year folded into M7; the real GROBID adapter has landed (dumps + optional HTTP; default remains grobid-sim) |
+| 4.8 Source Anchoring | Baseline | `attributes.layoutRegionIds` → multi-fragment SourceAnchor (native N→1); Viewer walks every fragment; 1→N recovery path folded into M7 |
 | 4.9 Semantic Validation | Baseline | `sem_validate`: cycles / parent-child consistency / orphan / tree-order heading jumps / binding / citation / caption / coverage; a bad tree returns Issues instead of crashing |
 
-**M4 exit gate:** The mechanical baseline gate remains `paper-anatomy` plus the semantic/layout benchmarks. Second-round correctness items (table titles, mark offsets, footnote mismatches, cyclic trees, multi-fragment Viewer, provenance) are in the [M4 correctness-repairs note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.en.md). That is not the same as completing all nine original phases: 1 Layout→N Semantic (target M7), GROBID, true multi-column tables, PDF/SVG figure assets, and MathML stay deferred as recorded. The embedded-raster resource chain landed in M5.
+**M4 exit gate:** The mechanical baseline gate remains `paper-anatomy` plus the semantic/layout benchmarks. Second-round correctness items (table titles, mark offsets, footnote mismatches, cyclic trees, multi-fragment Viewer, provenance) are in the [M4 correctness-repairs note](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.en.md). 1 Layout→N Semantic, structured tables, and author-year citations folded into M7. Standalone MathML and SVG-as-true-source are removed from v1 acceptance per the PRD. Vector-figure PDF fragments and the real GROBID adapter are closed per the PRD. The embedded-raster resource chain landed in M5.
 
 ### M6 details
 
@@ -125,15 +125,22 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | 7.2 Capability Registry | Baseline | `pdf_pipeline/capabilities.py` + `data/capability-registry.toml` (stdlib tomllib); invariant: reading_order/column_detection/semantic always internal; `fake_specialists.py` provides deterministic docling-sim (TABLE_STRUCTURE) and grobid-sim (METADATA/STRUCTURE) specialists |
 | 7.3 Adaptive Routing | Baseline | `pdf_pipeline/routing.py::route_providers` pure function: table-dense → docling-sim, math-heavy → formula capability, scholarly always; `pipeline.py` replaces the hard-coded mock with the routed ensemble and records the RoutingPlan in `probe.json` |
 | 7.4 Conflict Resolution | Baseline | `fusion.py` clusters same-region candidates then votes confidence × role weight (primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8); `fuse_page` page-level tests prove swapping primary changes the winner |
-| 7.5 Confidence Calibration | Diagnostic ready | `pdf_pipeline/calibration.py` binning + monotonicity diagnostics; numeric calibration awaits region-level annotated truth (`compare()` logs diagnostics only, never REGRESSED) |
+| 7.5 Confidence Calibration | Diagnostic ready | `pdf_pipeline/calibration.py` binning + monotonicity diagnostics; region-level `regions[]` has landed; calibration stays diagnostic (audits the fusion formula, never `REGRESSED`) |
 | 7.6 Quality Metrics | Baseline | `metrics.py::quality_report`: text coverage, region recall/precision, ordering, `semanticExpectationCoverage`, table-structure coverage, citation resolution, source/render mapping coverage, issue counts by category/severity; unmeasurable accuracy metrics are null |
 | 7.7 Regression Benchmark | Baseline | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`; missing fixture / measurable metric becoming null / ERROR+FATAL increase fail the gate; wired into nightly |
 
-**M7 exit gate:** Baseline achieved — provider/algorithm upgrades are now quantifiable as improved/unchanged/regressed via `just benchmark` against the baseline; deferred sources (real parser adapters, region-level annotated truth) are recorded in the landing note. Decisions: the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md).
+**M7 exit gate:** Baseline achieved — provider/algorithm upgrades are now quantifiable as improved/unchanged/regressed via `just benchmark` against the baseline. The three PRD gaps before M8 are closed. Decisions: the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md); leftover-list filter: [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md).
 
 ### Recommended next steps
 
-1. Enter M8: Productionization & Extensibility. The M7 baseline has landed (current state: the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md)). Remaining deferred: real MinerU/Docling/GROBID adapters, region-level annotated truth (the numeric-calibration prerequisite), `source-derived` / `dense-two-column` profiles, MathML, PDF/SVG figure assets, character-level mapping, and the annotation layer.
+1. M8 Productionization has not started. The three PRD gaps before M8 are closed: real MinerU/Docling/GROBID adapters, region-level annotated truth, and vector-figure PDF fragments.
+2. **Removed from the leftover list per PRD v0.2 (not Initial Product; not debt into M8):**
+   - Character-level mapping — [NG4](../product/requirements.en.md), FR-SYNC-005, §43 “Character Mapping: not required”.
+   - `source-derived` / `dense-two-column` — FR-LAYOUT-004, §43 “inheriting source two-column: not required for v1”, [R2 Post-Initial](../product/requirements.en.md).
+   - Annotation layer — §47 future extension; §43 SemanticDocument user editing unsupported in v1.
+   - MathML as a named deliverable — FR-EQ-002 does not name MathML; the optional schema field remains.
+   - SVG as vector-figure true source — FR-FIG requires keeping the original asset, satisfied by PDF fragments; SVG encoding is not an FR.
+   Ruling: [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md).
 
 ### Maintenance
 
@@ -1262,7 +1269,7 @@ Evaluate on manually annotated pages:
 
 ```text
 Region Recall ≥ 0.9
-Region Precision (waits for region-level annotation)
+Region Precision (`layout-truth.regions[]`, IoU ≥ 0.5 and matching labels)
 ```
 
 Snippet-level ground truth currently supports recall and ordering only.
@@ -1591,7 +1598,7 @@ display equation
 inline equation
 
 LaTeX candidate
-MathML optional
+MathML optional (schema field, not an Initial Product Exit Gate; see FR-EQ-002)
 raw glyph
 source visual fallback
 ```
@@ -1815,7 +1822,7 @@ IEEE-like
 Elsevier-like
 ```
 
-**Current implementation:** Only `readable-single-column` (the generic-academic template) is implemented. `source-derived` is Post-Initial R2; `dense-two-column` is deferred. The schema still accepts profile names, but the LaTeX backend only honors the single-column readable template.
+**Current implementation:** Only `readable-single-column` (the generic-academic template) is implemented. `source-derived` and `dense-two-column` are Post-Initial R2 / not v1 requirements (PRD §43, R2) and are removed from the leftover list into M8. The schema still accepts profile names, but the LaTeX backend only honors the single-column readable template.
 
 ---
 
@@ -1878,7 +1885,7 @@ float placement
 
 The system itself does not implement a layout optimizer.
 
-**Current implementation:** Heading / Paragraph / Figure (including stacked multi-resource images) / Table / Equation / Bibliography are projected. WideFigure / WideTable are expressed via the `WIDE_FLOAT` policy as `figure*` / `table*`, not as separate Render IR blocks. Footnotes remain paragraph blocks. PDF/SVG figure assets stay deferred.
+**Current implementation:** Heading / Paragraph / Figure (including stacked multi-resource images) / Table / Equation / Bibliography are projected. WideFigure / WideTable are expressed via the `WIDE_FLOAT` policy as `figure*` / `table*`, not as separate Render IR blocks. Footnotes remain paragraph blocks. Vector figures crop to `PDF_FRAGMENT` and prefer `\includegraphics`; SVG-as-true-source is not an FR.
 
 ---
 

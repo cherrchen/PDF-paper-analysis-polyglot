@@ -11,4 +11,4 @@ Never update golden output merely to silence a failing test. Decide:
 1. the implementation is wrong, or
 2. the expected contract intentionally changed
 
-Only (2) justifies `just test-update-golden`. Review the diff before committing.
+Only (2) justifies `just test-update-golden`. Review the diff before committing. `tests/benchmark/baseline.json` follows the same rule: a change in truth granularity (for example adding `regions[]`) may update numbers, but the commit message must say why; never rewrite the baseline merely to go green.

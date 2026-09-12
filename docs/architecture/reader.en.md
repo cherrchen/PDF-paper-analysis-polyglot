@@ -32,7 +32,7 @@ The bidirectional-jump architecture lives in [`document-architecture.en.md`](doc
 
 ## Navigation behavior (6.3/6.4)
 
-`Pair = { sources: Fragment[]; targets: Fragment[] }` in `apps/web/src/mapping.ts` collects every fragment on both sides (multi-fragment is first-class). Node identity comes from bindings. `pickCounterpart(pair, origin, originRect)` is an **intra-node landing heuristic** used when character-level mapping is absent: among counterpart fragments on the smallest page at/after the origin page, the closest y; when none exists at/after, the first counterpart. It does not decide FR-SYNC-004 identity. Pointer clicks go through spatial-index `hitTest` (smallest area first); keyboard activation still uses the focused button's fragment.
+`Pair = { sources: Fragment[]; targets: Fragment[] }` in `apps/web/src/mapping.ts` collects every fragment on both sides (multi-fragment is first-class). Node identity comes from bindings. `pickCounterpart(pair, origin, originRect)` is the Initial Product **intra-node landing heuristic** (the PRD does not require character-level mapping): among counterpart fragments on the smallest page at/after the origin page, the closest y; when none exists at/after, the first counterpart. It does not decide FR-SYNC-004 identity. Pointer clicks go through spatial-index `hitTest` (smallest area first); keyboard activation still uses the focused button's fragment.
 
 `activate(nodeId, origin, fragment)` in `apps/web/src/reader.ts` (`DualPaneReader`):
 

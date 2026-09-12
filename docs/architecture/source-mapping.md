@@ -12,4 +12,4 @@ PhysicalLayoutBinding → SourceAnchor → SourceSemanticBinding
 
 支持 N Layout ↔ N Semantic（如跨栏段落）。双向跳转以 Heading、Paragraph、Figure 等 semantic block 为单位，不以 Section 为主要几何单位。
 
-v0.1 不做字符级 mapping。`SourceFragment` 仅 `LayoutRegionRef`。
+Initial Product 不做字符级 mapping（PRD NG4、FR-SYNC-005、§43）。`SourceFragment` 仅 `LayoutRegionRef`。这不是延期欠债，见 [PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)。

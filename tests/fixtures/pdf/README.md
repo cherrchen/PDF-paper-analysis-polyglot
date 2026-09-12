@@ -19,6 +19,8 @@ See `docs/testing/fixtures.md`.
 | `mixed-bands` | `source/latex/mixed-bands.tex` | `metadata/mixed-bands.yaml` | Full-width bands + columns |
 | `tikz-vector` | `source/latex/tikz-vector.tex` | `metadata/tikz-vector.yaml` | Vector figure (TikZ) |
 | `figure-caption` | `source/latex/figure-caption.tex` | `metadata/figure-caption.yaml` | Embedded raster figure + caption binding |
+| `paper-anatomy` | `source/latex/paper-anatomy.tex` | `metadata/paper-anatomy.yaml` | Composite paper anatomy |
+| `author-year-citations` | `source/latex/author-year-citations.tex` | `metadata/author-year-citations.yaml` | Author-year citations including 2020a |
 
 ## Tier 4 external
 

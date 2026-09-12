@@ -4,7 +4,7 @@
 
 Polyglot monorepo for PDF paper analysis, document understanding, translation, structure reconstruction, and PDF rendering.
 
-**Status:** M1 core contracts, the M2 Walking Skeleton, and the M3 Layout Recovery Engine are complete. The M4 semantic-recovery baseline has landed and the second-round correctness defects are fixed; GROBID, 1 Layout→N Semantic, true multi-column tables, and figure asset chains remain recorded deferrals, so the original nine phases are not fully closed. See the [development roadmap](docs/development/roadmap.en.md) for current progress.
+**Status:** M1–M3 complete; M4–M7 baselines have landed (including 1 Layout→N Semantic, structured tables, author-year citations, and the parser ensemble). The three PRD gaps before M8 are closed (real parser adapters, region-level annotated truth, vector-figure PDF fragments). M8 has not started. See the [development roadmap](docs/development/roadmap.en.md) for current progress.
 
 ## Rendering
 

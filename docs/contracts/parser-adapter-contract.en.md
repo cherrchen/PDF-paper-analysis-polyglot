@@ -21,6 +21,8 @@ Every adapter must:
 3. Preserve original confidence and geometry for Recovery to consume.
 4. Not leak provider schema types to upstream consumers.
 
+Current implementation: the default capability registry remains `mock` / `docling-sim` / `grobid-sim`. `mineru` / `docling` / `grobid` map recorded dumps (optional live services) to `EvidenceBundle`; provider schemas must not leave the adapter. Upgrades follow §11 benchmarks; adapters existing is not enough to replace a production provider.
+
 ## Capability ownership
 
 Parsers register by capability. Do not run the full ensemble by default. Authoritative assignment: Document Architecture §35 Capability Registry.

@@ -20,9 +20,10 @@ Read `tests/AGENTS.md` and `docs/testing/golden.md`. Confirm the PDF/source lice
 3. Minimize the fixture
 4. Add metadata under `tests/fixtures/metadata/`
 5. Prefer LaTeX source over binary PDFs
-6. Add expected SemanticDocument output only when the extractor exists
-7. Review the golden diff
-8. Run focused regression commands
+6. For layout recovery, add `tests/fixtures/layout-truth/<name>.json`: keep `readingOrder` snippets and, after reviewing the PDF, freeze only correct `regions[]` (`pageIndex`, `LayoutLabel`, canonical `geometry`). Do not copy every recovered box. Uncertain regions stay out.
+7. Add expected SemanticDocument output only when the extractor exists
+8. Review the golden / benchmark-baseline diff; baseline updates follow `docs/testing/golden.md`
+9. Run focused regression commands
 
 ## Validation
 
