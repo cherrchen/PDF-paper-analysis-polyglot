@@ -91,7 +91,9 @@ def test_quality_report_on_fixture() -> None:
     assert citation_rate == 1.0
     # Without hand truth, truth-dependent metrics stay null, not invented.
     assert report["semanticExpectationCoverage"] is None
-    assert report["paragraphRecoveryAccuracy"] is None
-    assert report["sectionHierarchyAccuracy"] is None
+    assert report["paragraphLabelRecall"] is None
+    assert report["headingLabelRecall"] is None
+    assert "paragraphRecoveryAccuracy" not in report
+    assert "sectionHierarchyAccuracy" not in report
     assert "byCategory" in cast("dict[str, object]", report["issues"])
     assert "bySeverity" in cast("dict[str, object]", report["issues"])

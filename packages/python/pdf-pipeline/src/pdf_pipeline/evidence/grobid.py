@@ -1,13 +1,14 @@
-# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 """GROBID native dump adapter (scholarly metadata / bibliography).
 
 Accepts recorded TEI XML or a compact JSON dump. Live invocation posts the
-source PDF to ``GROBID_URL`` (optional; never the default CI path).
+source PDF to ``GROBID_URL`` as multipart ``input`` (optional; never the
+default CI path).
 """
 
 from __future__ import annotations
 
 import os
+import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,8 @@ from urllib.request import Request, urlopen
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.evidence.native import (
+    as_list,
+    as_mapping,
     load_json_dump,
     load_json_dump_text,
     page_id_at,
@@ -120,8 +123,8 @@ def adapt_grobid_json(
         if isinstance(value, str) and value.strip():
             field_name = "author" if name == "author" else name
             fields.append(generated.MetadataField(name=field_name, value=value.strip()))
-        elif name == "author" and isinstance(value, list):
-            joined = ", ".join(str(item) for item in value if str(item).strip())
+        elif name == "author":
+            joined = ", ".join(str(item) for item in as_list(value) if str(item).strip())
             if joined:
                 fields.append(generated.MetadataField(name="author", value=joined))
     if fields:
@@ -135,11 +138,13 @@ def adapt_grobid_json(
             ),
             operation="grobid-metadata",
         )
-    for index, section in enumerate(payload.get("sections") or []):
-        if not isinstance(section, dict):
+    for index, raw_section in enumerate(as_list(payload.get("sections"))):
+        section = as_mapping(raw_section)
+        if section is None:
             continue
         role = _role_of(str(section.get("role") or "SECTION"))
-        page_index = int(section.get("page_idx") or 0)
+        raw_page = section.get("page_idx")
+        page_index = raw_page if isinstance(raw_page, int) and not isinstance(raw_page, bool) else 0
         preview = str(section.get("text") or "")
         structure: dict[str, object] = {
             "evidenceType": "STRUCTURE",
@@ -152,8 +157,9 @@ def adapt_grobid_json(
             structure["textPreview"] = preview[:200]
         if physical.pages:
             structure["pageId"] = page_id_at(physical, page_index)
-        if section.get("bbox") is not None:
-            structure["geometry"] = parse_rect(section["bbox"])
+        bbox = section.get("bbox")
+        if bbox is not None:
+            structure["geometry"] = parse_rect(bbox)
         sink.add_evidence(
             generated.StructureCandidate.model_validate(structure),
             operation="grobid-structure",
@@ -225,20 +231,43 @@ def _tei_text(root: ET.Element, xpath: str) -> str | None:
     return text or None
 
 
-def _collect_live_grobid() -> str | None:
-    base = os.environ.get(GROBID_URL_ENV)
-    pdf = source_pdf_path()
-    if not base or pdf is None:
-        return None
-    url = base.rstrip("/") + "/api/processFulltextDocument"
+def encode_multipart_pdf(*, field_name: str, filename: str, pdf_bytes: bytes) -> tuple[bytes, str]:
+    """Encode a PDF as one multipart/form-data file field for GROBID."""
+    boundary = f"----PaperPolyglotForm{uuid.uuid4().hex}"
+    header = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="{field_name}"; filename="{filename}"\r\n'
+        "Content-Type: application/pdf\r\n"
+        "\r\n"
+    ).encode()
+    body = header + pdf_bytes + f"\r\n--{boundary}--\r\n".encode()
+    return body, f"multipart/form-data; boundary={boundary}"
+
+
+def post_process_fulltext_document(base_url: str, pdf_path: Path) -> str:
+    """POST ``/api/processFulltextDocument`` with the PDF in the ``input`` field."""
+    url = base_url.rstrip("/") + "/api/processFulltextDocument"
     if not url.startswith(("http://", "https://")):
         msg = "GROBID_URL must be an http(s) URL"
         raise ValueError(msg)
-    request = Request(url, data=pdf.read_bytes(), method="POST")  # noqa: S310
-    request.add_header("Content-Type", "application/pdf")
+    body, content_type = encode_multipart_pdf(
+        field_name="input",
+        filename=pdf_path.name,
+        pdf_bytes=pdf_path.read_bytes(),
+    )
+    request = Request(url, data=body, method="POST")  # noqa: S310
+    request.add_header("Content-Type", content_type)
     try:
         with urlopen(request, timeout=60) as response:  # noqa: S310 — live optional path
             return response.read().decode("utf-8")
     except URLError as error:
         msg = f"GROBID live request failed: {error}"
         raise RuntimeError(msg) from error
+
+
+def _collect_live_grobid() -> str | None:
+    base = os.environ.get(GROBID_URL_ENV)
+    pdf = source_pdf_path()
+    if not base or pdf is None:
+        return None
+    return post_process_fulltext_document(base, pdf)

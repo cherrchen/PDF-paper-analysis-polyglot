@@ -94,7 +94,7 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | --- | --- | --- |
 | 4.1 Paragraph Recovery | 基线 | `pdf_pipeline.sem_paragraphs` 消费 CONTINUATION 边；N→1（跨栏、跨页、figure 打断）；连字符去断；`cross-page-paragraph` 断言 merge；1 Layout→N Semantic 已并入 M7 |
 | 4.2 Heading & Section Recovery | 基线 | `sem_sections`：编号 pattern → level（`1.1` = 2），SECTION 树嵌套，FRONT_MATTER（title/author/date/abstract）；无编号 `Introduction` 不再被吞进作者行；STRUCTURE/METADATA specialist 已并入 M7（grobid-sim / 真实 GROBID adapter） |
-| 4.3 Figure Recovery | 基线 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；嵌入位图经 `ResourceDocument` 绑定并投影；矢量 Figure 按区域裁剪为 `PDF_FRAGMENT`（FR-FIG）；SVG 真源非 FR；subfigure 布局仍非初版 |
+| 4.3 Figure Recovery | 基线 | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF；嵌入位图经 `ResourceDocument` 绑定并保留；投影选择 `PDF_FRAGMENT`（若可用）否则位图，二者不同时输出；矢量 Figure 按区域裁剪为 `PDF_FRAGMENT`（FR-FIG）；SVG 真源非 FR；subfigure 布局仍非初版 |
 | 4.4 Table Recovery | 基线 | `sem_tables`：默认行 fallback；结构化 TABLE_STRUCTURE 由 M7 docling-sim / 真实 Docling adapter 消费 |
 | 4.5 Equation Recovery | 基线 | `sem_equations`：FORMULA/CONTINUATION 链 → EQUATION + `number`（anyOf 兜底 rawText，不丢内容）；INLINE_EQUATION marks；unicode→LaTeX 有限转换在 M5；MathML 为 schema 可选字段，非 Exit Gate（FR-EQ-002） |
 | 4.6 Footnote Semantic Recovery | 基线 | `sem_footnotes`：按 (page, label) 关联；排除 `Table 1` 误配；未关联写 Issue；`FOOTNOTE_REFERENCE` mark（M2 冻结后 additive 例外） |
@@ -126,14 +126,14 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | 7.3 Adaptive Routing | 基线 | `pdf_pipeline/routing.py::route_providers` 纯函数：表格密集 → docling-sim、数学密集 → formula capability、scholarly 常规运行；`pipeline.py` 用 routed ensemble 替换硬编码 mock，`probe.json` 记录 RoutingPlan |
 | 7.4 Conflict Resolution | 基线 | `fusion.py` 先聚类同一区域候选再按 confidence × 角色权重投票（primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8）；`fuse_page` 交换 primary 的页面级测试证明仲裁生效 |
 | 7.5 Confidence Calibration | 诊断就绪 | `pdf_pipeline/calibration.py` 分桶 + 单调性诊断；区域级 `regions[]` 已落地，校准仍是 diagnostic（审计融合公式，不进 REGRESSED） |
-| 7.6 Quality Metrics | 基线 | `metrics.py::quality_report`：text coverage、region recall/precision、ordering、`semanticExpectationCoverage`、table-structure coverage、citation resolution、source/render mapping coverage、issue 的 category/severity 计数；不可测准确率为 null |
+| 7.6 Quality Metrics | 基线 | `metrics.py::quality_report`：text coverage、region recall/precision、ordering、`semanticExpectationCoverage`、`paragraphLabelRecall` / `headingLabelRecall`（布局标签召回，不是段落合并或章节树）、table-structure coverage、citation resolution、source/render mapping coverage、issue 的 category/severity 计数；不可测指标为 null |
 | 7.7 Regression Benchmark | 基线 | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`；缺失 fixture / 可测指标变 null / ERROR+FATAL 增加即非零退出；nightly 接入 |
 
-**M7 Exit Gate：** 基线达成——provider/算法升级现在可以通过 `just benchmark` 与 baseline 对比量化 improved/unchanged/regressed。进入 M8 前的三项 PRD 缺口已收口。决策见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)；延期清单过滤见 [PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)。
+**M7 Exit Gate：** 基线达成——provider/算法升级现在可以通过 `just benchmark` 与 baseline 对比量化 improved/unchanged/regressed。进入 M8 前的三项 PRD 表面已落地；正确性以 [M8 前审查修复](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-pre-review-repairs.md) 为准，不以错误的语义准确率名称作为收口证据。决策见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)；延期清单过滤见 [PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)。
 
 ### 建议下一步
 
-1. M8 Productionization 尚未开始。进入 M8 前的三项 PRD 缺口已收口：真实 MinerU/Docling/GROBID adapter、区域级标注真值、矢量 Figure 的 PDF fragment。
+1. M8 Productionization 尚未开始。进入 M8 前的三项 PRD 表面（真实 MinerU/Docling/GROBID adapter、区域级标注真值、矢量 Figure 的 PDF fragment）已落地；正确性修复见 [M8 前审查修复](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-pre-review-repairs.md)，在契约测试与 CI 转绿前不把「已全部收口」写成准入结论。
 2. **已按 PRD v0.2 从延期清单剔除（非 Initial Product，不再当作进入 M8 的欠债）：**
    - 字符级 mapping — [NG4](../product/requirements.md)、FR-SYNC-005、§43「Character Mapping：不要求」。
    - `source-derived` / `dense-two-column` — FR-LAYOUT-004、§43「是否继承原双栏：初版不要求」、[R2 Post-Initial](../product/requirements.md)。
@@ -1895,7 +1895,7 @@ float placement
 
 系统自身不实现 layout optimizer。
 
-**当前实现：** Heading / Paragraph / Figure（含多资源堆叠）/ Table / Equation / Bibliography 已投影。WideFigure / WideTable 通过 `WIDE_FLOAT` 策略用 `figure*` / `table*` 表达，不是独立 Render IR 块。Footnote 仍作为段落块。矢量 Figure 按区域裁剪为 `PDF_FRAGMENT` 并优先 `\includegraphics`；SVG 真源非 FR。
+**当前实现：** Heading / Paragraph / Figure（含无 fragment 时的多资源堆叠）/ Table / Equation / Bibliography 已投影。WideFigure / WideTable 通过 `WIDE_FLOAT` 策略用 `figure*` / `table*` 表达，不是独立 Render IR 块。Footnote 仍作为段落块。矢量 Figure 按区域裁剪为 `PDF_FRAGMENT`；有 fragment 时只投影 fragment，否则投影位图。SVG 真源非 FR。
 
 ---
 

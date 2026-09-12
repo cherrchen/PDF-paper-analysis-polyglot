@@ -13,7 +13,7 @@ Status: implemented
 1. **跨 provider 仲裁**：`fuse_page` 先把描述同一区域的候选聚类（含 TABLE/FORMULA），再调用一次 `fuse_candidate_labels`。页面级测试：交换 `layout.region` / `formula.detection` primary 后胜者改变；0.1 与 0.9 冲突时胜者占比不是 1.0。
 2. **角色权重**：`authority_rank` 按 primary / challenger / fallback 槽位，未列出恒为 3。默认配置中 `TABLE/mock` = 1.0（fallback），`FORMULA/unknown` = 0.8。
 3. **门禁**：基线 fixture 在当前报告中缺失 → `REGRESSED`；原可测指标变为 null → `REGRESSED`。校准准确率只输出 `diagnostic` 行。`issues` 同时给 `byCategory` 与 `bySeverity`；阻断计数是 ERROR+FATAL。WARNING/INFO 只观测。
-4. **指标命名**：kinds / minCounts 检查改名为 `semanticExpectationCoverage`。`paragraphRecoveryAccuracy` 与 `sectionHierarchyAccuracy` 在无区域级真值时恒为 null。
+4. **指标命名**：kinds / minCounts 检查改名为 `semanticExpectationCoverage`。无区域级真值时布局标签召回恒为 null。后更正为 `paragraphLabelRecall` / `headingLabelRecall`，见 [M8 前审查修复](./2026-09-12-m8-pre-review-repairs.md)。
 5. **续接与数学守卫**：continuation group 拆分后仍在边界合并非标题片段，SourceAnchor 保留多个 region。分段判定复用 `heading_decision`，`2 dx = dy` 不再把一段拆成三截。
 6. **其它收口**：`load_registry()` 返回只读映射；`columns_separated` 把列聚类提到循环外；`pipeline.en.md` 补上 M7 路由说明。
 

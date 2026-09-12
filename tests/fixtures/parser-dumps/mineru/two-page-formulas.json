@@ -1,0 +1,26 @@
+{
+  "pdf_info": [
+    {
+      "page_idx": 0,
+      "para_blocks": [
+        {
+          "type": "display_formula",
+          "bbox": [120, 180, 420, 220],
+          "latex": "E = mc^{2}",
+          "text": "E = mc^2"
+        }
+      ]
+    },
+    {
+      "page_idx": 1,
+      "para_blocks": [
+        {
+          "type": "display_formula",
+          "bbox": [120, 180, 420, 220],
+          "latex": "a^2 + b^2 = c^2",
+          "text": "a^2 + b^2 = c^2"
+        }
+      ]
+    }
+  ]
+}

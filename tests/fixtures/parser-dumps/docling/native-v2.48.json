@@ -1,0 +1,164 @@
+{
+  "schema_note": "Docling-core v2.48 TableData.grid repeats the same TableCell across a span; table_cells plus start/end offsets are the unique source.",
+  "texts": [
+    {
+      "label": "paragraph",
+      "text": "Bottom-left origin paragraph.",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 72,
+            "t": 692,
+            "r": 500,
+            "b": 652,
+            "coord_origin": "BOTTOMLEFT"
+          }
+        }
+      ]
+    },
+    {
+      "label": "section_header",
+      "text": "Top-left origin heading.",
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 72,
+            "t": 80,
+            "r": 400,
+            "b": 110,
+            "coord_origin": "TOPLEFT"
+          }
+        }
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 72,
+            "t": 540,
+            "r": 400,
+            "b": 480,
+            "coord_origin": "BOTTOMLEFT"
+          }
+        }
+      ],
+      "data": {
+        "num_rows": 2,
+        "num_cols": 2,
+        "table_cells": [
+          {
+            "text": "Merged header",
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 1,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 2,
+            "row_span": 1,
+            "col_span": 2
+          },
+          {
+            "text": "a",
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "row_span": 1,
+            "col_span": 1
+          },
+          {
+            "text": "b",
+            "start_row_offset_idx": 1,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 1,
+            "end_col_offset_idx": 2,
+            "row_span": 1,
+            "col_span": 1
+          }
+        ],
+        "grid": [
+          [
+            {
+              "text": "Merged header",
+              "start_row_offset_idx": 0,
+              "end_row_offset_idx": 1,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 2,
+              "row_span": 1,
+              "col_span": 2
+            },
+            {
+              "text": "Merged header",
+              "start_row_offset_idx": 0,
+              "end_row_offset_idx": 1,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 2,
+              "row_span": 1,
+              "col_span": 2
+            }
+          ],
+          [
+            {
+              "text": "a",
+              "start_row_offset_idx": 1,
+              "end_row_offset_idx": 2,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "row_span": 1,
+              "col_span": 1
+            },
+            {
+              "text": "b",
+              "start_row_offset_idx": 1,
+              "end_row_offset_idx": 2,
+              "start_col_offset_idx": 1,
+              "end_col_offset_idx": 2,
+              "row_span": 1,
+              "col_span": 1
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "prov": [
+        {
+          "page_no": 1,
+          "bbox": {
+            "l": 72,
+            "t": 200,
+            "r": 300,
+            "b": 260,
+            "coord_origin": "TOPLEFT"
+          }
+        }
+      ],
+      "data": {
+        "num_rows": 1,
+        "num_cols": 2,
+        "grid": [
+          [
+            {
+              "text": "Grid-only span",
+              "row": 0,
+              "column": 0,
+              "row_span": 1,
+              "col_span": 2
+            },
+            {
+              "text": "Grid-only span",
+              "row": 0,
+              "column": 0,
+              "row_span": 1,
+              "col_span": 2
+            }
+          ]
+        ]
+      }
+    }
+  ]
+}

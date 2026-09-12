@@ -30,6 +30,6 @@ After the M7 baseline landed, the roadmap “recommended next steps” bound a l
 
 ## Consequences
 
-- The gate into M8 narrows to three PRD-aligned gaps; landing notes are [optional real parser adapters](../architecture/2026-09-12-optional-parser-adapters.en.md), [region-level layout truth](../architecture/2026-09-12-region-level-layout-truth.en.md), and [figure PDF fragments](../architecture/2026-09-12-figure-pdf-fragment.en.md).
+- The gate into M8 narrows to three PRD-aligned gaps; landing notes are [optional real parser adapters](../architecture/2026-09-12-optional-parser-adapters.en.md), [region-level layout truth](../architecture/2026-09-12-region-level-layout-truth.en.md), and [figure PDF fragments](../architecture/2026-09-12-figure-pdf-fragment.en.md). Correctness closeout is [M8-pre review repairs](../bug-fix/2026-09-12-m8-pre-review-repairs.en.md); misnamed semantic-accuracy metrics are not acceptance evidence.
 - Current-state pages no longer describe character-level mapping, two-column profiles, the Annotation layer, or standalone MathML as unpaid debt.
 - This decision supplements rather than replaces [PRD v0.2](./2026-09-06-product-requirements-v02.en.md).

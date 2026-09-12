@@ -1,4 +1,3 @@
-# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 """Docling native dump adapter (table structure + layout challenger).
 
 Maps recorded Docling JSON (``texts`` / ``tables`` items) into REGION and
@@ -7,23 +6,24 @@ TABLE_STRUCTURE candidates. Live invocation is optional via ``DOCLING_CMD``.
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.evidence.native import (
+    as_list,
+    as_mapping,
+    collect_live_json,
     label_for,
-    load_json_dump,
+    load_provider_json,
+    page_height_at,
     page_id_at,
     parse_rect,
-    resolve_dump_path,
-    source_pdf_path,
 )
 from pdf_pipeline.evidence.providers import CandidateSink
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 DOCLING_PROVIDER = "docling"
 DOCLING_PROVIDER_VERSION = "2.x-dump"
@@ -57,20 +57,14 @@ class DoclingEvidenceProvider:
         return adapt_docling_payload(payload, physical, fingerprint)
 
     def _load_payload(self, fingerprint: str) -> dict[str, Any]:
-        env_dump = os.environ.get(DOCLING_DUMP_ENV)
-        path = resolve_dump_path(
-            self.name, fingerprint, Path(env_dump) if env_dump else self._dump_path
+        return load_provider_json(
+            self.name,
+            fingerprint,
+            dump_env=DOCLING_DUMP_ENV,
+            explicit=self._dump_path,
+            live=lambda: collect_live_json(DOCLING_CMD_ENV),
+            live_hint=f"{DOCLING_CMD_ENV} + PAPER_SOURCE_PDF",
         )
-        if path is not None:
-            return load_json_dump(path)
-        live = _collect_live_docling()
-        if live is not None:
-            return live
-        msg = (
-            "docling adapter has no dump: set DOCLING_DUMP, PAPER_PARSER_DUMP_DIR, "
-            "or DOCLING_CMD + PAPER_SOURCE_PDF"
-        )
-        raise FileNotFoundError(msg)
 
 
 def adapt_docling_payload(
@@ -80,23 +74,25 @@ def adapt_docling_payload(
 ) -> generated.EvidenceBundle:
     """Map a Docling-native JSON object to EvidenceBundle."""
     sink = CandidateSink(fingerprint, DOCLING_PROVIDER, DOCLING_PROVIDER_VERSION, "docling:")
-    for item in _as_list(payload.get("texts")):
-        if not isinstance(item, dict):
+    for item in as_list(payload.get("texts")):
+        mapping = as_mapping(item)
+        if mapping is None:
             continue
-        page_index, rect = _item_location(item)
-        provider_label = str(item.get("label") or "paragraph")
+        page_index, rect = _item_location(mapping, physical)
+        provider_label = str(mapping.get("label") or "paragraph")
         sink.add_region(
             page_id=page_id_at(physical, page_index),
             rect=rect,
             normalized_label=label_for(provider_label),
             provider_label=provider_label,
             confidence=_REGION_CONFIDENCE,
-            text_preview=str(item.get("text") or "")[:200],
+            text_preview=str(mapping.get("text") or "")[:200],
         )
-    for index, table in enumerate(_as_list(payload.get("tables"))):
-        if not isinstance(table, dict):
+    for index, table in enumerate(as_list(payload.get("tables"))):
+        mapping = as_mapping(table)
+        if mapping is None:
             continue
-        _emit_table(sink, physical, index, table)
+        _emit_table(sink, physical, index, mapping)
     candidates, provenance = sink.finish()
     return generated.EvidenceBundle(
         schemaVersion="0.1.0",
@@ -113,31 +109,15 @@ def _emit_table(
     index: int,
     table: dict[str, Any],
 ) -> None:
-    page_index, rect = _item_location(table)
-    data = table.get("data") if isinstance(table.get("data"), dict) else table
-    grid = _as_list(data.get("grid") if isinstance(data, dict) else None)
-    cells: list[generated.TableCellCandidate] = []
-    for row_index, row in enumerate(grid):
-        if not isinstance(row, list):
-            continue
-        for column_index, cell in enumerate(row):
-            if not isinstance(cell, dict):
-                continue
-            cells.append(
-                generated.TableCellCandidate(
-                    row=int(cell.get("row", row_index)),
-                    column=int(cell.get("column", column_index)),
-                    rowSpan=max(int(cell.get("row_span") or cell.get("rowSpan") or 1), 1),
-                    colSpan=max(int(cell.get("col_span") or cell.get("colSpan") or 1), 1),
-                    text=str(cell.get("text") or ""),
-                )
-            )
-    row_count = int(data.get("num_rows", 0)) if isinstance(data, dict) else 0
-    column_count = int(data.get("num_cols", 0)) if isinstance(data, dict) else 0
+    page_index, rect = _item_location(table, physical)
+    data = as_mapping(table.get("data")) or table
+    cells = _table_cells(data)
+    row_count = _as_count(data.get("num_rows"))
+    column_count = _as_count(data.get("num_cols"))
     if not row_count and cells:
-        row_count = max(cell.row for cell in cells) + 1
+        row_count = max(cell.row + cell.rowSpan for cell in cells)
     if not column_count and cells:
-        column_count = max(cell.column for cell in cells) + 1
+        column_count = max(cell.column + cell.colSpan for cell in cells)
     sink.add_evidence(
         generated.TableCandidate(
             evidenceType="TABLE_STRUCTURE",
@@ -154,34 +134,95 @@ def _emit_table(
     )
 
 
-def _item_location(item: dict[str, Any]) -> tuple[int, generated.Rect]:
-    prov = _as_list(item.get("prov"))
-    if prov and isinstance(prov[0], dict):
-        first = prov[0]
-        page_index = max(int(first.get("page_no") or first.get("page") or 1) - 1, 0)
-        bbox = first.get("bbox") or item.get("bbox")
-        return page_index, parse_rect(bbox)
-    page_index = max(int(item.get("page_idx") or item.get("page") or 0), 0)
-    return page_index, parse_rect(item.get("bbox"))
+def _table_cells(data: dict[str, Any]) -> list[generated.TableCellCandidate]:
+    raw_cells = as_list(data.get("table_cells"))
+    if raw_cells:
+        return [
+            cell
+            for item in raw_cells
+            if (cell := _cell_from_dump(item, fallback_row=0, fallback_column=0)) is not None
+        ]
+    return _cells_from_grid(as_list(data.get("grid")))
 
 
-def _as_list(value: object) -> list[Any]:
-    return value if isinstance(value, list) else []
+def _cells_from_grid(grid: list[object]) -> list[generated.TableCellCandidate]:
+    cells: list[generated.TableCellCandidate] = []
+    covered: set[tuple[int, int]] = set()
+    for row_index, row in enumerate(grid):
+        for column_index, item in enumerate(as_list(row)):
+            if (row_index, column_index) in covered:
+                continue
+            cell = _cell_from_dump(item, fallback_row=row_index, fallback_column=column_index)
+            if cell is None:
+                continue
+            if (row_index, column_index) != (cell.row, cell.column):
+                continue
+            for span_row in range(cell.row, cell.row + cell.rowSpan):
+                for span_col in range(cell.column, cell.column + cell.colSpan):
+                    covered.add((span_row, span_col))
+            cells.append(cell)
+    return cells
 
 
-def _collect_live_docling() -> dict[str, Any] | None:
-    command = os.environ.get(DOCLING_CMD_ENV)
-    pdf = source_pdf_path()
-    if not command or pdf is None:
+def _cell_from_dump(
+    item: object,
+    *,
+    fallback_row: int,
+    fallback_column: int,
+) -> generated.TableCellCandidate | None:
+    mapping = as_mapping(item)
+    if mapping is None:
         return None
-    completed = subprocess.run(  # noqa: S603 — user-configured live parser command
-        [*command.split(), str(pdf)],
-        check=True,
-        capture_output=True,
-        text=True,
+    row = _as_count(mapping.get("start_row_offset_idx"), mapping.get("row"), fallback_row)
+    column = _as_count(mapping.get("start_col_offset_idx"), mapping.get("column"), fallback_column)
+    end_row = mapping.get("end_row_offset_idx")
+    end_col = mapping.get("end_col_offset_idx")
+    row_span = (
+        max(_as_count(end_row) - row, 1)
+        if end_row is not None
+        else max(_as_count(mapping.get("row_span"), mapping.get("rowSpan"), 1), 1)
     )
-    payload = json.loads(completed.stdout)
-    if not isinstance(payload, dict):
-        msg = "DOCLING_CMD stdout must be a JSON object"
-        raise TypeError(msg)
-    return payload
+    col_span = (
+        max(_as_count(end_col) - column, 1)
+        if end_col is not None
+        else max(_as_count(mapping.get("col_span"), mapping.get("colSpan"), 1), 1)
+    )
+    return generated.TableCellCandidate(
+        row=row,
+        column=column,
+        rowSpan=row_span,
+        colSpan=col_span,
+        text=str(mapping.get("text") or ""),
+    )
+
+
+def _as_count(*values: object) -> int:
+    for value in values:
+        if isinstance(value, bool) or value is None:
+            continue
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str) and value.strip():
+            try:
+                return int(value)
+            except ValueError:
+                continue
+    return 0
+
+
+def _item_location(
+    item: dict[str, Any],
+    physical: generated.PhysicalDocument,
+) -> tuple[int, generated.Rect]:
+    prov = as_list(item.get("prov"))
+    first = as_mapping(prov[0]) if prov else None
+    if first is not None:
+        page_index = max(_as_count(first.get("page_no"), first.get("page"), 1) - 1, 0)
+        bbox = first.get("bbox") or item.get("bbox")
+        return page_index, parse_rect(bbox, page_height=page_height_at(physical, page_index))
+    page_index = max(_as_count(item.get("page_idx"), item.get("page"), 0), 0)
+    return page_index, parse_rect(
+        item.get("bbox"), page_height=page_height_at(physical, page_index)
+    )

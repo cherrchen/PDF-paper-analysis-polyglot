@@ -11,7 +11,7 @@ Vector figures without embedded rasters (for example `tikz-vector`) became empty
 ## Decision
 
 1. **Crop the source PDF page to the figure-region bbox** as `PDF_FRAGMENT` (`ResourceKind` already exists). Bind `FigureResource.pdfFragmentResourceId`; keep existing `embeddedImageIds`.
-2. **Projection order:** PDF fragment → embedded rasters → empty-box Issue. LaTeX uses the existing `graphicx` package for `.pdf`. **No SVG export.** `VectorObject` may still store geometry only; the asset true-source is the page crop.
+2. **Projection selects one representation:** PDF fragment if usable, otherwise embedded rasters, otherwise an empty-box Issue. Both asset kinds stay on `FigureResource` but must not be projected together. LaTeX uses the existing `graphicx` package for `.pdf`. **No SVG export.** `VectorObject` may still store geometry only; the asset true-source is the page crop. Multiple rasters with no fragment still stack. See [M8-pre review repairs](../bug-fix/2026-09-12-m8-pre-review-repairs.en.md).
 3. **No new TeX packages.** `rerender_workspace` consumes the already-written `resources.json` and does not re-crop (FR-TRANS-004, zero source re-parsing).
 
 ## Alternatives considered

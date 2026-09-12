@@ -56,6 +56,21 @@ def test_figure_resource_ids_do_not_guess_by_index() -> None:
 
 
 @pytest.mark.unit
+def test_figure_resource_ids_select_fragment_not_both() -> None:
+    fragment = "00000000-0000-0000-0000-0000000000aa"
+    raster = "00000000-0000-0000-0000-0000000000bb"
+    figure = generated.FigureContent(
+        resources=generated.FigureResource(
+            pdfFragmentResourceId=fragment,
+            embeddedImageIds=[raster],
+        )
+    )
+    assert figure_resource_ids(figure) == [fragment]
+    assert figure_resource_ids(figure, available={raster}) == [raster]
+    assert figure_resource_ids(figure, available={fragment, raster}) == [fragment]
+
+
+@pytest.mark.unit
 def test_bind_figure_resources_uses_source_physical_ids(tmp_path: Path) -> None:
     pdf_bytes = _fixture("figure-caption")
     physical = extract_physical_document(pdf_bytes)
@@ -121,8 +136,9 @@ def test_figure_caption_keeps_raster_after_pdf_fragment(tmp_path: Path) -> None:
     assert rasters
     assert fragment
     ids = figure_resource_ids(figure.content)
-    assert ids[0] == fragment
-    assert set(rasters) <= set(ids)
+    assert ids == [fragment]
+    assert set(rasters).isdisjoint(ids)
+    assert figure_resource_ids(figure.content, available=set(rasters)) == rasters
 
 
 @pytest.mark.unit

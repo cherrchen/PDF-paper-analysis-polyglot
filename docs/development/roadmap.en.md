@@ -94,7 +94,7 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | --- | --- | --- |
 | 4.1 Paragraph Recovery | Baseline | `pdf_pipeline.sem_paragraphs` consumes CONTINUATION edges; N→1 (column, page, figure interruption); hyphenation de-break; `cross-page-paragraph` asserts merge; 1 Layout→N Semantic folded into M7 |
 | 4.2 Heading & Section Recovery | Baseline | `sem_sections`: numbering pattern → level (`1.1` = 2), nested SECTION tree, FRONT_MATTER (title/author/date/abstract); unnumbered `Introduction` is no longer swallowed as an author; STRUCTURE/METADATA specialist folded into M7 (grobid-sim / real GROBID adapter) |
-| 4.3 Figure Recovery | Baseline | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; embedded rasters bind through `ResourceDocument` and every `resourceIds` entry is projected; vector figures crop to `PDF_FRAGMENT` (FR-FIG); SVG-as-true-source is not an FR; subfigure layout remains out of v1 |
+| 4.3 Figure Recovery | Baseline | FIGURE + FigureContent.label + FIGURE_CAPTION → CAPTION_OF; embedded rasters bind through `ResourceDocument` and stay on the figure; projection selects `PDF_FRAGMENT` when usable, otherwise rasters, never both; vector figures crop to `PDF_FRAGMENT` (FR-FIG); SVG-as-true-source is not an FR; subfigure layout remains out of v1 |
 | 4.4 Table Recovery | Baseline | `sem_tables`: line fallback by default; structured TABLE_STRUCTURE consumed by the M7 docling-sim / real Docling adapter |
 | 4.5 Equation Recovery | Baseline | `sem_equations`: FORMULA/CONTINUATION chains → EQUATION + `number` (rawText fallback, no content loss); INLINE_EQUATION marks; unicode→LaTeX conversion landed in M5; MathML is an optional schema field, not an Exit Gate (FR-EQ-002) |
 | 4.6 Footnote Semantic Recovery | Baseline | `sem_footnotes`: match by (page, label); reject `Table 1` false positives; unlinked footnotes report Issues; `FOOTNOTE_REFERENCE` marks (post-M2 freeze additive exception) |
@@ -126,14 +126,14 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | 7.3 Adaptive Routing | Baseline | `pdf_pipeline/routing.py::route_providers` pure function: table-dense → docling-sim, math-heavy → formula capability, scholarly always; `pipeline.py` replaces the hard-coded mock with the routed ensemble and records the RoutingPlan in `probe.json` |
 | 7.4 Conflict Resolution | Baseline | `fusion.py` clusters same-region candidates then votes confidence × role weight (primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8); `fuse_page` page-level tests prove swapping primary changes the winner |
 | 7.5 Confidence Calibration | Diagnostic ready | `pdf_pipeline/calibration.py` binning + monotonicity diagnostics; region-level `regions[]` has landed; calibration stays diagnostic (audits the fusion formula, never `REGRESSED`) |
-| 7.6 Quality Metrics | Baseline | `metrics.py::quality_report`: text coverage, region recall/precision, ordering, `semanticExpectationCoverage`, table-structure coverage, citation resolution, source/render mapping coverage, issue counts by category/severity; unmeasurable accuracy metrics are null |
+| 7.6 Quality Metrics | Baseline | `metrics.py::quality_report`: text coverage, region recall/precision, ordering, `semanticExpectationCoverage`, `paragraphLabelRecall` / `headingLabelRecall` (layout-label recall, not paragraph merge or the section tree), table-structure coverage, citation resolution, source/render mapping coverage, issue counts by category/severity; unmeasurable metrics are null |
 | 7.7 Regression Benchmark | Baseline | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`; missing fixture / measurable metric becoming null / ERROR+FATAL increase fail the gate; wired into nightly |
 
-**M7 exit gate:** Baseline achieved — provider/algorithm upgrades are now quantifiable as improved/unchanged/regressed via `just benchmark` against the baseline. The three PRD gaps before M8 are closed. Decisions: the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md); leftover-list filter: [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md).
+**M7 exit gate:** Baseline achieved — provider/algorithm upgrades are now quantifiable as improved/unchanged/regressed via `just benchmark` against the baseline. The three PRD surfaces before M8 have landed; correctness is [M8-pre review repairs](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-pre-review-repairs.en.md), and misnamed semantic-accuracy metrics are not closeout evidence. Decisions: the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md); leftover-list filter: [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md).
 
 ### Recommended next steps
 
-1. M8 Productionization has not started. The three PRD gaps before M8 are closed: real MinerU/Docling/GROBID adapters, region-level annotated truth, and vector-figure PDF fragments.
+1. M8 Productionization has not started. The three PRD surfaces before M8 have landed (real MinerU/Docling/GROBID adapters, region-level annotated truth, and vector-figure PDF fragments). Correctness repairs are in [M8-pre review repairs](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-pre-review-repairs.en.md); do not treat “fully closed” as the M8 entry claim until contract tests and CI are green.
 2. **Removed from the leftover list per PRD v0.2 (not Initial Product; not debt into M8):**
    - Character-level mapping — [NG4](../product/requirements.en.md), FR-SYNC-005, §43 “Character Mapping: not required”.
    - `source-derived` / `dense-two-column` — FR-LAYOUT-004, §43 “inheriting source two-column: not required for v1”, [R2 Post-Initial](../product/requirements.en.md).
@@ -1885,7 +1885,7 @@ float placement
 
 The system itself does not implement a layout optimizer.
 
-**Current implementation:** Heading / Paragraph / Figure (including stacked multi-resource images) / Table / Equation / Bibliography are projected. WideFigure / WideTable are expressed via the `WIDE_FLOAT` policy as `figure*` / `table*`, not as separate Render IR blocks. Footnotes remain paragraph blocks. Vector figures crop to `PDF_FRAGMENT` and prefer `\includegraphics`; SVG-as-true-source is not an FR.
+**Current implementation:** Heading / Paragraph / Figure (including stacked multi-resource images when no fragment exists) / Table / Equation / Bibliography are projected. WideFigure / WideTable are expressed via the `WIDE_FLOAT` policy as `figure*` / `table*`, not as separate Render IR blocks. Footnotes remain paragraph blocks. Vector figures crop to `PDF_FRAGMENT`; projection emits the fragment when present, otherwise rasters. SVG-as-true-source is not an FR.
 
 ---
 

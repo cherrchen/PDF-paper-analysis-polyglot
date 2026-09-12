@@ -11,7 +11,7 @@ Status: implemented
 ## 决策
 
 1. **按 Figure 区域 bbox 裁剪源 PDF 页** 为 `PDF_FRAGMENT`（`ResourceKind` 已有）。绑定 `FigureResource.pdfFragmentResourceId`；已有 `embeddedImageIds` 保留。
-2. **投影顺序：** PDF fragment → 嵌入位图 → 空框 Issue。LaTeX 用已有 `graphicx` 引用 `.pdf`。**不做 SVG 导出。** `VectorObject` 仍可只存几何；资产真源是页裁剪 PDF。
+2. **投影选择一种表示：** PDF fragment（若可用）否则嵌入位图，再否则空框 Issue。两类资产都留在 `FigureResource` 上，但不得同时投影。LaTeX 用已有 `graphicx` 引用 `.pdf`。**不做 SVG 导出。** `VectorObject` 仍可只存几何；资产真源是页裁剪 PDF。无 fragment 的多位图仍堆叠。详见 [M8 前审查修复](../bug-fix/2026-09-12-m8-pre-review-repairs.md)。
 3. **不新增 TeX 宏包。** `rerender_workspace` 消费已写入的 `resources.json`，不再裁剪（FR-TRANS-004 零源重解析）。
 
 ## 考虑过的替代方案

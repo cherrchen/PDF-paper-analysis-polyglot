@@ -12,7 +12,7 @@ PRD §34 要求 MinerU / Docling / GROBID 作为 Evidence Provider，但依赖�
 
 1. **默认安装不变。** `pdf-pipeline` 运行时仍只有 `pypdfium2`。默认 capability registry 仍是 `mock` / `docling-sim` / `grobid-sim`。
 2. **真实 adapter 是 dump 映射器。** `pdf_pipeline.evidence.mineru` / `docling` / `grobid` 实现 `EvidenceProvider`，把录制的 native JSON/TEI 映射为 `EvidenceBundle`。CI 夹具在 `tests/fixtures/parser-dumps/`。第三方 schema 不得泄漏。
-3. **活服务可选、环境驱动。** `MINERU_CMD` / `DOCLING_CMD` 对 `PAPER_SOURCE_PDF` 产出 JSON；`GROBID_URL` 对同一 PDF 做 HTTP POST。未配置则 `collect()` 失败并说明如何提供 dump。`pdf-pipeline` 的 `[mineru]` / `[docling]` / `[grobid]` extras 仅为分组名，不把 MinerU/Docling/Torch/GROBID 写进 lockfile 或必选依赖。
+3. **活服务可选、环境驱动。** `MINERU_CMD` / `DOCLING_CMD` 对 `PAPER_SOURCE_PDF` 产出 JSON；`GROBID_URL` 对同一 PDF 做 `multipart/form-data` POST（字段 `input`）。未配置则 `collect()` 失败并说明如何提供 dump。`pdf-pipeline` 的 `[mineru]` / `[docling]` / `[grobid]` extras 仅为分组名，不把 MinerU/Docling/Torch/GROBID 写进 lockfile 或必选依赖。Docling dump 须转换 `coord_origin` 并消费 `table_cells`；MinerU 公式 ID 含页标识。契约测试见 [M8 前审查修复](../bug-fix/2026-09-12-m8-pre-review-repairs.md)。
 4. **升级仍走 roadmap §11。** 把 registry primary 换成 `mineru`/`docling`/`grobid` 必须经过 benchmark，禁止因为 adapter 存在就替换 production provider。
 
 ## 考虑过的替代方案

@@ -166,7 +166,11 @@ def label_accuracy(
     layout: generated.LayoutDocument,
     label: str,
 ) -> float | None:
-    """Recall of one LayoutLabel against recovered regions; None when no GT of that label."""
+    """Recall of one LayoutLabel against recovered regions; None when no GT of that label.
+
+    This is layout-label recall, not paragraph merge/split accuracy or
+    section-tree / heading-level accuracy.
+    """
     subset = [region for region in truth_regions if region.label == label]
     if not subset:
         return None
@@ -373,12 +377,10 @@ def quality_report(
         "regionPrecision": round(order.region_precision, 4),
         "pairwiseOrderingAccuracy": order.pairwise_ordering_accuracy,
         "sequenceAccuracy": order.sequence_accuracy,
-        "paragraphRecoveryAccuracy": label_accuracy(labeled, layout, "PARAGRAPH_LIKE")
+        "paragraphLabelRecall": label_accuracy(labeled, layout, "PARAGRAPH_LIKE")
         if labeled
         else None,
-        "sectionHierarchyAccuracy": label_accuracy(labeled, layout, "HEADING_LIKE")
-        if labeled
-        else None,
+        "headingLabelRecall": label_accuracy(labeled, layout, "HEADING_LIKE") if labeled else None,
         "semanticExpectationCoverage": None
         if not semantic_truth
         else round(_expectation_score(semantic, semantic_truth), 4),

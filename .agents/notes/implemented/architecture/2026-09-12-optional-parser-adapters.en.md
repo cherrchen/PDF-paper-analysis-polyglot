@@ -12,7 +12,7 @@ PRD §34 requires MinerU / Docling / GROBID as Evidence Providers, but the depen
 
 1. **Default install unchanged.** `pdf-pipeline` still depends on `pypdfium2` at runtime. The default capability registry stays `mock` / `docling-sim` / `grobid-sim`.
 2. **Real adapters are dump mappers.** `pdf_pipeline.evidence.mineru` / `docling` / `grobid` implement `EvidenceProvider` and map recorded native JSON/TEI into `EvidenceBundle`. CI fixtures live in `tests/fixtures/parser-dumps/`. Provider schemas must not leak.
-3. **Live services are optional and env-driven.** `MINERU_CMD` / `DOCLING_CMD` emit JSON from `PAPER_SOURCE_PDF`; `GROBID_URL` HTTP-POSTs the same PDF. Unconfigured `collect()` fails with dump instructions. The `pdf-pipeline` extras `[mineru]` / `[docling]` / `[grobid]` are group names only; they do not pull MinerU/Docling/Torch/GROBID into the lockfile or required extras.
+3. **Live services are optional and env-driven.** `MINERU_CMD` / `DOCLING_CMD` emit JSON from `PAPER_SOURCE_PDF`; `GROBID_URL` HTTP-POSTs the same PDF as `multipart/form-data` with field `input`. Unconfigured `collect()` fails with dump instructions. The `pdf-pipeline` extras `[mineru]` / `[docling]` / `[grobid]` are group names only; they do not pull MinerU/Docling/Torch/GROBID into the lockfile or required extras. Docling dumps must convert `coord_origin` and consume `table_cells`; MinerU formula IDs include the page. Contract tests: [M8-pre review repairs](../bug-fix/2026-09-12-m8-pre-review-repairs.en.md).
 4. **Upgrades still follow roadmap §11.** Switching a registry primary to `mineru`/`docling`/`grobid` requires a benchmark; adapters existing is not enough to replace the production provider.
 
 ## Alternatives considered

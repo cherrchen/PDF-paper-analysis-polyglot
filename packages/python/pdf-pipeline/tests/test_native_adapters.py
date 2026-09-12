@@ -63,6 +63,19 @@ def test_mineru_dump_maps_layout_and_formula() -> None:
     assert formulas[0].latex == "E = mc^{2}"
 
 
+def test_mineru_formula_ids_include_page() -> None:
+    physical = _physical(page_count=2)
+    bundle = MinerUEvidenceProvider(dump_path=DUMP_ROOT / "mineru/two-page-formulas.json").collect(
+        physical
+    )
+    load_document("evidence", dump_document(bundle))
+    formulas = [c for c in bundle.candidates if c.evidenceType == "FORMULA"]
+    assert len(formulas) == 2
+    assert formulas[0].id != formulas[1].id
+    assert formulas[0].pageId != formulas[1].pageId
+    assert {c.latex for c in formulas} == {"E = mc^{2}", "a^2 + b^2 = c^2"}
+
+
 def test_docling_dump_maps_table_structure() -> None:
     physical = _physical()
     bundle = DoclingEvidenceProvider(dump_path=DUMP_ROOT / "docling/table.json").collect(physical)
@@ -72,6 +85,63 @@ def test_docling_dump_maps_table_structure() -> None:
     assert tables[0].rowCount == 2
     assert tables[0].columnCount == 2
     assert tables[0].cells[0].text == "H1"
+
+
+def test_docling_native_origin_and_merged_cells() -> None:
+    from pdf_pipeline.evidence.normalize import normalize_bundle
+
+    physical = _physical()
+    bundle = DoclingEvidenceProvider(dump_path=DUMP_ROOT / "docling/native-v2.48.json").collect(
+        physical
+    )
+    load_document("evidence", dump_document(bundle))
+    regions = {
+        candidate.textPreview: candidate
+        for candidate in bundle.candidates
+        if isinstance(candidate, generated.RegionCandidate)
+    }
+    bottom_left = regions["Bottom-left origin paragraph."]
+    top_left = regions["Top-left origin heading."]
+    assert isinstance(bottom_left.geometry, generated.Rect)
+    assert isinstance(top_left.geometry, generated.Rect)
+    assert bottom_left.geometry.height == 40
+    assert bottom_left.geometry.y == pytest.approx(100)
+    assert top_left.geometry.height == 30
+    assert top_left.geometry.y == pytest.approx(80)
+    normalized = normalize_bundle(bundle, physical)
+    previews = {item.textPreview for item in normalized}
+    assert "Bottom-left origin paragraph." in previews
+
+    tables = [c for c in bundle.candidates if c.evidenceType == "TABLE_STRUCTURE"]
+    assert len(tables) == 2
+    merged, grid_only = tables
+    assert merged.rowCount == 2
+    assert merged.columnCount == 2
+    assert [(cell.row, cell.column, cell.colSpan, cell.text) for cell in merged.cells] == [
+        (0, 0, 2, "Merged header"),
+        (1, 0, 1, "a"),
+        (1, 1, 1, "b"),
+    ]
+    assert [(cell.row, cell.column, cell.colSpan, cell.text) for cell in grid_only.cells] == [
+        (0, 0, 2, "Grid-only span")
+    ]
+    assert all(cell.column + cell.colSpan <= merged.columnCount for cell in merged.cells)
+    assert all(cell.column + cell.colSpan <= grid_only.columnCount for cell in grid_only.cells)
+
+
+def test_parse_rect_converts_docling_origins() -> None:
+    from pdf_pipeline.evidence.native import parse_rect
+
+    top_left = parse_rect({"l": 72, "t": 80, "r": 400, "b": 110, "coord_origin": "TOPLEFT"})
+    assert (top_left.y, top_left.height) == (80, 30)
+    bottom_left = parse_rect(
+        {"l": 72, "t": 692, "r": 500, "b": 652, "coord_origin": "BOTTOMLEFT"},
+        page_height=792,
+    )
+    assert bottom_left.y == pytest.approx(100)
+    assert bottom_left.height == pytest.approx(40)
+    with pytest.raises(ValueError, match="page_height"):
+        parse_rect({"l": 72, "t": 692, "r": 500, "b": 652, "coord_origin": "BOTTOMLEFT"})
 
 
 def test_grobid_json_and_tei_dumps_map_metadata() -> None:
@@ -128,3 +198,63 @@ def test_real_adapter_without_dump_fails_loudly() -> None:
     physical = _physical()
     with pytest.raises(FileNotFoundError, match="MINERU_DUMP"):
         MinerUEvidenceProvider().collect(physical)
+
+
+def test_grobid_live_posts_multipart_input(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from threading import Thread
+
+    from pdf_pipeline.evidence.grobid import GROBID_URL_ENV
+    from pdf_pipeline.evidence.native import SOURCE_PDF_ENV
+
+    captured: dict[str, object] = {}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            length = int(self.headers.get("Content-Length", "0"))
+            captured["path"] = self.path
+            captured["content_type"] = self.headers.get("Content-Type")
+            captured["body"] = self.rfile.read(length)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/xml")
+            self.end_headers()
+            self.wfile.write(
+                b'<?xml version="1.0"?><TEI xmlns="http://www.tei-c.org/ns/1.0">'
+                b"<teiHeader><fileDesc><titleStmt><title>Live Title</title>"
+                b"</titleStmt></fileDesc></teiHeader></TEI>"
+            )
+
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            del format, args
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    pdf = tmp_path / "paper.pdf"
+    pdf.write_bytes(b"%PDF-1.4 live-stub")
+    monkeypatch.setenv(GROBID_URL_ENV, f"http://127.0.0.1:{server.server_address[1]}")
+    monkeypatch.setenv(SOURCE_PDF_ENV, str(pdf))
+    try:
+        bundle = GrobidEvidenceProvider().collect(_physical())
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+    load_document("evidence", dump_document(bundle))
+    assert captured["path"] == "/api/processFulltextDocument"
+    content_type = str(captured["content_type"])
+    assert content_type.startswith("multipart/form-data")
+    assert "boundary=" in content_type
+    body = captured["body"]
+    assert isinstance(body, bytes)
+    assert b'name="input"' in body
+    assert b'filename="paper.pdf"' in body
+    assert b"Content-Type: application/pdf" in body
+    assert b"%PDF-1.4 live-stub" in body
+    fields = {
+        field.name: field.value
+        for candidate in bundle.candidates
+        if isinstance(candidate, generated.MetadataCandidate)
+        for field in candidate.fields
+    }
+    assert fields["title"] == "Live Title"

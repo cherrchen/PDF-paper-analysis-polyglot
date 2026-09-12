@@ -34,7 +34,7 @@ author-year-citations  — author-year citations (including the 2020a suffix)
 
 Each fixture has reading-order snippets in `tests/fixtures/layout-truth/<name>.json` plus reviewed `regions[]` (`pageIndex` + `LayoutLabel` + canonical `geometry`; no drifting LayoutRegionIDs). Region precision/recall use IoU ≥ 0.5 and matching labels. Uncertain boxes are omitted so current output is not frozen as precision=1.0.
 
-Native parser dumps live under `tests/fixtures/parser-dumps/{mineru,docling,grobid}/` for adapter contract tests only; they are not the default ensemble.
+Native parser dumps live under `tests/fixtures/parser-dumps/{mineru,docling,grobid}/` for adapter contract tests only; they are not the default ensemble. Besides synthetic single-page dumps, contract fixtures cover Docling-core v2.48 `coord_origin` / `table_cells` / spanned `grid`, and MinerU multi-page formula IDs. The live GROBID path is checked with a local HTTP stub for multipart `input`; Java is not started.
 
 Tier 4 scanned PDFs are not committed; placeholder metadata: `tests/fixtures/metadata/scanned-external.yaml`.
 

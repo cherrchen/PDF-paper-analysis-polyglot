@@ -111,3 +111,44 @@ def test_region_iou_matches_label_and_geometry() -> None:
     metrics = labeled_region_metrics(truth, layout)
     assert metrics.region_recall == 1.0
     assert metrics.region_precision == 0.5
+
+
+def test_label_accuracy_is_layout_recall() -> None:
+    from document_model.generated import schema_models as generated
+    from pdf_pipeline.metrics import TruthRegion, label_accuracy
+
+    page_id = "00000000-0000-0000-0000-0000000000aa"
+    recovered = generated.LayoutRegion(
+        id="00000000-0000-0000-0000-0000000000bb",
+        pageId=page_id,
+        geometry=generated.Rect(kind="rect", x=10, y=10, width=80, height=20),
+        kind="TEXT",
+        childIds=[],
+        physicalObjectIds=[],
+        labels=[
+            generated.LayoutLabelCandidate(label="PARAGRAPH_LIKE", confidence=0.9, evidenceIds=[])
+        ],
+        confidence=generated.LayoutConfidence(score=0.9, reason="test"),
+        provenanceIds=[],
+    )
+    layout = generated.LayoutDocument(
+        schemaVersion="0.1.0",
+        id="00000000-0000-0000-0000-0000000000dd",
+        physicalDocumentId="00000000-0000-0000-0000-0000000000ee",
+        pages=[generated.LayoutPage(pageId=page_id, regionIds=[recovered.id], bandIds=[])],
+        regions=[recovered],
+        bands=[],
+        columns=[],
+        groups=[],
+        readingFlow=generated.ReadingFlowGraph(nodes=[recovered.id], edges=[]),
+        primaryFlow=[recovered.id],
+    )
+    truth = [
+        TruthRegion(
+            page_index=0,
+            label="PARAGRAPH_LIKE",
+            rect=generated.Rect(kind="rect", x=12, y=12, width=76, height=18),
+        )
+    ]
+    assert label_accuracy(truth, layout, "PARAGRAPH_LIKE") == 1.0
+    assert label_accuracy(truth, layout, "HEADING_LIKE") is None

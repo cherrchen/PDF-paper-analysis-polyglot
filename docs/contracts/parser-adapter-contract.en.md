@@ -21,7 +21,7 @@ Every adapter must:
 3. Preserve original confidence and geometry for Recovery to consume.
 4. Not leak provider schema types to upstream consumers.
 
-Current implementation: the default capability registry remains `mock` / `docling-sim` / `grobid-sim`. `mineru` / `docling` / `grobid` map recorded dumps (optional live services) to `EvidenceBundle`; provider schemas must not leave the adapter. Upgrades follow §11 benchmarks; adapters existing is not enough to replace a production provider.
+Current implementation: the default capability registry remains `mock` / `docling-sim` / `grobid-sim`. `mineru` / `docling` / `grobid` map recorded dumps (optional live services) to `EvidenceBundle`; provider schemas must not leave the adapter. Docling must convert `coord_origin` and consume `table_cells`; MinerU formula IDs include the page; the live GROBID path `POST /api/processFulltextDocument` uses multipart field `input`. Upgrades follow §11 benchmarks; adapters existing is not enough to replace a production provider.
 
 ## Capability ownership
 

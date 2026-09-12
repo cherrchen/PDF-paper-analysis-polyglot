@@ -1,4 +1,3 @@
-# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
 """MinerU native dump adapter (layout / formula evidence).
 
 Maps recorded MinerU 2.x-style JSON (``pdf_info`` pages or the older
@@ -9,23 +8,23 @@ never the default CI path.
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.evidence.native import (
+    as_list,
+    as_mapping,
+    collect_live_json,
     label_for,
-    load_json_dump,
+    load_provider_json,
     page_id_at,
     parse_rect,
-    resolve_dump_path,
-    source_pdf_path,
 )
 from pdf_pipeline.evidence.providers import CandidateSink
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 MINERU_PROVIDER = "mineru"
 MINERU_PROVIDER_VERSION = "2.x-dump"
@@ -60,20 +59,14 @@ class MinerUEvidenceProvider:
         return adapt_mineru_payload(payload, physical, fingerprint)
 
     def _load_payload(self, fingerprint: str) -> dict[str, Any]:
-        env_dump = os.environ.get(MINERU_DUMP_ENV)
-        path = resolve_dump_path(
-            self.name, fingerprint, Path(env_dump) if env_dump else self._dump_path
+        return load_provider_json(
+            self.name,
+            fingerprint,
+            dump_env=MINERU_DUMP_ENV,
+            explicit=self._dump_path,
+            live=lambda: collect_live_json(MINERU_CMD_ENV),
+            live_hint=f"{MINERU_CMD_ENV} + PAPER_SOURCE_PDF",
         )
-        if path is not None:
-            return load_json_dump(path)
-        live = _collect_live_mineru()
-        if live is not None:
-            return live
-        msg = (
-            "mineru adapter has no dump: set MINERU_DUMP, PAPER_PARSER_DUMP_DIR, "
-            "or MINERU_CMD + PAPER_SOURCE_PDF"
-        )
-        raise FileNotFoundError(msg)
 
 
 def adapt_mineru_payload(
@@ -86,9 +79,10 @@ def adapt_mineru_payload(
     for page_index, blocks in _iter_page_blocks(payload):
         page_id = page_id_at(physical, page_index)
         for block_index, block in enumerate(blocks):
-            if not isinstance(block, dict):
+            mapping = as_mapping(block)
+            if mapping is None:
                 continue
-            _emit_block(sink, page_id, block_index, block)
+            _emit_block(sink, page_id, block_index, mapping)
     candidates, provenance = sink.finish()
     return generated.EvidenceBundle(
         schemaVersion="0.1.0",
@@ -99,25 +93,26 @@ def adapt_mineru_payload(
     )
 
 
-def _iter_page_blocks(payload: dict[str, Any]) -> list[tuple[int, list[Any]]]:
-    pdf_info = payload.get("pdf_info")
-    if isinstance(pdf_info, list):
-        pages: list[tuple[int, list[Any]]] = []
+def _iter_page_blocks(payload: dict[str, Any]) -> list[tuple[int, list[object]]]:
+    pages: list[tuple[int, list[object]]] = []
+    pdf_info = as_list(payload.get("pdf_info"))
+    if pdf_info:
         for index, page in enumerate(pdf_info):
-            if not isinstance(page, dict):
+            mapping = as_mapping(page)
+            if mapping is None:
                 continue
-            page_index = int(page.get("page_idx", index))
-            blocks = page.get("para_blocks") or page.get("preproc_blocks") or []
-            if isinstance(blocks, list):
-                pages.append((page_index, blocks))
+            page_index = index
+            raw_index = mapping.get("page_idx")
+            if isinstance(raw_index, int) and not isinstance(raw_index, bool):
+                page_index = raw_index
+            blocks = as_list(mapping.get("para_blocks") or mapping.get("preproc_blocks"))
+            pages.append((page_index, blocks))
         return pages
-    middle = payload.get("middle")
-    if isinstance(middle, dict):
-        blocks = middle.get("para_blocks") or []
-        if isinstance(blocks, list):
-            return [(0, blocks)]
-    blocks = payload.get("para_blocks")
-    if isinstance(blocks, list):
+    middle = as_mapping(payload.get("middle"))
+    if middle is not None:
+        return [(0, as_list(middle.get("para_blocks")))]
+    blocks = as_list(payload.get("para_blocks"))
+    if blocks:
         return [(0, blocks)]
     return []
 
@@ -136,7 +131,7 @@ def _emit_block(sink: CandidateSink, page_id: str, block_index: int, block: dict
         mathml = mathml_raw.strip() if isinstance(mathml_raw, str) else None
         formula: dict[str, object] = {
             "evidenceType": "FORMULA",
-            "id": sink.derived_id(f"formula-{block_index}"),
+            "id": sink.derived_id(f"formula-{page_id}-{block_index}"),
             "pageId": page_id,
             "geometry": rect,
             "rawText": text or latex or "[formula]",
@@ -169,30 +164,13 @@ def _block_text(block: dict[str, Any]) -> str:
     if isinstance(direct, str) and direct.strip():
         return direct.strip()
     parts: list[str] = []
-    for line in block.get("lines") or []:
-        if not isinstance(line, dict):
+    for line in as_list(block.get("lines")):
+        mapping = as_mapping(line)
+        if mapping is None:
             continue
-        parts.extend(
-            span["content"]
-            for span in line.get("spans") or []
-            if isinstance(span, dict) and isinstance(span.get("content"), str)
-        )
+        for span in as_list(mapping.get("spans")):
+            span_map = as_mapping(span)
+            content = span_map.get("content") if span_map is not None else None
+            if isinstance(content, str):
+                parts.append(content)
     return " ".join(parts).strip()
-
-
-def _collect_live_mineru() -> dict[str, Any] | None:
-    command = os.environ.get(MINERU_CMD_ENV)
-    pdf = source_pdf_path()
-    if not command or pdf is None:
-        return None
-    completed = subprocess.run(  # noqa: S603 — user-configured live parser command
-        [*command.split(), str(pdf)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    payload = json.loads(completed.stdout)
-    if not isinstance(payload, dict):
-        msg = "MINERU_CMD stdout must be a JSON object"
-        raise TypeError(msg)
-    return payload

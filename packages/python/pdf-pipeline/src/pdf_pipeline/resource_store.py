@@ -9,7 +9,7 @@ from document_model import stable_uuid
 from document_model.generated import schema_models as generated
 
 from pdf_pipeline.geometry import as_rect
-from pdf_pipeline.pdfium_fragment import extract_pdf_fragment
+from pdf_pipeline.pdfium_fragment import extract_pdf_fragment, pdfium_document
 from pdf_pipeline.pdfium_image import ImageExtractError, extract_embedded_images
 
 if TYPE_CHECKING:
@@ -82,14 +82,23 @@ def resource_path(resource_dir: Path, record: generated.ResourceRecord) -> Path:
     return resource_dir / f"{record.id}{extension}"
 
 
-def figure_resource_ids(figure: generated.FigureContent) -> list[str]:
-    """Preferred projection order: PDF fragment, then embedded rasters."""
-    ids: list[str] = []
+def figure_resource_ids(
+    figure: generated.FigureContent,
+    available: set[str] | None = None,
+) -> list[str]:
+    """Select one projection representation: fragment if usable, else rasters.
+
+    Both asset kinds stay on ``FigureResource``. Projection must not emit
+    the fragment and its embedded rasters together — they are the same
+    figure. Multiple rasters without a fragment remain stacked.
+    """
     fragment = figure.resources.pdfFragmentResourceId
-    if fragment:
-        ids.append(fragment)
-    ids.extend(figure.resources.embeddedImageIds)
-    return ids
+    if fragment and (available is None or fragment in available):
+        return [fragment]
+    rasters = list(figure.resources.embeddedImageIds)
+    if available is None:
+        return rasters
+    return [resource_id for resource_id in rasters if resource_id in available]
 
 
 def bind_figure_image_resources(
@@ -150,56 +159,59 @@ def attach_figure_pdf_fragments(
     nodes: list[generated.SemanticNode] = []
     changed = False
     resource_dir.mkdir(parents=True, exist_ok=True)
-    for node in semantic.nodes:
-        if node.kind != "FIGURE" or not isinstance(node.content, generated.FigureContent):
-            nodes.append(node)
-            continue
-        if node.content.resources.pdfFragmentResourceId:
-            nodes.append(node)
-            continue
-        raw_regions = node.attributes.get("layoutRegionIds")
-        region_ids = [item for item in raw_regions if isinstance(item, str)] if raw_regions else []
-        fragment_id = ""
-        for region_id in region_ids:
-            region = regions.get(region_id)
-            if region is None or region.kind not in {"FIGURE", "IMAGE"}:
+    with pdfium_document(pdf_bytes) as source:
+        for node in semantic.nodes:
+            if node.kind != "FIGURE" or not isinstance(node.content, generated.FigureContent):
+                nodes.append(node)
                 continue
-            page = page_by_id.get(region.pageId)
-            if page is None:
+            if node.content.resources.pdfFragmentResourceId:
+                nodes.append(node)
                 continue
-            payload = extract_pdf_fragment(
-                pdf_bytes,
-                page_index=page.index,
-                rect=as_rect(region.geometry),
-                canonical_to_raw=page.geometry.canonicalToRaw,
+            raw_regions = node.attributes.get("layoutRegionIds")
+            region_ids = (
+                [item for item in raw_regions if isinstance(item, str)] if raw_regions else []
             )
-            if not payload:
+            fragment_id = ""
+            for region_id in region_ids:
+                region = regions.get(region_id)
+                if region is None or region.kind not in {"FIGURE", "IMAGE"}:
+                    continue
+                page = page_by_id.get(region.pageId)
+                if page is None:
+                    continue
+                payload = extract_pdf_fragment(
+                    source,
+                    page_index=page.index,
+                    rect=as_rect(region.geometry),
+                    canonical_to_raw=page.geometry.canonicalToRaw,
+                )
+                if not payload:
+                    continue
+                fragment_id = stable_uuid(fingerprint, "pdf-fragment", region.id)
+                (resource_dir / f"{fragment_id}.pdf").write_bytes(payload)
+                records.append(
+                    generated.ResourceRecord(
+                        id=fragment_id,
+                        kind="PDF_FRAGMENT",
+                        mediaType="application/pdf",
+                        byteLength=len(payload),
+                        sha256=hashlib.sha256(payload).hexdigest(),
+                        origin="EXTRACTED",
+                    )
+                )
+                break
+            if not fragment_id:
+                nodes.append(node)
                 continue
-            fragment_id = stable_uuid(fingerprint, "pdf-fragment", region.id)
-            (resource_dir / f"{fragment_id}.pdf").write_bytes(payload)
-            records.append(
-                generated.ResourceRecord(
-                    id=fragment_id,
-                    kind="PDF_FRAGMENT",
-                    mediaType="application/pdf",
-                    byteLength=len(payload),
-                    sha256=hashlib.sha256(payload).hexdigest(),
-                    origin="EXTRACTED",
-                )
+            content = node.content.model_copy(
+                update={
+                    "resources": node.content.resources.model_copy(
+                        update={"pdfFragmentResourceId": fragment_id}
+                    )
+                }
             )
-            break
-        if not fragment_id:
-            nodes.append(node)
-            continue
-        content = node.content.model_copy(
-            update={
-                "resources": node.content.resources.model_copy(
-                    update={"pdfFragmentResourceId": fragment_id}
-                )
-            }
-        )
-        nodes.append(node.model_copy(update={"content": content}))
-        changed = True
+            nodes.append(node.model_copy(update={"content": content}))
+            changed = True
     if not changed:
         return semantic, resources
     store = resources.resources.model_copy(update={"resources": records})

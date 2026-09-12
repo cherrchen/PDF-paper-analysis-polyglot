@@ -4,17 +4,30 @@
 from __future__ import annotations
 
 import io
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from document_model.generated import schema_models as generated
 
 
+@contextmanager
+def pdfium_document(pdf_bytes: bytes) -> Generator[object]:
+    """Open one PDFium document for repeated page crops."""
+    source = pdfium.PdfDocument(pdf_bytes)
+    try:
+        yield source
+    finally:
+        source.close()
+
+
 def extract_pdf_fragment(
-    pdf_bytes: bytes,
+    source: object,
     *,
     page_index: int,
     rect: generated.Rect,
@@ -22,19 +35,17 @@ def extract_pdf_fragment(
 ) -> bytes:
     """Crop one page to ``rect`` (canonical space) and return a one-page PDF."""
     left, bottom, right, top = _raw_box(rect, canonical_to_raw)
-    source = pdfium.PdfDocument(pdf_bytes)
+    dest = pdfium.PdfDocument.new()
     try:
-        dest = pdfium.PdfDocument.new()
         dest.import_pages(source, pages=[page_index])
         page = dest[0]
         pdfium_c.FPDFPage_SetMediaBox(page, left, bottom, right, top)
         pdfium_c.FPDFPage_SetCropBox(page, left, bottom, right, top)
         buffer = io.BytesIO()
         dest.save(buffer)
-        dest.close()
         return buffer.getvalue()
     finally:
-        source.close()
+        dest.close()
 
 
 def _raw_box(

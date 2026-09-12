@@ -231,7 +231,11 @@ def test_figure_caption_raster_survives_pdf_fragment(tmp_path: Path) -> None:
     translation = translate_document(bound)
     render = compose_render_document(bound, translation, resources=resources.resources)
     tex = project_to_latex(render, resource_dir=tmp_path)
-    assert "\\includegraphics" in tex
+    figure_blocks = [block for block in render.blocks if block.renderKind == "FIGURE"]
+    assert figure_blocks[0].resourceIds == [figure.content.resources.pdfFragmentResourceId]
+    assert tex.count("\\includegraphics") == 1
+    assert ".pdf}" in tex
+    assert ".png}" not in tex
 
 
 @pytest.mark.integration

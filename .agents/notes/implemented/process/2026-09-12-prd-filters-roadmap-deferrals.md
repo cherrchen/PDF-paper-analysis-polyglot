@@ -30,6 +30,6 @@ M7 基线落地后，roadmap「建议下一步」把一串延期项绑成进入 
 
 ## 后果
 
-- 进入 M8 的前置收窄为三项 PRD 对齐缺口；落地见 [可选真实 parser 依赖](../architecture/2026-09-12-optional-parser-adapters.md)、[区域级标注真值](../architecture/2026-09-12-region-level-layout-truth.md)、[Figure PDF fragment](../architecture/2026-09-12-figure-pdf-fragment.md)。
+- 进入 M8 的前置收窄为三项 PRD 对齐缺口；落地见 [可选真实 parser 依赖](../architecture/2026-09-12-optional-parser-adapters.md)、[区域级标注真值](../architecture/2026-09-12-region-level-layout-truth.md)、[Figure PDF fragment](../architecture/2026-09-12-figure-pdf-fragment.md)。正确性收口见 [M8 前审查修复](../bug-fix/2026-09-12-m8-pre-review-repairs.md)，不以错误的语义准确率名称作为验收证据。
 - 相关当前态页不再把字符级 mapping、双栏 profile、Annotation 层、独立 MathML 写成「尚未实现的欠债」。
 - 本决策补充而非取代 [产品需求文档 v0.2](./2026-09-06-product-requirements-v02.md)。

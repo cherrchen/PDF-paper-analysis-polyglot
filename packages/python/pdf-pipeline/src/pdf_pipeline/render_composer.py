@@ -217,7 +217,7 @@ def _blocks_for_node(
             for record in resources.resources
             if record.kind in {"EMBEDDED_IMAGE", "PDF_FRAGMENT"}
         }
-        resource_ids = [rid for rid in figure_resource_ids(node.content) if rid in available]
+        resource_ids = figure_resource_ids(node.content, available)
         block = generated.RenderFigureBlock(
             renderKind="FIGURE",
             id=block_id,
