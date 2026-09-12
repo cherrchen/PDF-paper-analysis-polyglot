@@ -38,4 +38,4 @@ M6 结束时，管线只硬编码一个 provider（`run_pipeline` 直接调用 `
 - 表头行（未拆分的整行 rect）目前不在 TABLE_STRUCTURE 单元格内（行间隙小于阈值），其文本保留为独立 TEXT region——内容不丢失（质量优先级 1），表头并入单元格待 specialist 真源。
 - `dataset` 范围：`table_grid_regions` 对多栏正文页有行数上限与列间距比例双重防误判；若真实语料出现新误判形态，调 `TABLE_MAX_GRID_ROWS`/`COLUMN_GAP_RATIO` 并走 benchmark 报告。
 - 验证：见 [M7 Review 修复](../bug-fix/2026-09-12-m7-review-repairs.md)；e2e 不受影响（viewer 数据契约未动）。
-- 文档：`docs/development/roadmap.md` M7 明细与本 note 为当时基线。进入 M8 前的 PRD 三项收口见 [PRD 过滤 roadmap 延期项](../process/2026-09-12-prd-filters-roadmap-deferrals.md)、[可选真实 parser 依赖](./2026-09-12-optional-parser-adapters.md)、[区域级标注真值](./2026-09-12-region-level-layout-truth.md)、[Figure PDF fragment](./2026-09-12-figure-pdf-fragment.md)。
+- 文档：`docs/development/roadmap.md` M7 明细与本 note 为当时基线。进入 M8 前的 PRD 三项收口见 [PRD 过滤 roadmap 延期项](../process/2026-09-12-prd-filters-roadmap-deferrals.md)、[可选真实 parser 依赖](./2026-09-12-optional-parser-adapters.md)、[区域级标注真值](./2026-09-12-region-level-layout-truth.md)、[Figure PDF fragment](./2026-09-12-figure-pdf-fragment.md)。准入分级与 `just benchmark` 进入 PR CI 见 [M8 准入收口](../process/2026-09-12-m8-admission-closeout.md)。

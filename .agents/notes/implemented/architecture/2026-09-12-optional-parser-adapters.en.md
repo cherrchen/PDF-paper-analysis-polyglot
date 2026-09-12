@@ -24,3 +24,4 @@ PRD §34 requires MinerU / Docling / GROBID as Evidence Providers, but the depen
 
 - `build_provider("mineru"|"docling"|"grobid")` instantiates; default `route_providers` still selects sim names.
 - The live path is a local experiment, not a CI gate.
+- The synthetic-dump adapter → normalize/fusion → semantic chain is tested; on 2026-09-12 no real-tool output was available. Gap: [M8 admission closeout](../process/2026-09-12-m8-admission-closeout.en.md).

@@ -17,9 +17,9 @@ Authoritative architecture contract: [`docs/architecture/document-architecture.e
 ## Current Progress
 
 **Last updated:** 2026-09-12
-**Current position:** The M7 Parser Ensemble & Quality baseline has landed; the three PRD-aligned gaps before M8 are also closed: real MinerU/Docling/GROBID adapters (recorded dumps + optional live services), region-level annotated truth, and vector-figure PDF fragments. Character-level mapping, `source-derived`/`dense-two-column`, the Annotation layer, and standalone MathML are removed from the leftover list (not Initial Product). M8 has not started. See [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md), [optional real parser adapters](../../.agents/notes/implemented/architecture/2026-09-12-optional-parser-adapters.en.md), [region-level layout truth](../../.agents/notes/implemented/architecture/2026-09-12-region-level-layout-truth.en.md), [figure PDF fragments](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.en.md), and the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md).
+**Current position:** The M7 Parser Ensemble & Quality baseline has landed. M8 admission is graded evidence: the three PRD surfaces are implemented + synthetic-fixture passed; real MinerU/Docling/GROBID tool output is not verified — it does not block v1 batches A–D, and it does block production registry replacement. Character-level mapping, `source-derived`/`dense-two-column`, the Annotation layer, and standalone MathML are removed from the leftover list (not Initial Product). M8 v1 has not started; plan: [M8 admission and v1 development plan](m8.en.md). See [M8 admission closeout](../../.agents/notes/implemented/process/2026-09-12-m8-admission-closeout.en.md), [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md), [optional real parser adapters](../../.agents/notes/implemented/architecture/2026-09-12-optional-parser-adapters.en.md), [region-level layout truth](../../.agents/notes/implemented/architecture/2026-09-12-region-level-layout-truth.en.md), [figure PDF fragments](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.en.md), and the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md).
 
-README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery baseline plus the Parser Ensemble. The three PRD gaps before M8 are closed.
+README status: engineering bootstrap plus core document contracts plus the Walking Skeleton end-to-end pipeline plus the Layout Recovery Engine plus the Semantic Recovery baseline plus the Parser Ensemble. M8 admission grades: [m8.en.md](m8.en.md).
 
 ### Milestone overview
 
@@ -32,8 +32,8 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | M4 Semantic Recovery Engine | Baseline landed | CONTINUATION paragraph merging, numbered headings + SECTION tree, TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY recovery; second-round repairs restored table titles, marks, footnote linking, cyclic trees, multi-fragment Viewer, and provenance. 1→N / structured tables / author-year / scholarly metadata folded into M7. Standalone MathML is not an Initial Product requirement (FR-EQ-002) |
 | M5 Translation & Rendering | Baseline landed | schema 0.2.0, structured TranslationRequest/Result, OpenAI-compatible adapter, terminology/cache, readable-single-column Profile/Policy, table/equation/bibliography/figure-resource LaTeX projection, dual-hypertarget RenderAnchors; review repairs in [M5 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.en.md); fidelity repairs in [M5 fidelity repairs](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.en.md). `source-derived` / `dense-two-column` removed from v1 acceptance per PRD R2 / §43; vector-figure PDF fragments: [figure PDF fragments](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.en.md) |
 | M6 Bidirectional Reader | Baseline landed | viewerDataVersion 2 (full semanticNodes/relations/translation/provenance/issues + per-page sizes), frontend `PageSpatialIndex` grid, `pickCounterpart` geometry jumps (no page guessing), multi-fragment highlight, sync scroll, the Semantic Inspector, stdlib reader API + `rerender_workspace` (FR-TRANS-004, zero source re-parsing); decisions in the [M6 landing note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.en.md); current state in [`docs/architecture/reader.en.md`](../architecture/reader.en.md). Character-level mapping and the annotation layer removed from v1 acceptance per PRD NG4 / §47; cross-document multi-window remains out of v1 |
-| M7 Parser Ensemble & Quality | Baseline landed | DocumentProbe + Capability Registry (TOML) + Adaptive Routing + authority conflict resolution; deferred items folded in (1 Layout→N Semantic, structured tables via physical cell splitting + grid detection, author-year citations, scholarly metadata); calibration/quality report + `just benchmark` baseline gate. PRD closeout: real parser adapters, region-level annotated truth, figure PDF fragments |
-| M8 Productionization | Not started | — |
+| M7 Parser Ensemble & Quality | Baseline landed | DocumentProbe + Capability Registry (TOML) + Adaptive Routing + authority conflict resolution; deferred items folded in (1 Layout→N Semantic, structured tables via physical cell splitting + grid detection, author-year citations, scholarly metadata); calibration/quality report + `just benchmark` baseline gate (PR CI). Admission grades for the three PRD surfaces: [m8.en.md](m8.en.md) |
+| M8 Productionization | Admission done, v1 not started | v1: local workspace / resume / cache / failure isolation / compatibility / parser access. Typst, HTML, and the Analysis Layer are later extensions. Plan: [m8.en.md](m8.en.md) |
 
 ### M0 detail
 
@@ -127,13 +127,13 @@ README status: engineering bootstrap plus core document contracts plus the Walki
 | 7.4 Conflict Resolution | Baseline | `fusion.py` clusters same-region candidates then votes confidence × role weight (primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8); `fuse_page` page-level tests prove swapping primary changes the winner |
 | 7.5 Confidence Calibration | Diagnostic ready | `pdf_pipeline/calibration.py` binning + monotonicity diagnostics; region-level `regions[]` has landed; calibration stays diagnostic (audits the fusion formula, never `REGRESSED`) |
 | 7.6 Quality Metrics | Baseline | `metrics.py::quality_report`: text coverage, region recall/precision, ordering, `semanticExpectationCoverage`, `paragraphLabelRecall` / `headingLabelRecall` (layout-label recall, not paragraph merge or the section tree), table-structure coverage, citation resolution, source/render mapping coverage, issue counts by category/severity; unmeasurable metrics are null |
-| 7.7 Regression Benchmark | Baseline | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`; missing fixture / measurable metric becoming null / ERROR+FATAL increase fail the gate; wired into nightly |
+| 7.7 Regression Benchmark | Baseline | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`; missing fixture / measurable metric becoming null / ERROR+FATAL increase fail the gate; the PR CI Python job and `just ci` run `just benchmark` after `just latex-smoke` |
 
-**M7 exit gate:** Baseline achieved — provider/algorithm upgrades are now quantifiable as improved/unchanged/regressed via `just benchmark` against the baseline. The three PRD surfaces before M8 have landed; correctness is [M8-pre review repairs](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-pre-review-repairs.en.md), and misnamed semantic-accuracy metrics are not closeout evidence. Decisions: the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md); leftover-list filter: [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md).
+**M7 exit gate:** Baseline achieved — provider/algorithm upgrades are now quantifiable as improved/unchanged/regressed via `just benchmark` against the baseline. Admission grades for the three PRD surfaces: [M8 admission and v1 development plan](m8.en.md). Misnamed semantic-accuracy metrics are not closeout evidence. Decisions: the [M7 landing note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.en.md); leftover-list filter: [PRD filters roadmap deferrals](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.en.md).
 
 ### Recommended next steps
 
-1. M8 Productionization has not started. The three PRD surfaces before M8 have landed (real MinerU/Docling/GROBID adapters, region-level annotated truth, and vector-figure PDF fragments). Correctness repairs are in [M8-pre review repairs](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-pre-review-repairs.en.md); do not treat “fully closed” as the M8 entry claim until contract tests and CI are green.
+1. Start M8 v1 at batch A in the [M8 admission and v1 development plan](m8.en.md). Do not implement full M8 first, and do not treat live parser services as a prerequisite for A–D.
 2. **Removed from the leftover list per PRD v0.2 (not Initial Product; not debt into M8):**
    - Character-level mapping — [NG4](../product/requirements.en.md), FR-SYNC-005, §43 “Character Mapping: not required”.
    - `source-derived` / `dense-two-column` — FR-LAYOUT-004, §43 “inheriting source two-column: not required for v1”, [R2 Post-Initial](../product/requirements.en.md).
@@ -2251,6 +2251,8 @@ Goal:
 
 > Upgrade from a research pipeline to a product system that can be maintained, extended, and deployed long-term.
 
+**v1 scope and batch plan** (authoritative current state): [`m8.en.md`](m8.en.md). v1 covers 8.1–8.6 local workspace, incremental rerun, cache, failure isolation, schema/workspace compatibility, and parser access. **8.7 Typst/HTML and 8.8 Analysis Layer are later extensions per PRD §44 / R7–R8, not M8 v1 acceptance.**
+
 ---
 
 ### Phase 8.1 Pipeline Orchestration
@@ -2402,6 +2404,8 @@ without modifying core IR.
 
 ### Phase 8.7 Renderer Expansion
 
+**Later extension (not v1).** Adding Typst / HTML backends must reuse SemanticDocument, TranslationLayer, and RenderDocument. The Initial Product rendering backend remains LaTeX / LuaLaTeX.
+
 Add:
 
 ```text
@@ -2420,6 +2424,8 @@ RenderDocument / Render abstraction
 ---
 
 ### Phase 8.8 Analysis Layer
+
+**Later extension (not v1).** Summaries / RAG / QA belong to AnalysisLayer and must never modify Source SemanticDocument.
 
 Extend only at the end:
 
@@ -2450,6 +2456,8 @@ Never modify Source SemanticDocument.
 ---
 
 ### Milestone 8 Exit Gate
+
+v1 acceptance (authoritative list): [`m8.en.md`](m8.en.md) batches A–F. The long-term roadmap still includes renderer extensibility; **v1 does not treat Typst/HTML/Analysis as the exit gate.**
 
 Achieve:
 

@@ -186,3 +186,5 @@ probe.json
 capability-registry.toml
 run_benchmark.py
 benchmark-update-baseline
+pageIndex
+worktree

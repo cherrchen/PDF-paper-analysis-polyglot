@@ -104,7 +104,8 @@ test-golden:
     {{ python }} scripts/pytest_category.py golden uv run pytest -m golden
 
 # M7 Phase 7.7: run the ensemble over the corpus and compare with the
-# committed baseline; fails on any quality regression.
+# committed baseline; fails on any quality regression. PR CI and `just ci`
+# run this after fixture PDFs are compiled; do not duplicate the TeX install.
 benchmark:
     uv run python tests/benchmark/run_benchmark.py
 
@@ -183,7 +184,7 @@ check-fast: fmt-check lint typecheck test-unit schema docs-fast latex-check
 
 check: fmt-check lint typecheck test test-golden test-integration latex-check latex-smoke schema docs
 
-ci: check security generate-check
+ci: check security generate-check benchmark
     @echo "ci complete"
 
 clean:

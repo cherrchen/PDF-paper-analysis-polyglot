@@ -1,0 +1,78 @@
+{
+  "recordedAt": "2026-09-12",
+  "defaultEnsemble": ["mock", "docling-sim", "grobid-sim"],
+  "liveToolsChecked": {
+    "MINERU_CMD": null,
+    "DOCLING_CMD": null,
+    "GROBID_URL": null,
+    "pythonModules": {
+      "docling": false,
+      "mineru": false,
+      "magic_pdf": false
+    },
+    "javaPresent": true,
+    "grobidService": false
+  },
+  "dumps": [
+    {
+      "path": "mineru/layout.json",
+      "class": "synthetic-contract",
+      "tool": null,
+      "toolVersion": "shape: MinerU 2.x pdf_info / para_blocks",
+      "inputSource": "self-authored strings; not a PDF run",
+      "generatedHow": "hand-authored to the adapter contract",
+      "crop": "one page; title, paragraph, display_formula, image",
+      "verified": "adapter contract + synthetic normalize/fusion/semantic chain"
+    },
+    {
+      "path": "mineru/two-page-formulas.json",
+      "class": "synthetic-contract",
+      "tool": null,
+      "toolVersion": "shape: MinerU 2.x multi-page pdf_info",
+      "inputSource": "self-authored strings; not a PDF run",
+      "generatedHow": "hand-authored to prove formula ids include pageId",
+      "crop": "two pages; one display_formula each",
+      "verified": "adapter contract (id uniqueness)"
+    },
+    {
+      "path": "docling/table.json",
+      "class": "synthetic-contract",
+      "tool": null,
+      "toolVersion": "shape: Docling texts/tables",
+      "inputSource": "self-authored strings; not a PDF run",
+      "generatedHow": "hand-authored 2x2 table",
+      "crop": "one table, four cells",
+      "verified": "adapter contract"
+    },
+    {
+      "path": "docling/native-v2.48.json",
+      "class": "synthetic-contract",
+      "tool": null,
+      "toolVersion": "shape: Docling-core v2.48 coord_origin / table_cells / spanned grid",
+      "inputSource": "self-authored strings; not a PDF run",
+      "generatedHow": "hand-authored to the v2.48 field contract",
+      "crop": "two texts (TOPLEFT + BOTTOMLEFT) and two tables (table_cells + grid-only span)",
+      "verified": "adapter contract + synthetic normalize/fusion/semantic chain"
+    },
+    {
+      "path": "grobid/header.json",
+      "class": "synthetic-contract",
+      "tool": null,
+      "toolVersion": "shape: compact GROBID JSON (title/author/abstract/sections)",
+      "inputSource": "self-authored strings; not a PDF run",
+      "generatedHow": "hand-authored",
+      "crop": "header metadata only",
+      "verified": "adapter contract"
+    },
+    {
+      "path": "grobid/header.tei.xml",
+      "class": "synthetic-contract",
+      "tool": null,
+      "toolVersion": "shape: TEI P5 as emitted by GROBID 0.8 processFulltextDocument",
+      "inputSource": "self-authored strings; not a PDF run",
+      "generatedHow": "hand-authored TEI; live HTTP path is a local stub, not GROBID",
+      "crop": "title, one author, abstract, one section head, empty listBibl",
+      "verified": "adapter contract + synthetic semantic front-matter chain"
+    }
+  ]
+}

@@ -79,3 +79,56 @@ def test_compare_error_severity_increase_is_regression() -> None:
     }
     findings = compare(report, baseline)
     assert any("errorIssues" in line and line.startswith("REGRESSED") for line in findings)
+
+
+def test_compare_fatal_increase_is_regression() -> None:
+    baseline = {"fixtures": {"smoke": _fixture()}, "calibration": {}}
+    report = {
+        "fixtures": {
+            "smoke": {
+                **_fixture(),
+                "issues": {"byCategory": {}, "bySeverity": {"FATAL": 1}},
+            }
+        },
+        "calibration": {},
+    }
+    findings = compare(report, baseline)
+    assert any("errorIssues" in line and line.startswith("REGRESSED") for line in findings)
+
+
+def test_compare_warning_increase_is_not_regression() -> None:
+    baseline = {"fixtures": {"smoke": _fixture()}, "calibration": {}}
+    report = {
+        "fixtures": {
+            "smoke": {
+                **_fixture(),
+                "issues": {"byCategory": {}, "bySeverity": {"WARNING": 9}},
+            }
+        },
+        "calibration": {},
+    }
+    findings = compare(report, baseline)
+    assert not any(line.startswith("REGRESSED") for line in findings)
+
+
+def test_compare_metric_drop_is_regression() -> None:
+    baseline = {"fixtures": {"smoke": _fixture(coverage=1.0)}, "calibration": {}}
+    report = {"fixtures": {"smoke": _fixture(coverage=0.5)}, "calibration": {}}
+    findings = compare(report, baseline)
+    assert any(line.startswith("REGRESSED") and "physicalTextCoverage" in line for line in findings)
+
+
+def test_compare_paragraph_label_recall_null_is_regression() -> None:
+    baseline = {
+        "fixtures": {"smoke": {**_fixture(), "paragraphLabelRecall": 0.5}},
+        "calibration": {},
+    }
+    report = {
+        "fixtures": {"smoke": {**_fixture(), "paragraphLabelRecall": None}},
+        "calibration": {},
+    }
+    findings = compare(report, baseline)
+    assert any(
+        "paragraphLabelRecall" in line and "null" in line and line.startswith("REGRESSED")
+        for line in findings
+    )

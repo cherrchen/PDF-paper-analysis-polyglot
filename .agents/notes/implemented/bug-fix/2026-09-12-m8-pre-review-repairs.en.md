@@ -29,5 +29,5 @@ The 2026-09-12 review before M8 found that trunk regressions passed while new be
 ## Consequences
 
 - Current state: [`docs/architecture/rendering.en.md`](../../../../docs/architecture/rendering.en.md), [`docs/development/roadmap.en.md`](../../../../docs/development/roadmap.en.md) 7.6 / 4.3, [`docs/contracts/parser-adapter-contract.en.md`](../../../../docs/contracts/parser-adapter-contract.en.md), [`docs/testing/fixtures.en.md`](../../../../docs/testing/fixtures.en.md).
-- The three PRD surfaces (real adapters, region truth, PDF fragments) still exist, but “fully closed” must not be written as M8 entry until these correctness repairs landed.
+- The three PRD surfaces (real adapters, region truth, PDF fragments) still exist, but “fully closed” must not be written as M8 entry until these correctness repairs landed. Admission grades and the v1 plan: [M8 admission closeout](../process/2026-09-12-m8-admission-closeout.en.md).
 - Baseline key rename follows the golden policy: same numbers, new names, because label recall must not be called semantic accuracy.

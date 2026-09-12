@@ -7,7 +7,7 @@ PDF ingestion, parser selection, and adaptive routing: [`document-architecture.e
 Key points:
 
 - **Canonical Physical Backend**: PDFium → `PhysicalDocument`
-- **Layout evidence (current default)**: deterministic `MockLayoutEvidenceProvider` (MinerU-like layout specialist). Real MinerU / Docling adapters map native dumps (optional live services) and still emit only `EvidenceBundle`; the default capability registry does not swap the primary.
+- **Layout evidence (current default)**: deterministic `MockLayoutEvidenceProvider` (MinerU-like layout specialist). Real MinerU / Docling adapters map native dumps (optional live services) and still emit only `EvidenceBundle`; the default capability registry does not swap the primary. Synthetic dumps are tested through semantic recovery; real-tool output is not verified ([M8 admission](../development/m8.en.md)).
 - **Scholarly evidence**: default `grobid-sim`; the real GROBID adapter uses the same Protocol (dumps / optional HTTP).
 - **Adaptive routing**: `DocumentProbe` decides which parsers run; not every parser on every run
 

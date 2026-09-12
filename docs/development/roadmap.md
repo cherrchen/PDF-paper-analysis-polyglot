@@ -17,9 +17,9 @@ Initial Product 关键约束（摘自 PRD v0.2）：仅 Born-digital PDF；Targe
 ## 当前进度追踪
 
 **最后更新：** 2026-09-12
-**当前位置：** M7 Parser Ensemble & Quality 基线已落地；进入 M8 前的三项 PRD 对齐缺口也已收口：真实 MinerU/Docling/GROBID adapter（录制 dump + 可选活服务）、区域级标注真值、矢量 Figure 的 PDF fragment。字符级 mapping、`source-derived`/`dense-two-column`、Annotation 层、独立 MathML 交付已从延期清单剔除（非 Initial Product）。M8 尚未开始。详见 [PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)、[可选真实 parser 依赖](../../.agents/notes/implemented/architecture/2026-09-12-optional-parser-adapters.md)、[区域级标注真值](../../.agents/notes/implemented/architecture/2026-09-12-region-level-layout-truth.md)、[Figure PDF fragment](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.md) 与 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。
+**当前位置：** M7 Parser Ensemble & Quality 基线已落地。M8 准入已收口为分级证据：三项 PRD 表面均为已实现 + 合成夹具通过；真实 MinerU/Docling/GROBID 工具输出未验证，不阻塞初版 A–D，阻塞生产 registry 替换。字符级 mapping、`source-derived`/`dense-two-column`、Annotation 层、独立 MathML 交付已从延期清单剔除（非 Initial Product）。M8 初版尚未开工，计划见 [M8 准入与初版开发计划](m8.md)。详见 [M8 准入收口](../../.agents/notes/implemented/process/2026-09-12-m8-admission-closeout.md)、[PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)、[可选真实 parser 依赖](../../.agents/notes/implemented/architecture/2026-09-12-optional-parser-adapters.md)、[区域级标注真值](../../.agents/notes/implemented/architecture/2026-09-12-region-level-layout-truth.md)、[Figure PDF fragment](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.md) 与 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。
 
-README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线 + Parser Ensemble。进入 M8 前的三项 PRD 缺口已收口。
+README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到端管线 + Layout Recovery Engine + Semantic Recovery 基线 + Parser Ensemble。M8 准入分级见 [m8.md](m8.md)。
 
 ### Milestone 总览
 
@@ -32,8 +32,8 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | M4 Semantic Recovery Engine | 基线落地 | CONTINUATION 段落合并、编号 heading + SECTION 树、TABLE/EQUATION/FOOTNOTE/BIBLIOGRAPHY 恢复；第二轮正确性修复后表格标题、marks、脚注关联、环状树、多 fragment Viewer 与 provenance 已补。1→N / 结构化表格 / 作者-年 / scholarly metadata 已并入 M7。MathML 独立交付非初版需求（FR-EQ-002） |
 | M5 Translation & Rendering | 基线落地 | schema 0.2.0、结构化 TranslationRequest/Result、OpenAI 兼容 adapter、术语/缓存、readable-single-column Profile/Policy、表格/公式/书目/图资源 LaTeX 投影、双 hypertarget RenderAnchor；审查修复见 [M5 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-08-m5-review-repairs.md)，保真修复见 [M5 内容保真修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m5-fidelity-repairs.md)。`source-derived` / `dense-two-column` 已按 PRD R2 / §43 从初版验收剔除；矢量 Figure 的 PDF fragment 见 [Figure PDF fragment](../../.agents/notes/implemented/architecture/2026-09-12-figure-pdf-fragment.md) |
 | M6 Bidirectional Reader | 基线落地 | viewerDataVersion 2（semanticNodes 全量/relations/translation/provenance/issues + 逐页尺寸）、前端 `PageSpatialIndex` 网格、`pickCounterpart` 几何跳转（无页码猜测）、多 fragment 高亮、同步滚动、Semantic Inspector、stdlib reader API + `rerender_workspace`（FR-TRANS-004 零源重解析）；决策见 [M6 落地 note](../../.agents/notes/implemented/feature/2026-09-11-m6-bidirectional-reader.md)；当前态见 [`docs/architecture/reader.md`](../architecture/reader.md)。字符级 mapping 与 annotation 层已按 PRD NG4 / §47 从初版验收剔除；跨文档多窗口仍非初版 |
-| M7 Parser Ensemble & Quality | 基线落地 | DocumentProbe + Capability Registry（TOML）+ Adaptive Routing + authority 冲突解决；1 Layout→N Semantic、结构化表格（物理层单元格拆分 + 网格检测）、作者-年引用、Scholarly metadata 并入；校准/质量报告 + `just benchmark` 基线门禁。PRD 收口：真实 parser adapter、区域级标注真值、Figure PDF fragment |
-| M8 Productionization | 未开始 | — |
+| M7 Parser Ensemble & Quality | 基线落地 | DocumentProbe + Capability Registry（TOML）+ Adaptive Routing + authority 冲突解决；1 Layout→N Semantic、结构化表格（物理层单元格拆分 + 网格检测）、作者-年引用、Scholarly metadata 并入；校准/质量报告 + `just benchmark` 基线门禁（PR CI）。三项 PRD 表面准入分级见 [m8.md](m8.md) |
+| M8 Productionization | 准入完成，初版未开工 | 初版：本地 workspace / 恢复 / 缓存 / 失败隔离 / 兼容 / parser 接入。Typst、HTML、Analysis Layer 为后续扩展。计划：[m8.md](m8.md) |
 
 ### M0 明细
 
@@ -127,13 +127,13 @@ README 状态：工程脚手架 + 核心文档契约 + Walking Skeleton 端到�
 | 7.4 Conflict Resolution | 基线 | `fusion.py` 先聚类同一区域候选再按 confidence × 角色权重投票（primary 1.5 / challenger 1.2 / fallback 1.0 / unlisted 0.8）；`fuse_page` 交换 primary 的页面级测试证明仲裁生效 |
 | 7.5 Confidence Calibration | 诊断就绪 | `pdf_pipeline/calibration.py` 分桶 + 单调性诊断；区域级 `regions[]` 已落地，校准仍是 diagnostic（审计融合公式，不进 REGRESSED） |
 | 7.6 Quality Metrics | 基线 | `metrics.py::quality_report`：text coverage、region recall/precision、ordering、`semanticExpectationCoverage`、`paragraphLabelRecall` / `headingLabelRecall`（布局标签召回，不是段落合并或章节树）、table-structure coverage、citation resolution、source/render mapping coverage、issue 的 category/severity 计数；不可测指标为 null |
-| 7.7 Regression Benchmark | 基线 | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`；缺失 fixture / 可测指标变 null / ERROR+FATAL 增加即非零退出；nightly 接入 |
+| 7.7 Regression Benchmark | 基线 | `tests/benchmark/run_benchmark.py` + `tests/benchmark/baseline.json`；缺失 fixture / 可测指标变 null / ERROR+FATAL 增加即非零退出；PR CI Python job 与 `just ci` 在 `just latex-smoke` 之后运行 `just benchmark` |
 
-**M7 Exit Gate：** 基线达成——provider/算法升级现在可以通过 `just benchmark` 与 baseline 对比量化 improved/unchanged/regressed。进入 M8 前的三项 PRD 表面已落地；正确性以 [M8 前审查修复](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-pre-review-repairs.md) 为准，不以错误的语义准确率名称作为收口证据。决策见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)；延期清单过滤见 [PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)。
+**M7 Exit Gate：** 基线达成——provider/算法升级现在可以通过 `just benchmark` 与 baseline 对比量化 improved/unchanged/regressed。三项 PRD 表面的准入分级见 [M8 准入与初版开发计划](m8.md)，不以错误的语义准确率名称作为收口证据。决策见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)；延期清单过滤见 [PRD 过滤 roadmap 延期项](../../.agents/notes/implemented/process/2026-09-12-prd-filters-roadmap-deferrals.md)。
 
 ### 建议下一步
 
-1. M8 Productionization 尚未开始。进入 M8 前的三项 PRD 表面（真实 MinerU/Docling/GROBID adapter、区域级标注真值、矢量 Figure 的 PDF fragment）已落地；正确性修复见 [M8 前审查修复](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-pre-review-repairs.md)，在契约测试与 CI 转绿前不把「已全部收口」写成准入结论。
+1. 按 [M8 准入与初版开发计划](m8.md) 的批次 A 开始本地 workspace，不要先做完整 M8，也不要把真实 parser 活服务当成 A–D 的前置。
 2. **已按 PRD v0.2 从延期清单剔除（非 Initial Product，不再当作进入 M8 的欠债）：**
    - 字符级 mapping — [NG4](../product/requirements.md)、FR-SYNC-005、§43「Character Mapping：不要求」。
    - `source-derived` / `dense-two-column` — FR-LAYOUT-004、§43「是否继承原双栏：初版不要求」、[R2 Post-Initial](../product/requirements.md)。
@@ -2265,6 +2265,8 @@ Parser 升级开始变成：
 
 > 从研究型 pipeline 升级成可以长期维护、扩展和部署的产品系统。
 
+**初版范围与分批计划**（权威当前态）：[`m8.md`](m8.md)。初版只做 8.1–8.6 的本地 workspace、增量、缓存、失败隔离、schema/workspace 兼容与 parser 接入。**8.7 Typst/HTML 与 8.8 Analysis Layer 按 PRD §44 / R7–R8 为后续扩展，不是 M8 初版验收。**
+
 ---
 
 ### Phase 8.1 Pipeline Orchestration
@@ -2416,7 +2418,7 @@ NewTableModel
 
 ### Phase 8.7 Renderer Expansion
 
-增加：
+**后续扩展（非初版）。** 增加 Typst / HTML Backend 必须复用 SemanticDocument、TranslationLayer、RenderDocument。Initial Product 渲染后端仍是 LaTeX / LuaLaTeX。
 
 ```text
 Typst Backend
@@ -2434,6 +2436,8 @@ RenderDocument / Render abstraction
 ---
 
 ### Phase 8.8 Analysis Layer
+
+**后续扩展（非初版）。** 摘要 / RAG / QA 等属于 AnalysisLayer，绝不修改 Source SemanticDocument。
 
 最后才扩展：
 
@@ -2464,6 +2468,8 @@ AnalysisLayer
 ---
 
 ### Milestone 8 Exit Gate
+
+初版验收（权威清单）：[`m8.md`](m8.md) 批次 A–F。长期总路线仍包含 Renderer 可扩展；**初版不把 Typst/HTML/Analysis 当 Exit Gate。**
 
 达到：
 

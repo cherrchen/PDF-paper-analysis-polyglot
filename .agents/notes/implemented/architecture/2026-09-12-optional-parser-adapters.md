@@ -24,3 +24,4 @@ PRD §34 要求 MinerU / Docling / GROBID 作为 Evidence Provider，但依赖�
 
 - `build_provider("mineru"|"docling"|"grobid")` 可实例化；默认 `route_providers` 仍选出 sim 名。
 - 活路径是本机实验，不是 CI 门禁。
+- 合成 dump 的 adapter → normalize/fusion → semantic 链路已测；2026-09-12 本机无真实工具输出，缺口见 [M8 准入收口](../process/2026-09-12-m8-admission-closeout.md)。

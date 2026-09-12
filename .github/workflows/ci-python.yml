@@ -38,3 +38,6 @@ jobs:
           just lint-python
           just typecheck-python
           just test-python
+
+      - name: Regression benchmark against baseline
+        run: just benchmark

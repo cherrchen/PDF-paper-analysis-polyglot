@@ -29,5 +29,5 @@ Status: implemented
 ## 后果
 
 - 当前态：[`docs/architecture/rendering.md`](../../../../docs/architecture/rendering.md)、[`docs/development/roadmap.md`](../../../../docs/development/roadmap.md) 7.6 / 4.3、[`docs/contracts/parser-adapter-contract.md`](../../../../docs/contracts/parser-adapter-contract.md)、[`docs/testing/fixtures.md`](../../../../docs/testing/fixtures.md)。
-- 三项 PRD 表面（真实 adapter、区域真值、PDF fragment）仍在，但本轮正确性修复完成前不得把「已全部收口」写成 M8 准入。
+- 三项 PRD 表面（真实 adapter、区域真值、PDF fragment）仍在，但本轮正确性修复完成前不得把「已全部收口」写成 M8 准入。准入分级与初版计划见 [M8 准入收口](../process/2026-09-12-m8-admission-closeout.md)。
 - baseline 键更名走 golden 政策：同一数字、新名称，理由是停止把标签召回叫成语义准确率。

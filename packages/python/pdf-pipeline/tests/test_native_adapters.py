@@ -10,7 +10,11 @@ from document_model.generated import schema_models as generated
 from pdf_pipeline.evidence.docling import DoclingEvidenceProvider
 from pdf_pipeline.evidence.grobid import GrobidEvidenceProvider
 from pdf_pipeline.evidence.mineru import MinerUEvidenceProvider
+from pdf_pipeline.evidence.normalize import normalize_bundle
+from pdf_pipeline.layout import recover_layout_document
+from pdf_pipeline.pipeline import region_lines_from, region_texts_from
 from pdf_pipeline.routing import build_provider
+from pdf_pipeline.semantic import recover_semantic_document
 
 DUMP_ROOT = Path(__file__).resolve().parents[4] / "tests/fixtures/parser-dumps"
 COUNTER = iter(range(50000, 60000))
@@ -44,6 +48,64 @@ def _physical(page_count: int = 1) -> generated.PhysicalDocument:
         objects=[],
         metadata=generated.PhysicalMetadata(),
     )
+
+
+def _span(
+    page_id: str,
+    *,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    text: str,
+) -> generated.TextSpan:
+    return generated.TextSpan(
+        objectType="textSpan",
+        id=_uid(),
+        pageId=page_id,
+        text=text,
+        geometry=generated.Rect(kind="rect", x=x, y=y, width=width, height=height),
+        font=generated.FontRef(name=""),
+        fontSize=height,
+    )
+
+
+def _with_spans(
+    physical: generated.PhysicalDocument, spans: list[generated.TextSpan]
+) -> generated.PhysicalDocument:
+    by_page: dict[str, list[generated.TextSpan]] = {}
+    for span in spans:
+        by_page.setdefault(span.pageId, []).append(span)
+    pages = [
+        page.model_copy(update={"objectIds": [span.id for span in by_page.get(page.id, [])]})
+        for page in physical.pages
+    ]
+    return physical.model_copy(update={"pages": pages, "objects": spans})
+
+
+def _chain(
+    provider: MinerUEvidenceProvider | DoclingEvidenceProvider | GrobidEvidenceProvider,
+    physical: generated.PhysicalDocument,
+) -> tuple[
+    generated.EvidenceBundle,
+    generated.LayoutDocument,
+    generated.SemanticDocument,
+]:
+    """Adapter dump → normalize → layout fusion → semantic recovery."""
+    bundle = provider.collect(physical)
+    load_document("evidence", dump_document(bundle))
+    normalize_bundle(bundle, physical)
+    layout = recover_layout_document(physical, evidence=bundle)
+    load_document("layout-document", dump_document(layout))
+    texts = region_texts_from(physical, layout)
+    semantic = recover_semantic_document(
+        layout,
+        texts,
+        lines=region_lines_from(physical, layout),
+        evidence=bundle,
+    )
+    load_document("semantic-document", dump_document(semantic))
+    return bundle, layout, semantic
 
 
 def test_mineru_dump_maps_layout_and_formula() -> None:
@@ -88,8 +150,6 @@ def test_docling_dump_maps_table_structure() -> None:
 
 
 def test_docling_native_origin_and_merged_cells() -> None:
-    from pdf_pipeline.evidence.normalize import normalize_bundle
-
     physical = _physical()
     bundle = DoclingEvidenceProvider(dump_path=DUMP_ROOT / "docling/native-v2.48.json").collect(
         physical
@@ -258,3 +318,110 @@ def test_grobid_live_posts_multipart_input(monkeypatch: pytest.MonkeyPatch, tmp_
         for field in candidate.fields
     }
     assert fields["title"] == "Live Title"
+
+
+def test_mineru_dump_reaches_semantic_equation() -> None:
+    physical = _physical()
+    page_id = physical.pages[0].id
+    physical = _with_spans(
+        physical,
+        [
+            _span(page_id, x=72, y=60, width=428, height=30, text="Dump Paper Title"),
+            _span(page_id, x=72, y=110, width=428, height=50, text="A recorded MinerU paragraph."),
+            _span(page_id, x=120, y=180, width=300, height=40, text="E = mc^2"),
+        ],
+    )
+    bundle, layout, semantic = _chain(
+        MinerUEvidenceProvider(dump_path=DUMP_ROOT / "mineru/layout.json"),
+        physical,
+    )
+    formula_ids = {c.id for c in bundle.candidates if c.evidenceType == "FORMULA"}
+    fused_formula = [
+        region
+        for region in layout.regions
+        if any(label.label == "FORMULA" for label in region.labels)
+        and formula_ids.intersection(
+            evidence_id for label in region.labels for evidence_id in label.evidenceIds
+        )
+    ]
+    assert fused_formula
+    formulas = [c for c in bundle.candidates if isinstance(c, generated.FormulaCandidate)]
+    assert formulas[0].latex == "E = mc^{2}"
+    texts = {
+        node.content.text for node in semantic.nodes if isinstance(node.content, generated.RichText)
+    }
+    assert "E = mc^2" in texts
+
+
+def test_docling_dump_reaches_semantic_merged_table() -> None:
+    physical = _physical()
+    page_id = physical.pages[0].id
+    physical = _with_spans(
+        physical,
+        [
+            _span(page_id, x=72, y=80, width=328, height=30, text="Top-left origin heading."),
+            _span(page_id, x=72, y=252, width=160, height=20, text="Merged header"),
+            _span(page_id, x=72, y=280, width=80, height=20, text="a"),
+            _span(page_id, x=160, y=280, width=80, height=20, text="b"),
+        ],
+    )
+    bundle, layout, semantic = _chain(
+        DoclingEvidenceProvider(dump_path=DUMP_ROOT / "docling/native-v2.48.json"),
+        physical,
+    )
+    table_ids = {c.id for c in bundle.candidates if c.evidenceType == "TABLE_STRUCTURE"}
+    fused_tables = [
+        region
+        for region in layout.regions
+        if region.kind == "TABLE"
+        and table_ids.intersection(
+            evidence_id for label in region.labels for evidence_id in label.evidenceIds
+        )
+    ]
+    assert fused_tables
+    tables = [node for node in semantic.nodes if node.kind == "TABLE"]
+    assert tables
+    structured = [
+        node.content
+        for node in tables
+        if isinstance(node.content, generated.TableContent)
+        and "table structure evidence" in (node.confidence.reason or "")
+    ]
+    assert structured
+    cells = [(cell.content.text, cell.colSpan) for content in structured for cell in content.cells]
+    assert any(span == 2 and text in {"Merged header", "Grid-only span"} for text, span in cells)
+
+
+def test_grobid_dump_reaches_semantic_front_matter() -> None:
+    physical = _physical()
+    page_id = physical.pages[0].id
+    physical = _with_spans(
+        physical,
+        [
+            _span(page_id, x=72, y=60, width=400, height=24, text="Dump Paper Title"),
+            _span(page_id, x=72, y=100, width=200, height=12, text="Alice Example"),
+            _span(page_id, x=72, y=140, width=400, height=36, text="A recorded GROBID abstract."),
+        ],
+    )
+    bundle, _layout, semantic = _chain(
+        GrobidEvidenceProvider(dump_path=DUMP_ROOT / "grobid/header.tei.xml"),
+        physical,
+    )
+    fields = {
+        field.name: field.value
+        for candidate in bundle.candidates
+        if isinstance(candidate, generated.MetadataCandidate)
+        for field in candidate.fields
+    }
+    assert fields["title"] == "Dump Paper Title"
+    roles = {
+        candidate.role
+        for candidate in bundle.candidates
+        if isinstance(candidate, generated.StructureCandidate)
+    }
+    assert {"ABSTRACT", "REFERENCES"} <= roles
+    texts = {
+        node.content.text for node in semantic.nodes if isinstance(node.content, generated.RichText)
+    }
+    assert "Dump Paper Title" in texts
+    assert "Alice Example" in texts
