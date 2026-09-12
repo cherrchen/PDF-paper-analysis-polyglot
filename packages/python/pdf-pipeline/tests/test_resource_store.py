@@ -10,6 +10,7 @@ from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
 from pdf_pipeline.pipeline import region_texts_from
 from pdf_pipeline.resource_store import (
+    attach_figure_pdf_fragments,
     bind_figure_image_resources,
     extract_resource_document,
     figure_resource_ids,
@@ -70,6 +71,58 @@ def test_bind_figure_resources_uses_source_physical_ids(tmp_path: Path) -> None:
     assert set(ids) <= resource_ids
     image_ids = {obj.id for obj in physical.objects if obj.objectType == "imageObject"}
     assert set(ids) <= image_ids
+
+
+@pytest.mark.unit
+def test_tikz_vector_gets_pdf_fragment(tmp_path: Path) -> None:
+    pdf_bytes = _fixture("tikz-vector")
+    physical = extract_physical_document(pdf_bytes)
+    layout = recover_layout_document(physical)
+    semantic = recover_semantic_document(layout, region_texts_from(physical, layout))
+    resources = extract_resource_document(pdf_bytes, resource_dir=tmp_path)
+    bound = bind_figure_image_resources(semantic, layout, resources.resources)
+    bound, resources = attach_figure_pdf_fragments(
+        bound,
+        layout,
+        physical,
+        pdf_bytes,
+        resource_dir=tmp_path,
+        resources=resources,
+    )
+    figure = next(node for node in bound.nodes if node.kind == "FIGURE")
+    assert isinstance(figure.content, generated.FigureContent)
+    fragment_id = figure.content.resources.pdfFragmentResourceId
+    assert fragment_id
+    assert (tmp_path / f"{fragment_id}.pdf").is_file()
+    ids = figure_resource_ids(figure.content)
+    assert ids[0] == fragment_id
+
+
+@pytest.mark.unit
+def test_figure_caption_keeps_raster_after_pdf_fragment(tmp_path: Path) -> None:
+    pdf_bytes = _fixture("figure-caption")
+    physical = extract_physical_document(pdf_bytes)
+    layout = recover_layout_document(physical)
+    semantic = recover_semantic_document(layout, region_texts_from(physical, layout))
+    resources = extract_resource_document(pdf_bytes, resource_dir=tmp_path)
+    bound = bind_figure_image_resources(semantic, layout, resources.resources)
+    bound, resources = attach_figure_pdf_fragments(
+        bound,
+        layout,
+        physical,
+        pdf_bytes,
+        resource_dir=tmp_path,
+        resources=resources,
+    )
+    figure = next(node for node in bound.nodes if node.kind == "FIGURE")
+    assert isinstance(figure.content, generated.FigureContent)
+    rasters = figure.content.resources.embeddedImageIds
+    fragment = figure.content.resources.pdfFragmentResourceId
+    assert rasters
+    assert fragment
+    ids = figure_resource_ids(figure.content)
+    assert ids[0] == fragment
+    assert set(rasters) <= set(ids)
 
 
 @pytest.mark.unit

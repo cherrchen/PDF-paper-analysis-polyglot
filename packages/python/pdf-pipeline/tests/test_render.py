@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 from document_model import load_document
+from document_model.generated import schema_models as generated
 from paper_llm import TRANSLATION_MARKER, translate_document
 from pdf_pipeline.layout import recover_layout_document
 from pdf_pipeline.physical import extract_physical_document
@@ -15,10 +15,12 @@ from pdf_pipeline.pipeline import region_lines_from, region_texts_from, run_pipe
 from pdf_pipeline.render_anchor import recover_render_anchors
 from pdf_pipeline.render_composer import compose_render_document
 from pdf_pipeline.render_latex import compile_latex, escape_latex, project_to_latex
+from pdf_pipeline.resource_store import (
+    attach_figure_pdf_fragments,
+    bind_figure_image_resources,
+    extract_resource_document,
+)
 from pdf_pipeline.semantic import recover_semantic_document
-
-if TYPE_CHECKING:
-    from document_model.generated import schema_models as generated
 
 FIXTURE_DIR = Path(__file__).resolve().parents[4] / "tests/fixtures/source/latex/build"
 
@@ -182,6 +184,54 @@ def test_figure_and_caption_share_one_float() -> None:
     assert sum(node.kind == "FIGURE_CAPTION" for node in semantic.nodes) == 1
     assert tex.count("\\begin{figure}") == 1
     assert "\\caption{" in tex
+
+
+def test_tikz_vector_projects_pdf_fragment(tmp_path: Path) -> None:
+    pdf_bytes = _fixture("tikz-vector")
+    physical = extract_physical_document(pdf_bytes)
+    layout = recover_layout_document(physical)
+    semantic = recover_semantic_document(layout, region_texts_from(physical, layout))
+    resources = extract_resource_document(pdf_bytes, resource_dir=tmp_path)
+    bound = bind_figure_image_resources(semantic, layout, resources.resources)
+    bound, resources = attach_figure_pdf_fragments(
+        bound,
+        layout,
+        physical,
+        pdf_bytes,
+        resource_dir=tmp_path,
+        resources=resources,
+    )
+    translation = translate_document(bound)
+    render = compose_render_document(bound, translation, resources=resources.resources)
+    tex = project_to_latex(render, resource_dir=tmp_path)
+    assert "\\includegraphics" in tex
+    assert ".pdf}" in tex
+    assert r"\fbox{" not in tex
+
+
+def test_figure_caption_raster_survives_pdf_fragment(tmp_path: Path) -> None:
+    pdf_bytes = _fixture("figure-caption")
+    physical = extract_physical_document(pdf_bytes)
+    layout = recover_layout_document(physical)
+    semantic = recover_semantic_document(layout, region_texts_from(physical, layout))
+    resources = extract_resource_document(pdf_bytes, resource_dir=tmp_path)
+    bound = bind_figure_image_resources(semantic, layout, resources.resources)
+    bound, resources = attach_figure_pdf_fragments(
+        bound,
+        layout,
+        physical,
+        pdf_bytes,
+        resource_dir=tmp_path,
+        resources=resources,
+    )
+    figure = next(node for node in bound.nodes if node.kind == "FIGURE")
+    assert isinstance(figure.content, generated.FigureContent)
+    assert figure.content.resources.embeddedImageIds
+    assert figure.content.resources.pdfFragmentResourceId
+    translation = translate_document(bound)
+    render = compose_render_document(bound, translation, resources=resources.resources)
+    tex = project_to_latex(render, resource_dir=tmp_path)
+    assert "\\includegraphics" in tex
 
 
 @pytest.mark.integration

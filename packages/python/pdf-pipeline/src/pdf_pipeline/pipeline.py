@@ -52,7 +52,11 @@ from pdf_pipeline.render_latex import (
     project_to_latex,
     render_target_document_id,
 )
-from pdf_pipeline.resource_store import bind_figure_image_resources, extract_resource_document
+from pdf_pipeline.resource_store import (
+    attach_figure_pdf_fragments,
+    bind_figure_image_resources,
+    extract_resource_document,
+)
 from pdf_pipeline.routing import ROUTING_VERSION, collect_bundles, route_providers
 from pdf_pipeline.sem_validate import validate_semantic_recovery
 from pdf_pipeline.semantic import recover_semantic_document
@@ -472,6 +476,26 @@ def _build_translation_provider(
     )
 
 
+def _bind_figure_assets(
+    semantic: generated.SemanticDocument,
+    layout: generated.LayoutDocument,
+    physical: generated.PhysicalDocument,
+    pdf_bytes: bytes,
+    resource_dir: Path,
+) -> tuple[generated.SemanticDocument, generated.ResourceDocument]:
+    """Extract rasters, bind them, then crop PDF fragments for figures."""
+    resources = extract_resource_document(pdf_bytes, resource_dir=resource_dir)
+    semantic = bind_figure_image_resources(semantic, layout, resources.resources)
+    return attach_figure_pdf_fragments(
+        semantic,
+        layout,
+        physical,
+        pdf_bytes,
+        resource_dir=resource_dir,
+        resources=resources,
+    )
+
+
 def run_pipeline(
     source_pdf: Path,
     out_dir: Path,
@@ -525,8 +549,7 @@ def run_pipeline(
         cache=cache,
     )
     resource_dir = out_dir / "resources"
-    resources = extract_resource_document(data, resource_dir=resource_dir)
-    semantic = bind_figure_image_resources(semantic, layout, resources.resources)
+    semantic, resources = _bind_figure_assets(semantic, layout, physical, data, resource_dir)
     render = compose_render_document(
         semantic,
         translation,

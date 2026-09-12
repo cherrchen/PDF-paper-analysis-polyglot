@@ -212,7 +212,11 @@ def _blocks_for_node(
         semantic_node_ids = [node.id]
         if caption is not None and caption_id is not None:
             semantic_node_ids.append(caption_id)
-        available = {record.id for record in resources.resources if record.kind == "EMBEDDED_IMAGE"}
+        available = {
+            record.id
+            for record in resources.resources
+            if record.kind in {"EMBEDDED_IMAGE", "PDF_FRAGMENT"}
+        }
         resource_ids = [rid for rid in figure_resource_ids(node.content) if rid in available]
         block = generated.RenderFigureBlock(
             renderKind="FIGURE",

@@ -32,7 +32,7 @@ _ANCHOR_END_SUFFIX = ":end"
 _MISSING_FIGURE = (
     r"\fbox{\parbox{0.6\textwidth}{\centering\vspace{1.2cm}[figure unavailable]\vspace{1.2cm}}}"
 )
-_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bin")
+_IMAGE_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg", ".webp", ".bin")
 
 
 def project_to_latex(

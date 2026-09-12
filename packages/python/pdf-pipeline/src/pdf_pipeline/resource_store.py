@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 from document_model import stable_uuid
 from document_model.generated import schema_models as generated
 
+from pdf_pipeline.geometry import as_rect
+from pdf_pipeline.pdfium_fragment import extract_pdf_fragment
 from pdf_pipeline.pdfium_image import ImageExtractError, extract_embedded_images
 
 if TYPE_CHECKING:
@@ -81,8 +83,13 @@ def resource_path(resource_dir: Path, record: generated.ResourceRecord) -> Path:
 
 
 def figure_resource_ids(figure: generated.FigureContent) -> list[str]:
-    """Return stored resource ids bound on the figure. Never guess by index."""
-    return list(figure.resources.embeddedImageIds)
+    """Preferred projection order: PDF fragment, then embedded rasters."""
+    ids: list[str] = []
+    fragment = figure.resources.pdfFragmentResourceId
+    if fragment:
+        ids.append(fragment)
+    ids.extend(figure.resources.embeddedImageIds)
+    return ids
 
 
 def bind_figure_image_resources(
@@ -115,13 +122,90 @@ def bind_figure_image_resources(
             nodes.append(node)
             continue
         content = node.content.model_copy(
-            update={"resources": generated.FigureResource(embeddedImageIds=bound)}
+            update={
+                "resources": node.content.resources.model_copy(update={"embeddedImageIds": bound})
+            }
         )
         nodes.append(node.model_copy(update={"content": content}))
         changed = True
     if not changed:
         return semantic
     return semantic.model_copy(update={"nodes": nodes})
+
+
+def attach_figure_pdf_fragments(
+    semantic: generated.SemanticDocument,
+    layout: generated.LayoutDocument,
+    physical: generated.PhysicalDocument,
+    pdf_bytes: bytes,
+    *,
+    resource_dir: Path,
+    resources: generated.ResourceDocument,
+) -> tuple[generated.SemanticDocument, generated.ResourceDocument]:
+    """Crop each FIGURE region's page box into a PDF_FRAGMENT resource (FR-FIG)."""
+    page_by_id = {page.id: page for page in physical.pages}
+    regions = {region.id: region for region in layout.regions}
+    fingerprint = hashlib.sha256(pdf_bytes).hexdigest()
+    records = list(resources.resources.resources)
+    nodes: list[generated.SemanticNode] = []
+    changed = False
+    resource_dir.mkdir(parents=True, exist_ok=True)
+    for node in semantic.nodes:
+        if node.kind != "FIGURE" or not isinstance(node.content, generated.FigureContent):
+            nodes.append(node)
+            continue
+        if node.content.resources.pdfFragmentResourceId:
+            nodes.append(node)
+            continue
+        raw_regions = node.attributes.get("layoutRegionIds")
+        region_ids = [item for item in raw_regions if isinstance(item, str)] if raw_regions else []
+        fragment_id = ""
+        for region_id in region_ids:
+            region = regions.get(region_id)
+            if region is None or region.kind not in {"FIGURE", "IMAGE"}:
+                continue
+            page = page_by_id.get(region.pageId)
+            if page is None:
+                continue
+            payload = extract_pdf_fragment(
+                pdf_bytes,
+                page_index=page.index,
+                rect=as_rect(region.geometry),
+                canonical_to_raw=page.geometry.canonicalToRaw,
+            )
+            if not payload:
+                continue
+            fragment_id = stable_uuid(fingerprint, "pdf-fragment", region.id)
+            (resource_dir / f"{fragment_id}.pdf").write_bytes(payload)
+            records.append(
+                generated.ResourceRecord(
+                    id=fragment_id,
+                    kind="PDF_FRAGMENT",
+                    mediaType="application/pdf",
+                    byteLength=len(payload),
+                    sha256=hashlib.sha256(payload).hexdigest(),
+                    origin="EXTRACTED",
+                )
+            )
+            break
+        if not fragment_id:
+            nodes.append(node)
+            continue
+        content = node.content.model_copy(
+            update={
+                "resources": node.content.resources.model_copy(
+                    update={"pdfFragmentResourceId": fragment_id}
+                )
+            }
+        )
+        nodes.append(node.model_copy(update={"content": content}))
+        changed = True
+    if not changed:
+        return semantic, resources
+    store = resources.resources.model_copy(update={"resources": records})
+    return semantic.model_copy(update={"nodes": nodes}), resources.model_copy(
+        update={"resources": store}
+    )
 
 
 def _extract_issue(
@@ -151,5 +235,6 @@ def _extension_for_media_type(media_type: str) -> str:
         "image/jpeg": ".jpg",
         "image/jpg": ".jpg",
         "image/webp": ".webp",
+        "application/pdf": ".pdf",
     }
     return mapping.get(media_type.lower(), ".bin")
