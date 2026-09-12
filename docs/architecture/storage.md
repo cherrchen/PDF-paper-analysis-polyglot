@@ -16,6 +16,8 @@
   probe.json              # 探测 + routing 诊断（ad-hoc）
   evidence-bundles.json   # 各 provider bundle 的 ad-hoc 持久化
   resources/              # 图像与 figure PDF fragment
+  target.pdf              # committed render artifact
+  viewer-publication.json # viewer destination and publication hashes
   build/                  # LaTeX 编译产物（target.pdf），非清单产物
   viewer/data/            # viewer revision（沿用既有发布事务）
 ```
@@ -42,3 +44,7 @@
 持久对象存储、多机共享、数据集托管。未来的外部数据集系统需要 testing 或 architecture Agent Note。
 
 保持 Git 历史精简。不要提交大型 PDF 语料。
+
+## 审查修复
+
+恢复时比较当前阶段生产者版本，并读取根目录已提交的 `target.pdf`；`build/` 可删除。INDEX 用发布回执记录 viewer 目标目录、manifest、稳定别名与当前 revision 的哈希，输出缺失或变化时重新发布。局部重译在既有回滚事务中同时发布翻译/渲染阶段记录与根目录目标 PDF，使 INDEX 失效；下一次运行保留新译文。清单写入失败会还原内存阶段记录。理由见 [批次 A 审查修复](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-batch-a-review-repairs.md)。

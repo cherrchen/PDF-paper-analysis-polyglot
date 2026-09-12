@@ -16,6 +16,8 @@ Persistent object storage, artifact layout, and dataset hosting remain **intenti
   probe.json              # probe + routing diagnostics (ad-hoc)
   evidence-bundles.json   # ad-hoc persistence of per-provider bundles
   resources/              # images and figure PDF fragments
+  target.pdf              # committed render artifact
+  viewer-publication.json # viewer destination and publication hashes
   build/                  # LaTeX build output (target.pdf), not a manifest artifact
   viewer/data/            # viewer revisions (existing publish transaction)
 ```
@@ -42,3 +44,7 @@ Authoritative implementation: `packages/python/pdf-pipeline/src/pdf_pipeline/wor
 Persistent object storage, multi-machine sharing, dataset hosting. A future external dataset system requires a testing or architecture Agent Note.
 
 Keep Git history small. Do not commit a large PDF corpus.
+
+## Review repairs
+
+Resume compares each record against the current stage producer version and reads the committed root `target.pdf`; `build/` is disposable. INDEX records a publication receipt covering the viewer destination, manifest, stable aliases, and current revision; missing or changed output triggers republication. Partial retranslation publishes translation/render records and the root target PDF within the existing rollback transaction, invalidates INDEX, and preserves the new translation on the next pipeline run. Manifest write failures restore the in-memory stage record. Rationale: [batch A review repairs](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-batch-a-review-repairs.en.md).

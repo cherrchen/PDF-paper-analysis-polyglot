@@ -182,3 +182,49 @@ def test_stage_dependencies_cover_every_stage() -> None:
     for stage, deps in STAGE_DEPENDENCIES.items():
         index = STAGE_ORDER.index(stage)
         assert all(STAGE_ORDER.index(dep) < index for dep in deps)
+
+
+def test_manifest_write_failure_restores_memory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = _open(tmp_path)
+
+    def fail() -> None:
+        raise OSError("manifest write failed")
+
+    monkeypatch.setattr(workspace, "_write_manifest", fail)
+    with pytest.raises(OSError, match="manifest write failed"):
+        workspace.commit_stage(
+            Stage.INGEST,
+            producer_version="1",
+            input_fingerprint=input_fingerprint("1", {}),
+            artifacts={"source.pdf": SOURCE},
+        )
+    assert workspace.stage_record(Stage.INGEST) is None
+    assert not workspace.stage_completed(Stage.INGEST)
+
+
+@pytest.mark.parametrize("status", [[], {}])
+def test_invalid_status_is_workspace_error(tmp_path: Path, status: object) -> None:
+    workspace = _open(tmp_path)
+    payload = json.loads(workspace.manifest_path.read_text())
+    payload["stages"] = {"ingest": {"status": status}}
+    workspace.manifest_path.write_text(json.dumps(payload))
+    with pytest.raises(WorkspaceError):
+        _open(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "name", ["../escape", "/outside/escape", "workspace.json", ".staging/x", "."]
+)
+def test_artifact_paths_cannot_escape_or_replace_manifest(tmp_path: Path, name: str) -> None:
+    workspace = _open(tmp_path)
+    before = workspace.manifest_path.read_bytes()
+    with pytest.raises(WorkspaceError):
+        workspace.commit_stage(
+            Stage.INGEST,
+            producer_version="1",
+            input_fingerprint=input_fingerprint("1", {}),
+            artifacts={name: b"invalid"},
+        )
+    assert workspace.manifest_path.read_bytes() == before

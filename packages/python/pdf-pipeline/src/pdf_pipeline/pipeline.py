@@ -62,7 +62,15 @@ from pdf_pipeline.resource_store import (
 from pdf_pipeline.routing import ROUTING_VERSION, collect_bundles, route_providers
 from pdf_pipeline.sem_validate import validate_semantic_recovery
 from pdf_pipeline.semantic import SEMANTIC_PRODUCER_VERSION, recover_semantic_document
-from pdf_pipeline.workspace import STAGE_DEPENDENCIES, Stage, WorkspaceManager, input_fingerprint
+from pdf_pipeline.workspace import (
+    STAGE_DEPENDENCIES,
+    Stage,
+    StageRecord,
+    StageStatus,
+    WorkspaceManager,
+    input_fingerprint,
+    sha256_bytes,
+)
 
 if TYPE_CHECKING:
     from document_model.generated.schema_models import (
@@ -734,7 +742,29 @@ def _run_render_stage(
             "target.pdf": target_pdf.read_bytes(),
         },
     )
-    return render, target_pdf
+    return render, out_dir / "target.pdf"
+
+
+def _viewer_receipt(data_dir: Path) -> bytes:
+    manifest = _read_viewer_manifest(data_dir)
+    if manifest is None:
+        raise ValueError("missing viewer manifest")
+    revision = manifest["revision"]
+    names = ("mapping.json", "viewer-meta.json", "source.pdf", "target.pdf")
+    paths = ["manifest.json", *names, *(f"revisions/{revision}/{name}" for name in names)]
+    return _json_artifact(
+        {
+            "directory": str(data_dir.resolve()),
+            "artifacts": {name: sha256_bytes((data_dir / name).read_bytes()) for name in paths},
+        }
+    )
+
+
+def _viewer_current(out_dir: Path, data_dir: Path) -> bool:
+    try:
+        return (out_dir / "viewer-publication.json").read_bytes() == _viewer_receipt(data_dir)
+    except (OSError, ValueError):
+        return False
 
 
 def _run_index_stage(
@@ -791,7 +821,10 @@ def _run_index_stage(
         input_fingerprint=input_fingerprint(
             STAGE_PRODUCER_VERSIONS[Stage.INDEX], _stage_inputs(workspace, Stage.INDEX)
         ),
-        artifacts={"mapping.json": _canonical_artifact(mapping)},
+        artifacts={
+            "mapping.json": _canonical_artifact(mapping),
+            "viewer-publication.json": _viewer_receipt(viewer_data_dir),
+        },
     )
     return mapping
 
@@ -806,17 +839,17 @@ def _ensure_analysis_stages(
     generated.EvidenceBundle,
 ]:
     """Run or reload INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC."""
-    if not workspace.stage_completed(Stage.INGEST):
+    if not workspace.stage_completed(Stage.INGEST, STAGE_PRODUCER_VERSIONS[Stage.INGEST]):
         _run_ingest_stage(workspace, source_bytes)
 
-    if workspace.stage_completed(Stage.PHYSICAL):
+    if workspace.stage_completed(Stage.PHYSICAL, STAGE_PRODUCER_VERSIONS[Stage.PHYSICAL]):
         physical = cast(
             "PhysicalDocument", _load_canonical(out_dir / "physical.json", "physical-document")
         )
     else:
         physical = _run_physical_stage(workspace, source_bytes)
 
-    if workspace.stage_completed(Stage.EVIDENCE):
+    if workspace.stage_completed(Stage.EVIDENCE, STAGE_PRODUCER_VERSIONS[Stage.EVIDENCE]):
         bundles = _load_evidence_bundles(out_dir / "evidence-bundles.json")
         evidence = cast(
             "generated.EvidenceBundle", _load_canonical(out_dir / "evidence.json", "evidence")
@@ -824,12 +857,12 @@ def _ensure_analysis_stages(
     else:
         bundles, evidence = _run_evidence_stage(workspace, physical)
 
-    if workspace.stage_completed(Stage.LAYOUT):
+    if workspace.stage_completed(Stage.LAYOUT, STAGE_PRODUCER_VERSIONS[Stage.LAYOUT]):
         layout = cast("LayoutDocument", _load_canonical(out_dir / "layout.json", "layout-document"))
     else:
         layout = _run_layout_stage(workspace, physical, bundles)
 
-    if workspace.stage_completed(Stage.SEMANTIC):
+    if workspace.stage_completed(Stage.SEMANTIC, STAGE_PRODUCER_VERSIONS[Stage.SEMANTIC]):
         semantic = cast(
             "SemanticDocument", _load_canonical(out_dir / "semantic.json", "semantic-document")
         )
@@ -861,7 +894,7 @@ def _ensure_rebuild_stages(
     Returns the translation, the render document, and the compiled target
     PDF path.
     """
-    if workspace.stage_completed(Stage.TRANSLATE):
+    if workspace.stage_completed(Stage.TRANSLATE, STAGE_PRODUCER_VERSIONS[Stage.TRANSLATE]):
         translation = cast(
             "generated.TranslationLayer",
             _load_canonical(out_dir / "translation.json", "translation-layer"),
@@ -869,11 +902,11 @@ def _ensure_rebuild_stages(
     else:
         translation = _run_translation_stage(workspace, semantic, config)
 
-    if workspace.stage_completed(Stage.RENDER):
+    if workspace.stage_completed(Stage.RENDER, STAGE_PRODUCER_VERSIONS[Stage.RENDER]):
         render = cast(
             "generated.RenderDocument", _load_canonical(out_dir / "render.json", "render-document")
         )
-        target_pdf = out_dir / "build" / "target.pdf"
+        target_pdf = out_dir / "target.pdf"
     else:
         render, target_pdf = _run_render_stage(
             workspace,
@@ -926,7 +959,9 @@ def run_pipeline(
     )
 
     data_dir = viewer_data_dir or out_dir / "viewer" / "data"
-    if not workspace.stage_completed(Stage.INDEX):
+    if not workspace.stage_completed(
+        Stage.INDEX, STAGE_PRODUCER_VERSIONS[Stage.INDEX]
+    ) or not _viewer_current(out_dir, data_dir):
         _run_index_stage(
             workspace,
             source_bytes,
@@ -1049,6 +1084,26 @@ def rerender_workspace(
                 ("mapping.json", new_mapping),
             )
         }
+        workspace_updates[workspace_dir / "target.pdf"] = target_pdf.read_bytes()
+        if (workspace_dir / "workspace.json").is_file():
+            workspace = WorkspaceManager(workspace_dir)
+            workspace.open_or_create((workspace_dir / "source.pdf").read_bytes())
+            for stage, names in (
+                (Stage.TRANSLATE, ("translation.json",)),
+                (Stage.RENDER, ("render.json", "target.pdf")),
+            ):
+                version = STAGE_PRODUCER_VERSIONS[stage]
+                workspace.stages[stage] = StageRecord(
+                    status=StageStatus.COMPLETED,
+                    producer_version=version,
+                    input_fingerprint=input_fingerprint(version, _stage_inputs(workspace, stage)),
+                    artifacts={
+                        name: sha256_bytes(workspace_updates[workspace_dir / name])
+                        for name in names
+                    },
+                )
+            workspace.stages.pop(Stage.INDEX, None)
+            workspace_updates[workspace.manifest_path] = workspace.manifest_bytes()
         _write_viewer_assets(
             data_dir=viewer_data_dir,
             source_pdf=(workspace_dir / "source.pdf").read_bytes(),

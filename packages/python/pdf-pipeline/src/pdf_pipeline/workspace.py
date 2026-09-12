@@ -31,6 +31,7 @@ import uuid
 from contextlib import suppress
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -157,7 +158,10 @@ class StageRecord:
         if not isinstance(data, dict):
             raise WorkspaceError("stage record must be an object")
         status = data.get("status")
-        if status not in {StageStatus.COMPLETED.value, StageStatus.PENDING.value}:
+        if not isinstance(status, str) or status not in {
+            StageStatus.COMPLETED.value,
+            StageStatus.PENDING.value,
+        }:
             raise WorkspaceError(f"unknown stage status: {status!r}")
         producer_version = data.get("producerVersion")
         input_fp = data.get("inputFingerprint")
@@ -204,7 +208,7 @@ class WorkspaceManager:
     def _load_existing(self) -> None:
         try:
             payload = json.loads(self.manifest_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as error:
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
             raise WorkspaceError(f"unreadable workspace manifest: {error}") from error
         if not isinstance(payload, dict):
             raise WorkspaceError("workspace manifest must be an object")
@@ -230,21 +234,43 @@ class WorkspaceManager:
                 stage = Stage(name)
             except ValueError:
                 raise WorkspaceError(f"unknown stage in manifest: {name!r}") from None
-            self.stages[stage] = StageRecord.from_json(record)
+            parsed = StageRecord.from_json(record)
+            for artifact_name in parsed.artifacts:
+                self._artifact_path(artifact_name)
+            self.stages[stage] = parsed
 
-    def _write_manifest(self) -> None:
+    def manifest_bytes(self) -> bytes:
+        """Serialize records for inclusion in a wider workspace transaction."""
         payload = {
             "workspaceVersion": WORKSPACE_VERSION,
             "sourceFingerprint": self.source_fingerprint,
             "stages": {stage.value: record.to_json() for stage, record in self.stages.items()},
         }
+        return (json.dumps(payload, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+    def _write_manifest(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
-        _atomic_write_json(self.manifest_path, payload)
+        _atomic_write_json(self.manifest_path, json.loads(self.manifest_bytes()))
+
+    def _artifact_path(self, name: str) -> Path:
+        path = PurePosixPath(name)
+        if (
+            not path.parts
+            or path.is_absolute()
+            or ".." in path.parts
+            or path.as_posix() != name
+            or path.parts[0] in {MANIFEST_NAME, MANIFEST_NAME + ".tmp", STAGING_DIR}
+        ):
+            raise WorkspaceError(f"invalid workspace artifact path: {name!r}")
+        target = self.root / name
+        if not target.resolve().is_relative_to(self.root.resolve()):
+            raise WorkspaceError(f"artifact escapes workspace: {name!r}")
+        return target
 
     def stage_record(self, stage: Stage) -> StageRecord | None:
         return self.stages.get(stage)
 
-    def stage_completed(self, stage: Stage) -> bool:
+    def stage_completed(self, stage: Stage, producer_version: str | None = None) -> bool:
         """True only when committed, every artifact still verifies, and the
         recorded input fingerprint still matches the upstream records.
 
@@ -255,8 +281,10 @@ class WorkspaceManager:
         record = self.stages.get(stage)
         if record is None or record.status is not StageStatus.COMPLETED:
             return False
+        if producer_version is not None and record.producer_version != producer_version:
+            return False
         for name, digest in record.artifacts.items():
-            path = self.root / name
+            path = self._artifact_path(name)
             if not path.is_file() or sha256_bytes(path.read_bytes()) != digest:
                 return False
         return record.input_fingerprint == input_fingerprint(
@@ -294,12 +322,13 @@ class WorkspaceManager:
             input_fingerprint=input_fingerprint,
             artifacts={name: sha256_bytes(data) for name, data in artifacts.items()},
         )
+        targets = {name: self._artifact_path(name) for name in artifacts}
         token = uuid.uuid4().hex
         staging = self.root / STAGING_DIR / f"{stage.value}-{token}"
         staged: list[tuple[Path, Path]] = []
         try:
             for name, data in artifacts.items():
-                target = self.root / name
+                target = targets[name]
                 target.parent.mkdir(parents=True, exist_ok=True)
                 prepared = staging / name
                 prepared.parent.mkdir(parents=True, exist_ok=True)
@@ -307,8 +336,16 @@ class WorkspaceManager:
                 staged.append((prepared, target))
             for prepared, target in staged:
                 prepared.replace(target)
+            previous = self.stages.get(stage)
             self.stages[stage] = record
-            self._write_manifest()
+            try:
+                self._write_manifest()
+            except BaseException:
+                if previous is None:
+                    self.stages.pop(stage, None)
+                else:
+                    self.stages[stage] = previous
+                raise
         finally:
             shutil.rmtree(staging, ignore_errors=True)
             # Drop the staging parent too when this was its last entry, so

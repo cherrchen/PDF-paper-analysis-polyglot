@@ -183,3 +183,65 @@ def test_stage_records_follow_m8_order(workspace: Path) -> None:
         assert record["producerVersion"]
         assert record["inputFingerprint"]
         assert record["artifacts"]
+
+
+def test_resume_index_uses_committed_pdf(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+
+    shutil.rmtree(workspace / "build")
+    (workspace / "mapping.json").unlink()
+    counts = _count_stage_runs(monkeypatch)
+    pipeline.run_pipeline(smoke_pdf, workspace)
+    assert counts["_run_render_stage"] == 0
+    assert counts["_run_index_stage"] == 1
+
+
+def test_producer_upgrade_reruns_stage(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(pipeline.STAGE_PRODUCER_VERSIONS, Stage.LAYOUT, "new-version")
+    counts = _count_stage_runs(monkeypatch)
+    pipeline.run_pipeline(smoke_pdf, workspace)
+    assert counts["_run_layout_stage"] == 1
+    assert counts["_run_physical_stage"] == 0
+
+
+@pytest.mark.parametrize("new_destination", [False, True])
+def test_resume_repairs_viewer_publication(
+    workspace: Path,
+    smoke_pdf: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    new_destination: bool,
+) -> None:
+    data_dir = tmp_path / "new-viewer" if new_destination else workspace / "viewer/data"
+    if not new_destination:
+        (data_dir / "target.pdf").write_bytes(b"corrupt")
+    counts = _count_stage_runs(monkeypatch)
+    pipeline.run_pipeline(smoke_pdf, workspace, viewer_data_dir=data_dir)
+    assert counts["_run_index_stage"] == 1
+    assert counts["_run_render_stage"] == 0
+    assert (data_dir / "target.pdf").read_bytes() == (workspace / "target.pdf").read_bytes()
+
+
+def test_rerender_survives_pipeline_resume(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    translation = json.loads((workspace / "translation.json").read_text())
+    node_id = translation["entries"][0]["semanticNodeId"]
+    pipeline.rerender_workspace(
+        workspace,
+        viewer_data_dir=workspace / "viewer/data",
+        node_ids={node_id},
+    )
+    before = (workspace / "translation.json").read_bytes()
+    counts = _count_stage_runs(monkeypatch)
+    pipeline.run_pipeline(smoke_pdf, workspace)
+    assert counts["_run_translation_stage"] == 0
+    assert counts["_run_render_stage"] == 0
+    assert (workspace / "translation.json").read_bytes() == before
+    assert (workspace / "viewer/data/target.pdf").read_bytes() == (
+        workspace / "target.pdf"
+    ).read_bytes()
