@@ -25,6 +25,7 @@ from document_model.generated import schema_models as generated
 from paper_llm import translate_document
 from paper_llm.cache import TranslationCache
 from paper_llm.config import TranslationConfig, load_translation_config
+from paper_llm.prompt import TRANSLATION_PROMPT_VERSION
 from paper_llm.translation import (
     DUMMY_PROVIDER_MODEL,
     TranslationProviderNotConfiguredError,
@@ -38,7 +39,8 @@ from pdf_pipeline.evidence.normalize import merge_evidence_bundles
 from pdf_pipeline.fusion import RegionLine
 from pdf_pipeline.geometry import as_rect
 from pdf_pipeline.ids import stable_uuid
-from pdf_pipeline.layout import recover_layout_document
+from pdf_pipeline.layout import LAYOUT_PRODUCER_VERSION, recover_layout_document
+from pdf_pipeline.physical import PRODUCER_VERSION as PHYSICAL_PRODUCER_VERSION
 from pdf_pipeline.physical import extract_physical_document, probe_input_capability
 from pdf_pipeline.probe import PRODUCER_VERSION as PROBE_VERSION
 from pdf_pipeline.probe import probe_document
@@ -59,7 +61,8 @@ from pdf_pipeline.resource_store import (
 )
 from pdf_pipeline.routing import ROUTING_VERSION, collect_bundles, route_providers
 from pdf_pipeline.sem_validate import validate_semantic_recovery
-from pdf_pipeline.semantic import recover_semantic_document
+from pdf_pipeline.semantic import SEMANTIC_PRODUCER_VERSION, recover_semantic_document
+from pdf_pipeline.workspace import STAGE_DEPENDENCIES, Stage, WorkspaceManager, input_fingerprint
 
 if TYPE_CHECKING:
     from document_model.generated.schema_models import (
@@ -68,8 +71,26 @@ if TYPE_CHECKING:
         SemanticDocument,
     )
     from paper_llm.types import TranslationProvider
+    from pydantic import BaseModel
 
 PIPELINE_VERSION = "0.1.0"
+
+# Stage-level producer versions for stages without a dedicated module
+# constant. TRANSLATE piggybacks on the prompt version: it is the knob
+# that changes translation behavior for the dummy and real providers.
+RENDER_STAGE_VERSION = "0.1.0"
+INDEX_STAGE_VERSION = "0.1.0"
+
+STAGE_PRODUCER_VERSIONS: dict[Stage, str] = {
+    Stage.INGEST: PIPELINE_VERSION,
+    Stage.PHYSICAL: PHYSICAL_PRODUCER_VERSION,
+    Stage.EVIDENCE: ROUTING_VERSION,
+    Stage.LAYOUT: LAYOUT_PRODUCER_VERSION,
+    Stage.SEMANTIC: SEMANTIC_PRODUCER_VERSION,
+    Stage.TRANSLATE: TRANSLATION_PROMPT_VERSION,
+    Stage.RENDER: RENDER_STAGE_VERSION,
+    Stage.INDEX: INDEX_STAGE_VERSION,
+}
 
 # Workspace file -> canonical document kind (document_model.serialize._ROOT_MODELS).
 _WORKSPACE_KINDS = {
@@ -178,22 +199,27 @@ def build_source_anchors(
     return physical_layout_bindings, source_anchors, source_semantic_bindings
 
 
-def _atomic_write_text(path: Path, text: str) -> None:
-    """Write via sibling temp + replace so a reader never sees a half-written file."""
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    tmp.replace(path)
+def _canonical_artifact(document: BaseModel) -> bytes:
+    """Canonical document as workspace artifact bytes (indent-2 JSON + newline)."""
+    return (json.dumps(dump_document(document), indent=2, ensure_ascii=False) + "\n").encode(
+        "utf-8"
+    )
 
 
-def _atomic_write_bytes(path: Path, data: bytes) -> None:
-    """Write binary via sibling temp + replace."""
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(data)
-    tmp.replace(path)
+def _json_artifact(payload: object) -> bytes:
+    """Ad-hoc JSON (probe.json class, outside frozen schemas) as artifact bytes."""
+    return (json.dumps(payload, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def _atomic_write_json(path: Path, data: object) -> None:
-    _atomic_write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+def _load_canonical(path: Path, kind: str) -> object:
+    """Load a canonical document previously committed to the workspace."""
+    return load_document(kind, json.loads(path.read_text(encoding="utf-8")))
+
+
+def _load_evidence_bundles(path: Path) -> list[generated.EvidenceBundle]:
+    """Load the per-provider bundles persisted by the EVIDENCE stage."""
+    items = json.loads(path.read_text(encoding="utf-8"))
+    return [cast("generated.EvidenceBundle", load_document("evidence", item)) for item in items]
 
 
 def _viewer_revision_id() -> str:
@@ -496,32 +522,113 @@ def _bind_figure_assets(
     )
 
 
-def run_pipeline(
-    source_pdf: Path,
-    out_dir: Path,
-    *,
-    viewer_data_dir: Path | None = None,
-    translation_config: TranslationConfig | None = None,
-) -> dict[str, Path]:
-    """Run the full Walking Skeleton pipeline; return produced artifact paths."""
-    data = source_pdf.read_bytes()
-    out_dir.mkdir(parents=True, exist_ok=True)
-    config = translation_config or load_translation_config()
-    capability = probe_input_capability(data)
-    if not capability.usable:
-        # FR-PDF-002: fail loudly at the entry point rather than silently
-        # producing low-quality recovery output for scanned documents.
-        raise ValueError(f"unsupported input PDF: {capability.reason}")
+def _stage_inputs(workspace: WorkspaceManager, stage: Stage) -> dict[str, str]:
+    """Content hashes of every artifact committed by the stage's upstream."""
+    inputs: dict[str, str] = {}
+    for dep in STAGE_DEPENDENCIES[stage]:
+        record = workspace.stage_record(dep)
+        if record is None:
+            raise RuntimeError(f"upstream stage not committed: {dep.value}")
+        inputs.update(record.artifacts)
+    return inputs
 
-    physical = extract_physical_document(data)
-    # Phase 7.1 + 7.3 + 7.4: probe, route, and fuse with capability
-    # authority weighting from one shared registry instance.
+
+def _run_ingest_stage(workspace: WorkspaceManager, source_bytes: bytes) -> None:
+    """INGEST: keep the source PDF bytes in the workspace.
+
+    The fingerprint covers no upstream artifacts on purpose: the source
+    binding lives in the manifest's ``sourceFingerprint``.
+    """
+    workspace.commit_stage(
+        Stage.INGEST,
+        producer_version=STAGE_PRODUCER_VERSIONS[Stage.INGEST],
+        input_fingerprint=input_fingerprint(STAGE_PRODUCER_VERSIONS[Stage.INGEST], {}),
+        artifacts={"source.pdf": source_bytes},
+    )
+
+
+def _run_physical_stage(workspace: WorkspaceManager, source_bytes: bytes) -> PhysicalDocument:
+    physical = extract_physical_document(source_bytes)
+    workspace.commit_stage(
+        Stage.PHYSICAL,
+        producer_version=STAGE_PRODUCER_VERSIONS[Stage.PHYSICAL],
+        input_fingerprint=input_fingerprint(
+            STAGE_PRODUCER_VERSIONS[Stage.PHYSICAL], _stage_inputs(workspace, Stage.PHYSICAL)
+        ),
+        artifacts={"physical.json": _canonical_artifact(physical)},
+    )
+    return physical
+
+
+def _run_evidence_stage(
+    workspace: WorkspaceManager, physical: PhysicalDocument
+) -> tuple[list[generated.EvidenceBundle], generated.EvidenceBundle]:
+    """Probe, route, and collect per-provider bundles plus the merged bundle.
+
+    The per-provider bundles persist in the ad-hoc ``evidence-bundles.json``
+    so a resumed LAYOUT stage does not rerun evidence providers.
+    """
     registry = load_registry()
     probe = probe_document(physical)
     plan = route_providers(probe, registry)
     bundles = collect_bundles(plan, physical)
     evidence = merge_evidence_bundles(bundles)
-    layout = recover_layout_document(physical, evidence=bundles, registry=registry)
+    workspace.commit_stage(
+        Stage.EVIDENCE,
+        producer_version=STAGE_PRODUCER_VERSIONS[Stage.EVIDENCE],
+        input_fingerprint=input_fingerprint(
+            STAGE_PRODUCER_VERSIONS[Stage.EVIDENCE],
+            _stage_inputs(workspace, Stage.EVIDENCE),
+        ),
+        artifacts={
+            "evidence.json": _canonical_artifact(evidence),
+            "evidence-bundles.json": _json_artifact([dump_document(b) for b in bundles]),
+            "probe.json": _json_artifact(
+                {
+                    "probeVersion": PROBE_VERSION,
+                    "routingVersion": ROUTING_VERSION,
+                    **probe.to_json(),
+                    "routing": plan.to_json(),
+                }
+            ),
+        },
+    )
+    return bundles, evidence
+
+
+def _run_layout_stage(
+    workspace: WorkspaceManager,
+    physical: PhysicalDocument,
+    bundles: list[generated.EvidenceBundle],
+) -> LayoutDocument:
+    layout = recover_layout_document(physical, evidence=bundles, registry=load_registry())
+    workspace.commit_stage(
+        Stage.LAYOUT,
+        producer_version=STAGE_PRODUCER_VERSIONS[Stage.LAYOUT],
+        input_fingerprint=input_fingerprint(
+            STAGE_PRODUCER_VERSIONS[Stage.LAYOUT],
+            _stage_inputs(workspace, Stage.LAYOUT),
+        ),
+        artifacts={"layout.json": _canonical_artifact(layout)},
+    )
+    return layout
+
+
+def _run_semantic_stage(
+    workspace: WorkspaceManager,
+    source_bytes: bytes,
+    out_dir: Path,
+    *,
+    physical: PhysicalDocument,
+    layout: LayoutDocument,
+    evidence: generated.EvidenceBundle,
+) -> tuple[SemanticDocument, generated.ResourceDocument]:
+    """Recover semantics, validate, then bind figure resources.
+
+    Figure binding lives here rather than in RENDER so ``semantic.json``
+    has a single owner: the persisted document is the figure-bound one,
+    exactly what render, mapping, and the viewer have always consumed.
+    """
     region_texts = region_texts_from(physical, layout)
     semantic = recover_semantic_document(
         layout,
@@ -537,6 +644,31 @@ def run_pipeline(
                 "issues": store.model_copy(update={"issues": [*store.issues, *recovery_issues]})
             }
         )
+    resource_dir = out_dir / "resources"
+    semantic, resources = _bind_figure_assets(
+        semantic, layout, physical, source_bytes, resource_dir
+    )
+    workspace.commit_stage(
+        Stage.SEMANTIC,
+        producer_version=STAGE_PRODUCER_VERSIONS[Stage.SEMANTIC],
+        input_fingerprint=input_fingerprint(
+            STAGE_PRODUCER_VERSIONS[Stage.SEMANTIC],
+            _stage_inputs(workspace, Stage.SEMANTIC),
+        ),
+        artifacts={
+            "semantic.json": _canonical_artifact(semantic),
+            "resources.json": _canonical_artifact(resources),
+            **_directory_artifacts(resource_dir, "resources"),
+        },
+    )
+    return semantic, resources
+
+
+def _run_translation_stage(
+    workspace: WorkspaceManager,
+    semantic: SemanticDocument,
+    config: TranslationConfig,
+) -> generated.TranslationLayer:
     provider, provider_model, provider_endpoint, cache = _build_translation_provider(config)
     translation = translate_document(
         semantic,
@@ -548,8 +680,39 @@ def run_pipeline(
         provider_endpoint=provider_endpoint,
         cache=cache,
     )
+    workspace.commit_stage(
+        Stage.TRANSLATE,
+        producer_version=STAGE_PRODUCER_VERSIONS[Stage.TRANSLATE],
+        input_fingerprint=input_fingerprint(
+            STAGE_PRODUCER_VERSIONS[Stage.TRANSLATE],
+            _stage_inputs(workspace, Stage.TRANSLATE),
+        ),
+        artifacts={"translation.json": _canonical_artifact(translation)},
+    )
+    return translation
+
+
+def _directory_artifacts(root: Path, prefix: str) -> dict[str, bytes]:
+    """Every file under root as a workspace artifact named ``prefix/<relpath>``."""
+    if not root.is_dir():
+        return {}
+    return {
+        f"{prefix}/{path.relative_to(root).as_posix()}": path.read_bytes()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+def _run_render_stage(
+    workspace: WorkspaceManager,
+    *,
+    semantic: SemanticDocument,
+    translation: generated.TranslationLayer,
+    resources: generated.ResourceDocument,
+    out_dir: Path,
+) -> tuple[generated.RenderDocument, Path]:
+    """Compose the render document and compile the target PDF."""
     resource_dir = out_dir / "resources"
-    semantic, resources = _bind_figure_assets(semantic, layout, physical, data, resource_dir)
     render = compose_render_document(
         semantic,
         translation,
@@ -557,10 +720,37 @@ def run_pipeline(
         policy=DEFAULT_POLICY,
         resources=resources.resources,
     )
-
     tex = project_to_latex(render, resource_dir=resource_dir)
     target_pdf = compile_latex(tex, out_dir / "build")
+    workspace.commit_stage(
+        Stage.RENDER,
+        producer_version=STAGE_PRODUCER_VERSIONS[Stage.RENDER],
+        input_fingerprint=input_fingerprint(
+            STAGE_PRODUCER_VERSIONS[Stage.RENDER],
+            _stage_inputs(workspace, Stage.RENDER),
+        ),
+        artifacts={
+            "render.json": _canonical_artifact(render),
+            "target.pdf": target_pdf.read_bytes(),
+        },
+    )
+    return render, target_pdf
 
+
+def _run_index_stage(
+    workspace: WorkspaceManager,
+    source_bytes: bytes,
+    *,
+    physical: PhysicalDocument,
+    layout: LayoutDocument,
+    semantic: SemanticDocument,
+    translation: generated.TranslationLayer,
+    render: generated.RenderDocument,
+    evidence: generated.EvidenceBundle,
+    target_pdf: Path,
+    viewer_data_dir: Path,
+) -> generated.MappingBundle:
+    """Render anchors, mapping bundle, bundle validation, viewer publish."""
     render_anchors = recover_render_anchors(target_pdf, semantic)
     plb, source_anchors, ssb = build_source_anchors(physical, layout, semantic)
     mapping = build_mapping_bundle(
@@ -571,17 +761,6 @@ def run_pipeline(
         render_anchors=render_anchors,
         render_document_id=render_target_document_id(render),
     )
-
-    outputs = {
-        "physical.json": physical,
-        "evidence.json": evidence,
-        "layout.json": layout,
-        "semantic.json": semantic,
-        "translation.json": translation,
-        "render.json": render,
-        "mapping.json": mapping,
-        "resources.json": resources,
-    }
     # Cross-layer integrity: every id reference in the bundle resolves.
     bundle = {
         "physical": dump_document(physical),
@@ -595,37 +774,9 @@ def run_pipeline(
     issues = validate_bundle_references(bundle)
     if issues:
         raise RuntimeError(f"bundle reference issues: {issues}")
-
-    paths: dict[str, Path] = {}
-    for name, document in outputs.items():
-        path = out_dir / name
-        _atomic_write_json(path, dump_document(document))
-        paths[name] = path
-    # Keep the input bytes in the workspace so rerender_workspace can rebuild
-    # viewer assets without the user re-supplying the source PDF.
-    source_copy = out_dir / "source.pdf"
-    _atomic_write_bytes(source_copy, data)
-    paths["source.pdf"] = source_copy
-    paths["target.pdf"] = target_pdf
-
-    # Phase 7.1/7.3: ad-hoc routing diagnostics artifact (not a canonical
-    # schema document, same category as the viewer manifest).
-    probe_path = out_dir / "probe.json"
-    _atomic_write_json(
-        probe_path,
-        {
-            "probeVersion": PROBE_VERSION,
-            "routingVersion": ROUTING_VERSION,
-            **probe.to_json(),
-            "routing": plan.to_json(),
-        },
-    )
-    paths["probe.json"] = probe_path
-
-    data_dir = viewer_data_dir or out_dir / "viewer" / "data"
     _write_viewer_assets(
-        data_dir=data_dir,
-        source_pdf=data,
+        data_dir=viewer_data_dir,
+        source_pdf=source_bytes,
         target_pdf=target_pdf,
         mapping=mapping,
         render_anchors=render_anchors,
@@ -634,6 +785,177 @@ def run_pipeline(
         semantic=semantic,
         translation=translation,
     )
+    workspace.commit_stage(
+        Stage.INDEX,
+        producer_version=STAGE_PRODUCER_VERSIONS[Stage.INDEX],
+        input_fingerprint=input_fingerprint(
+            STAGE_PRODUCER_VERSIONS[Stage.INDEX], _stage_inputs(workspace, Stage.INDEX)
+        ),
+        artifacts={"mapping.json": _canonical_artifact(mapping)},
+    )
+    return mapping
+
+
+def _ensure_analysis_stages(
+    workspace: WorkspaceManager, source_bytes: bytes, out_dir: Path
+) -> tuple[
+    PhysicalDocument,
+    LayoutDocument,
+    SemanticDocument,
+    generated.ResourceDocument,
+    generated.EvidenceBundle,
+]:
+    """Run or reload INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC."""
+    if not workspace.stage_completed(Stage.INGEST):
+        _run_ingest_stage(workspace, source_bytes)
+
+    if workspace.stage_completed(Stage.PHYSICAL):
+        physical = cast(
+            "PhysicalDocument", _load_canonical(out_dir / "physical.json", "physical-document")
+        )
+    else:
+        physical = _run_physical_stage(workspace, source_bytes)
+
+    if workspace.stage_completed(Stage.EVIDENCE):
+        bundles = _load_evidence_bundles(out_dir / "evidence-bundles.json")
+        evidence = cast(
+            "generated.EvidenceBundle", _load_canonical(out_dir / "evidence.json", "evidence")
+        )
+    else:
+        bundles, evidence = _run_evidence_stage(workspace, physical)
+
+    if workspace.stage_completed(Stage.LAYOUT):
+        layout = cast("LayoutDocument", _load_canonical(out_dir / "layout.json", "layout-document"))
+    else:
+        layout = _run_layout_stage(workspace, physical, bundles)
+
+    if workspace.stage_completed(Stage.SEMANTIC):
+        semantic = cast(
+            "SemanticDocument", _load_canonical(out_dir / "semantic.json", "semantic-document")
+        )
+        resources = cast(
+            "generated.ResourceDocument", _load_canonical(out_dir / "resources.json", "resources")
+        )
+    else:
+        semantic, resources = _run_semantic_stage(
+            workspace,
+            source_bytes,
+            out_dir,
+            physical=physical,
+            layout=layout,
+            evidence=evidence,
+        )
+    return physical, layout, semantic, resources, evidence
+
+
+def _ensure_rebuild_stages(
+    workspace: WorkspaceManager,
+    *,
+    semantic: SemanticDocument,
+    resources: generated.ResourceDocument,
+    config: TranslationConfig,
+    out_dir: Path,
+) -> tuple[generated.TranslationLayer, generated.RenderDocument, Path]:
+    """Run or reload TRANSLATE and RENDER.
+
+    Returns the translation, the render document, and the compiled target
+    PDF path.
+    """
+    if workspace.stage_completed(Stage.TRANSLATE):
+        translation = cast(
+            "generated.TranslationLayer",
+            _load_canonical(out_dir / "translation.json", "translation-layer"),
+        )
+    else:
+        translation = _run_translation_stage(workspace, semantic, config)
+
+    if workspace.stage_completed(Stage.RENDER):
+        render = cast(
+            "generated.RenderDocument", _load_canonical(out_dir / "render.json", "render-document")
+        )
+        target_pdf = out_dir / "build" / "target.pdf"
+    else:
+        render, target_pdf = _run_render_stage(
+            workspace,
+            semantic=semantic,
+            translation=translation,
+            resources=resources,
+            out_dir=out_dir,
+        )
+    return translation, render, target_pdf
+
+
+def run_pipeline(
+    source_pdf: Path,
+    out_dir: Path,
+    *,
+    viewer_data_dir: Path | None = None,
+    translation_config: TranslationConfig | None = None,
+) -> dict[str, Path]:
+    """Run the Walking Skeleton pipeline into a resumable local workspace.
+
+    Each stage (INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC →
+    TRANSLATE → RENDER → INDEX) commits its artifacts and its manifest
+    record atomically (``workspace.json`` written last). A restart skips
+    stages whose recorded artifacts still verify and reruns only the rest,
+    so completed JSON/PDF artifacts survive an interrupted run and a
+    half-written stage is never accepted as success. Returns produced
+    artifact paths.
+    """
+    source_bytes = source_pdf.read_bytes()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    workspace = WorkspaceManager(out_dir)
+    workspace.open_or_create(source_bytes)
+    config = translation_config or load_translation_config()
+
+    capability = probe_input_capability(source_bytes)
+    if not capability.usable:
+        # FR-PDF-002: fail loudly at the entry point rather than silently
+        # producing low-quality recovery output for scanned documents.
+        raise ValueError(f"unsupported input PDF: {capability.reason}")
+
+    physical, layout, semantic, resources, evidence = _ensure_analysis_stages(
+        workspace, source_bytes, out_dir
+    )
+    translation, render, target_pdf = _ensure_rebuild_stages(
+        workspace,
+        semantic=semantic,
+        resources=resources,
+        config=config,
+        out_dir=out_dir,
+    )
+
+    data_dir = viewer_data_dir or out_dir / "viewer" / "data"
+    if not workspace.stage_completed(Stage.INDEX):
+        _run_index_stage(
+            workspace,
+            source_bytes,
+            physical=physical,
+            layout=layout,
+            semantic=semantic,
+            translation=translation,
+            render=render,
+            evidence=evidence,
+            target_pdf=target_pdf,
+            viewer_data_dir=data_dir,
+        )
+
+    paths: dict[str, Path] = {
+        name: out_dir / name
+        for name in (
+            "physical.json",
+            "evidence.json",
+            "layout.json",
+            "semantic.json",
+            "translation.json",
+            "render.json",
+            "mapping.json",
+            "resources.json",
+            "source.pdf",
+            "target.pdf",
+            "probe.json",
+        )
+    }
     paths["viewer-data"] = data_dir
     return paths
 
