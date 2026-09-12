@@ -38,5 +38,91 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 217.46,
+        "y": 169.28,
+        "width": 159.9,
+        "height": 15.7
+      },
+      "textPreview": "Figure Caption Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.06,
+        "y": 272.5,
+        "width": 160.43,
+        "height": 12.97
+      },
+      "textPreview": "1 Figure with caption"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.19,
+        "y": 299.16,
+        "width": 358.04,
+        "height": 23.6
+      },
+      "textPreview": "This fixture embeds a raster placeholder so the physical backend sees a real ima"
+    },
+    {
+      "pageIndex": 0,
+      "label": "FIGURE",
+      "geometry": {
+        "kind": "rect",
+        "x": 207.49,
+        "y": 334.72,
+        "width": 179.34,
+        "height": 119.56
+      },
+      "textPreview": ""
+    },
+    {
+      "pageIndex": 0,
+      "label": "CAPTION_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 138.02,
+        "y": 469.98,
+        "width": 317.69,
+        "height": 10.05
+      },
+      "textPreview": "Figure 1: Synthetic raster figure used by the caption recovery test."
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.63,
+        "y": 513.95,
+        "width": 164.94,
+        "height": 13.06
+      },
+      "textPreview": "2 Text after the figure"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.21,
+        "y": 540.69,
+        "width": 357.33,
+        "height": 10.05
+      },
+      "textPreview": "Reading resumes below the figure block once the caption has been associated."
+    }
+  ]
 }

@@ -59,7 +59,7 @@ def test_calibration_samples_pair_confidence_with_truth() -> None:
     truth = json.loads(
         (Path(__file__).resolve().parents[4] / "tests/fixtures/layout-truth/smoke.json").read_text()
     )
-    samples = calibration_samples(layout, texts, truth["readingOrder"])
+    samples = calibration_samples(layout, texts, truth["readingOrder"], truth.get("regions"))
     assert samples
     assert all(0.0 <= confidence <= 1.0 for confidence, _ in samples)
     dump_document(layout)

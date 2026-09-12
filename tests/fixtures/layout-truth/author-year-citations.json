@@ -1,0 +1,151 @@
+{
+  "fixture": "author-year-citations",
+  "purpose": "Author-year citations resolve to bibliography entries",
+  "pages": [
+    {
+      "pageIndex": 0,
+      "singleColumnOnly": true
+    }
+  ],
+  "readingOrder": [
+    "Author-Year Citations Fixture",
+    "1 Introduction",
+    "The transformer architecture",
+    "2 Method",
+    "We follow the deterministic baseline",
+    "References",
+    "Vaswani et al",
+    "Smith",
+    "Parser ensembles for scholarly"
+  ],
+  "captions": [],
+  "footnotesExpected": 0,
+  "semantic": {
+    "kinds": ["SECTION", "HEADING", "PARAGRAPH", "BIBLIOGRAPHY", "BIBLIOGRAPHY_ENTRY"],
+    "minCounts": {
+      "BIBLIOGRAPHY_ENTRY": 3
+    },
+    "captionOf": 0,
+    "footnotesLinked": 0,
+    "citationsResolved": 4,
+    "marks": {
+      "CITATION": 4
+    },
+    "equationNumbers": [],
+    "mergedParagraphNodes": 0,
+    "multiFragmentAnchors": 0,
+    "coverageMin": 0.9,
+    "noErrors": true,
+    "headingLevels": [1]
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 192.35,
+        "y": 169.13,
+        "width": 209.65,
+        "height": 12.62
+      },
+      "textPreview": "Author-Year Citations Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.06,
+        "y": 272.5,
+        "width": 109.69,
+        "height": 10.17
+      },
+      "textPreview": "1 Introduction"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.13,
+        "y": 298.67,
+        "width": 357.72,
+        "height": 24.57
+      },
+      "textPreview": "The transformer architecture (Vaswani et al., 2017) changed sequence mod eling."
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.63,
+        "y": 344.81,
+        "width": 76.51,
+        "height": 10.17
+      },
+      "textPreview": "2 Method"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.02,
+        "y": 370.97,
+        "width": 358.24,
+        "height": 24.57
+      },
+      "textPreview": "We follow the deterministic baseline of (Smith, 2020a) and the recovery protocol"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.37,
+        "y": 417.02,
+        "width": 74.41,
+        "height": 10.34
+      },
+      "textPreview": "References"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.12,
+        "y": 443.27,
+        "width": 356.55,
+        "height": 24.57
+      },
+      "textPreview": "[1] A. Vaswani et al. Attention and sequence transduction.  Fixture Journal,"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.12,
+        "y": 479.33,
+        "width": 227.3,
+        "height": 22.08
+      },
+      "textPreview": "[2] B. Smith. Deterministic document recovery."
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.12,
+        "y": 515.4,
+        "width": 356.55,
+        "height": 24.57
+      },
+      "textPreview": "[3] J. Doe and K. Roe. Parser ensembles for scholarly PDFs.  Layout Letters,"
+    }
+  ]
+}

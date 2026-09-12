@@ -39,6 +39,8 @@ _METRICS = (
     "regionRecall",
     "regionPrecision",
     "pairwiseOrderingAccuracy",
+    "paragraphRecoveryAccuracy",
+    "sectionHierarchyAccuracy",
     "semanticExpectationCoverage",
     "tableStructureCoverage",
     "citationResolutionRate",
@@ -96,7 +98,14 @@ def run_corpus() -> dict[str, Any]:
                 update={"issues": store.model_copy(update={"issues": [*store.issues, *issues]})}
             )
         if truth:
-            samples.extend(calibration_samples(layout, texts, truth["readingOrder"]))
+            samples.extend(
+                calibration_samples(
+                    layout,
+                    texts,
+                    truth.get("readingOrder") or [],
+                    truth.get("regions"),
+                )
+            )
         fixtures[name] = {
             "routedProviders": list(plan.provider_names()),
             **quality_report(
@@ -116,10 +125,11 @@ def run_corpus() -> dict[str, Any]:
 def compare(report: dict[str, Any], baseline: dict[str, Any]) -> list[str]:
     """Human-readable improved/unchanged/regressed lines against the baseline.
 
-    Calibration accuracy is diagnostic only (region-level truth is too
-    sparse to gate). Missing baseline fixtures, or a metric that used to
-    be measurable becoming null, are regressions. Blocking issues are
-    ERROR/FATAL counts, not a single category.
+    Calibration accuracy stays diagnostic (it audits the fusion formula,
+    not the product gate) even after region-level boxes exist. Missing
+    baseline fixtures, or a metric that used to be measurable becoming
+    null, are regressions. Blocking issues are ERROR/FATAL counts, not a
+    single category.
     """
     lines: list[str] = []
     fixtures = report.get("fixtures", {})

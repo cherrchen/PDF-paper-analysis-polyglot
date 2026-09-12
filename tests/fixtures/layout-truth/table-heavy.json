@@ -35,5 +35,55 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 250.47,
+        "y": 169.37,
+        "width": 93.5,
+        "height": 12.24
+      },
+      "textPreview": "Table Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.06,
+        "y": 272.45,
+        "width": 137.22,
+        "height": 10.31
+      },
+      "textPreview": "1 Structured table"
+    },
+    {
+      "pageIndex": 0,
+      "label": "TABLE",
+      "geometry": {
+        "kind": "rect",
+        "x": 215.73,
+        "y": 329.31,
+        "width": 162.85,
+        "height": 38.01
+      },
+      "textPreview": "Paragraph Heading Figure 12 4 2 0.94 0.88 0.81"
+    },
+    {
+      "pageIndex": 0,
+      "label": "CAPTION_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 166.34,
+        "y": 382.75,
+        "width": 261.09,
+        "height": 10.04
+      },
+      "textPreview": "Table 1: Synthetic metrics for table-structure recovery."
+    }
+  ]
 }

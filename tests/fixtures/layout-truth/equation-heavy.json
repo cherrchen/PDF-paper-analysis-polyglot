@@ -32,5 +32,67 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 238.46,
+        "y": 169.59,
+        "width": 117.91,
+        "height": 15.24
+      },
+      "textPreview": "Equation Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.06,
+        "y": 272.5,
+        "width": 188.8,
+        "height": 12.95
+      },
+      "textPreview": "1 Inline and display math"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 135.11,
+        "y": 312.59,
+        "width": 97.3,
+        "height": 10.17
+      },
+      "textPreview": "A displayed integral:"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 135.11,
+        "y": 357.83,
+        "width": 109.93,
+        "height": 10.17
+      },
+      "textPreview": "A multi-line alignment:"
+    },
+    {
+      "pageIndex": 0,
+      "label": "FORMULA",
+      "geometry": {
+        "kind": "rect",
+        "x": 273.19,
+        "y": 380.47,
+        "width": 53.29,
+        "height": 28.52
+      },
+      "textPreview": "2  +  b2  =  c2 ,  iπ  + 1 = 0 . "
+    }
+  ]
 }

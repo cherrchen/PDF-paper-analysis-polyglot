@@ -15,7 +15,7 @@ import itertools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pdf_pipeline.metrics import region_matches
+from pdf_pipeline.metrics import parse_truth_regions, region_iou_matches, region_matches
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -81,24 +81,31 @@ def calibration_samples(
     layout: generated.LayoutDocument,
     region_texts: dict[str, str],
     truth_snippets: list[str],
+    truth_regions: list[object] | None = None,
 ) -> list[tuple[float, bool]]:
-    """(dominant-label confidence, matched-to-truth) per flow text region.
+    """(dominant-label confidence, matched-to-truth) per evaluated region.
 
-    Scope mirrors the region-precision definition in ``metrics``: only
-    primary-flow regions carrying text are evaluated, so positives are
-    regions the hand truth confirms and negatives are flow text regions
-    the truth does not cover. Figures, footers, and graphics carry no
-    snippet-matchable text and are excluded.
+    When region-level boxes exist, correctness is IoU+label match. Otherwise
+    snippet matching is used and extra recovered regions look like negatives.
     """
-    _, matched_regions = region_matches(truth_snippets, region_texts)
+    labeled = parse_truth_regions(truth_regions)
+    if labeled:
+        _matched_truth, matched_regions = region_iou_matches(labeled, layout)
+        scored_ids = {
+            region.id for region in layout.regions if region.kind not in {"HEADER", "FOOTER"}
+        }
+    else:
+        _matched_truth, matched_regions = region_matches(truth_snippets, region_texts)
+        scored_ids = set(layout.primaryFlow)
     matched = set(matched_regions)
-    flow = set(layout.primaryFlow)
     samples: list[tuple[float, bool]] = []
     for region in layout.regions:
-        if region.id not in flow:
+        if region.id not in scored_ids:
             continue
         text = region_texts.get(region.id, "")
-        if not text.strip() or not region.labels:
+        if not labeled and (not text.strip() or not region.labels):
+            continue
+        if not region.labels:
             continue
         samples.append((region.labels[0].confidence, region.id in matched))
     return samples

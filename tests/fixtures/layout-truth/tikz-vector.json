@@ -34,5 +34,55 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 222.08,
+        "y": 169.56,
+        "width": 149.96,
+        "height": 15.43
+      },
+      "textPreview": "Vector Figure Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.06,
+        "y": 272.5,
+        "width": 129.83,
+        "height": 12.97
+      },
+      "textPreview": "1 Vector diagram"
+    },
+    {
+      "pageIndex": 0,
+      "label": "FIGURE",
+      "geometry": {
+        "kind": "rect",
+        "x": 180.54,
+        "y": 308.06,
+        "width": 233.24,
+        "height": 26.31
+      },
+      "textPreview": ""
+    },
+    {
+      "pageIndex": 0,
+      "label": "CAPTION_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 155.89,
+        "y": 349.87,
+        "width": 281.95,
+        "height": 10.05
+      },
+      "textPreview": "Figure 1: Simple vector figure for graphics extraction tests."
+    }
+  ]
 }

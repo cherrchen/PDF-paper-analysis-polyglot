@@ -51,5 +51,115 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 212.98,
+        "y": 158.33,
+        "width": 168.78,
+        "height": 15.7
+      },
+      "textPreview": "Spanning Figure Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 73.23,
+        "y": 254.64,
+        "width": 177.19,
+        "height": 13.06
+      },
+      "textPreview": "1 Columns before figure"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.21,
+        "y": 284.5,
+        "width": 219.77,
+        "height": 438.1
+      },
+      "textPreview": "Introductory text in the first column precedes a figure that spans both columns."
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 302.94,
+        "y": 289.03,
+        "width": 211.55,
+        "height": 13.06
+      },
+      "textPreview": "2 Right column before figure"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 302.49,
+        "y": 315.9,
+        "width": 219.65,
+        "height": 50.55
+      },
+      "textPreview": "Right-column sentences sit beside the opening column and precede the spanning fi"
+    },
+    {
+      "pageIndex": 1,
+      "label": "FIGURE",
+      "geometry": {
+        "kind": "rect",
+        "x": 105.77,
+        "y": 126.8,
+        "width": 382.77,
+        "height": 85.04
+      },
+      "textPreview": ""
+    },
+    {
+      "pageIndex": 1,
+      "label": "CAPTION_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 130.2,
+        "y": 227.54,
+        "width": 333.33,
+        "height": 10.05
+      },
+      "textPreview": "Figure 1: Wide figure spanning both columns in a two-column article."
+    },
+    {
+      "pageIndex": 2,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.67,
+        "y": 127.57,
+        "width": 167.03,
+        "height": 13.06
+      },
+      "textPreview": "3 Columns after figure"
+    },
+    {
+      "pageIndex": 2,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.31,
+        "y": 154.31,
+        "width": 219.7,
+        "height": 118.44
+      },
+      "textPreview": "Text resumes below the spanning figure. Lay out recovery must treat the figure "
+    }
+  ]
 }

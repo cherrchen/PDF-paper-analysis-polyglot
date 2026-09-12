@@ -3,34 +3,40 @@
     "author-year-citations": {
       "routedProviders": ["mock", "grobid-sim"],
       "physicalTextCoverage": 1.0,
-      "regionRecall": 1.0,
-      "regionPrecision": 0.0,
+      "regionRecall": 0.5556,
+      "regionPrecision": 0.3333,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
-      "semanticExpectationCoverage": null,
-      "tableStructureCoverage": 1.0,
-      "citationResolutionRate": 1.0,
-      "sourceMappingCoverage": 1.0,
-      "renderMappingCoverage": 0.0,
-      "issues": {}
-    },
-    "bibliography": {
-      "routedProviders": ["mock", "grobid-sim"],
-      "physicalTextCoverage": 1.0,
-      "regionRecall": 1.0,
-      "regionPrecision": 0.4615,
-      "pairwiseOrderingAccuracy": 1.0,
-      "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "paragraphRecoveryAccuracy": 1.0,
+      "sectionHierarchyAccuracy": 0.0,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
+    },
+    "bibliography": {
+      "routedProviders": ["mock", "grobid-sim"],
+      "physicalTextCoverage": 1.0,
+      "regionRecall": 0.6667,
+      "regionPrecision": 0.3077,
+      "pairwiseOrderingAccuracy": 1.0,
+      "sequenceAccuracy": true,
+      "paragraphRecoveryAccuracy": 1.0,
+      "sectionHierarchyAccuracy": 0.3333,
+      "semanticExpectationCoverage": 1.0,
+      "tableStructureCoverage": 1.0,
+      "citationResolutionRate": 1.0,
+      "sourceMappingCoverage": 1.0,
+      "renderMappingCoverage": 0.0,
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "cross-page-paragraph": {
       "routedProviders": ["mock", "grobid-sim"],
@@ -39,94 +45,112 @@
       "regionPrecision": 0.5,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "paragraphRecoveryAccuracy": 1.0,
+      "sectionHierarchyAccuracy": 1.0,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "equation-heavy": {
       "routedProviders": ["mock", "grobid-sim"],
       "physicalTextCoverage": 1.0,
-      "regionRecall": 1.0,
-      "regionPrecision": 0.2222,
+      "regionRecall": 0.6,
+      "regionPrecision": 0.1667,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "paragraphRecoveryAccuracy": 0.0,
+      "sectionHierarchyAccuracy": 1.0,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "figure-caption": {
       "routedProviders": ["mock", "grobid-sim"],
       "physicalTextCoverage": 1.0,
       "regionRecall": 1.0,
-      "regionPrecision": 0.75,
+      "regionPrecision": 0.7778,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "paragraphRecoveryAccuracy": 1.0,
+      "sectionHierarchyAccuracy": 1.0,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "footnote-multicolumn": {
       "routedProviders": ["mock", "grobid-sim"],
       "physicalTextCoverage": 1.0,
-      "regionRecall": 1.0,
-      "regionPrecision": 0.5,
+      "regionRecall": 0.8,
+      "regionPrecision": 0.3333,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "paragraphRecoveryAccuracy": 1.0,
+      "sectionHierarchyAccuracy": 0.6667,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "mixed-bands": {
       "routedProviders": ["mock", "grobid-sim"],
       "physicalTextCoverage": 1.0,
-      "regionRecall": 1.0,
-      "regionPrecision": 0.7692,
+      "regionRecall": 0.7273,
+      "regionPrecision": 0.5714,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "paragraphRecoveryAccuracy": 1.0,
+      "sectionHierarchyAccuracy": 0.4,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "paper-anatomy": {
       "routedProviders": ["mock", "docling-sim", "grobid-sim"],
       "physicalTextCoverage": 1.0,
-      "regionRecall": 1.0,
-      "regionPrecision": 0.2258,
+      "regionRecall": 0.6,
+      "regionPrecision": 0.1818,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
       "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "sectionHierarchyAccuracy": 0.2,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "smoke": {
       "routedProviders": ["mock", "grobid-sim"],
@@ -135,78 +159,93 @@
       "regionPrecision": 0.4,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "paragraphRecoveryAccuracy": 1.0,
+      "sectionHierarchyAccuracy": 1.0,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "spanning-figure": {
       "routedProviders": ["mock", "docling-sim", "grobid-sim"],
       "physicalTextCoverage": 1.0,
-      "regionRecall": 1.0,
-      "regionPrecision": 0.6364,
+      "regionRecall": 0.8889,
+      "regionPrecision": 0.6667,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "paragraphRecoveryAccuracy": 0.6667,
+      "sectionHierarchyAccuracy": 1.0,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 0.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "table-heavy": {
       "routedProviders": ["mock", "docling-sim", "grobid-sim"],
       "physicalTextCoverage": 1.0,
-      "regionRecall": 1.0,
+      "regionRecall": 0.75,
       "regionPrecision": 0.4286,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
       "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "sectionHierarchyAccuracy": 0.5,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "tikz-vector": {
       "routedProviders": ["mock", "grobid-sim"],
       "physicalTextCoverage": 0.9932,
       "regionRecall": 1.0,
-      "regionPrecision": 0.375,
+      "regionPrecision": 0.4444,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
       "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "sectionHierarchyAccuracy": 1.0,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     },
     "two-column": {
       "routedProviders": ["mock", "grobid-sim"],
       "physicalTextCoverage": 1.0,
-      "regionRecall": 1.0,
-      "regionPrecision": 0.5556,
+      "regionRecall": 0.8,
+      "regionPrecision": 0.4444,
       "pairwiseOrderingAccuracy": 1.0,
       "sequenceAccuracy": true,
-      "paragraphRecoveryAccuracy": null,
-      "sectionHierarchyAccuracy": null,
+      "paragraphRecoveryAccuracy": 1.0,
+      "sectionHierarchyAccuracy": 0.6667,
       "semanticExpectationCoverage": 1.0,
       "tableStructureCoverage": 1.0,
       "citationResolutionRate": 1.0,
       "sourceMappingCoverage": 1.0,
       "renderMappingCoverage": 0.0,
-      "issues": {}
+      "issues": {
+        "byCategory": {},
+        "bySeverity": {}
+      }
     }
   },
   "calibration": {
@@ -229,34 +268,34 @@
         "lower": 0.6,
         "upper": 0.7,
         "total": 2,
-        "correct": 1,
-        "accuracy": 0.5
-      },
-      {
-        "lower": 0.7,
-        "upper": 0.8,
-        "total": 9,
         "correct": 0,
         "accuracy": 0.0
       },
       {
+        "lower": 0.7,
+        "upper": 0.8,
+        "total": 17,
+        "correct": 5,
+        "accuracy": 0.2941
+      },
+      {
         "lower": 0.8,
         "upper": 0.9,
-        "total": 0,
+        "total": 3,
         "correct": 0,
         "accuracy": 0.0
       },
       {
         "lower": 0.9,
         "upper": 1.0,
-        "total": 128,
-        "correct": 60,
-        "accuracy": 0.4688
+        "total": 140,
+        "correct": 56,
+        "accuracy": 0.4
       }
     ],
-    "total": 139,
+    "total": 162,
     "correct": 61,
-    "accuracy": 0.4388,
+    "accuracy": 0.3765,
     "monotonic": false
   }
 }

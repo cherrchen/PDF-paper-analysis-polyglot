@@ -2,9 +2,18 @@
   "fixture": "cross-page-paragraph",
   "purpose": "Paragraph continuing across a page break needs continuation evidence",
   "pages": [
-    { "pageIndex": 0, "singleColumnOnly": true },
-    { "pageIndex": 1, "singleColumnOnly": true },
-    { "pageIndex": 2, "singleColumnOnly": true }
+    {
+      "pageIndex": 0,
+      "singleColumnOnly": true
+    },
+    {
+      "pageIndex": 1,
+      "singleColumnOnly": true
+    },
+    {
+      "pageIndex": 2,
+      "singleColumnOnly": true
+    }
   ],
   "readingOrder": [
     "Cross-Page Paragraph Fixture",
@@ -30,5 +39,43 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 52.02,
+        "y": 76.51,
+        "width": 208.2,
+        "height": 15.7
+      },
+      "textPreview": "Cross-Page Paragraph Fixture"
+    },
+    {
+      "pageIndex": 1,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 35.25,
+        "y": 34.82,
+        "width": 177.86,
+        "height": 13.03
+      },
+      "textPreview": "1 Continuous paragraph"
+    },
+    {
+      "pageIndex": 1,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 34.22,
+        "y": 61.66,
+        "width": 252.95,
+        "height": 145.41
+      },
+      "textPreview": "This paragraph is intentionally long so that it con tinues across a page break "
+    }
+  ]
 }

@@ -2,8 +2,14 @@
   "fixture": "paper-anatomy",
   "purpose": "Composite exit-gate paper: every M4 semantic element in one document",
   "pages": [
-    { "pageIndex": 0, "singleColumnOnly": true },
-    { "pageIndex": 1, "singleColumnOnly": true }
+    {
+      "pageIndex": 0,
+      "singleColumnOnly": true
+    },
+    {
+      "pageIndex": 1,
+      "singleColumnOnly": true
+    }
   ],
   "readingOrder": [
     "Anatomy of a Synthetic Paper",
@@ -15,8 +21,14 @@
     "References"
   ],
   "captions": [
-    { "prefix": "Figure 1", "kind": "FIGURE_BLOCK" },
-    { "prefix": "Table 1", "kind": "TABLE_BLOCK" }
+    {
+      "prefix": "Figure 1",
+      "kind": "FIGURE_BLOCK"
+    },
+    {
+      "prefix": "Table 1",
+      "kind": "TABLE_BLOCK"
+    }
   ],
   "footnotesExpected": 1,
   "semantic": {
@@ -34,12 +46,20 @@
       "BIBLIOGRAPHY",
       "BIBLIOGRAPHY_ENTRY"
     ],
-    "minCounts": { "PARAGRAPH": 6, "SECTION": 4, "BIBLIOGRAPHY_ENTRY": 2 },
+    "minCounts": {
+      "PARAGRAPH": 6,
+      "SECTION": 4,
+      "BIBLIOGRAPHY_ENTRY": 2
+    },
     "headingLevels": [1, 2],
     "captionOf": 2,
     "footnotesLinked": 1,
     "citationsResolved": 2,
-    "marks": { "CITATION": 2, "FOOTNOTE_REFERENCE": 1, "INLINE_EQUATION": 1 },
+    "marks": {
+      "CITATION": 2,
+      "FOOTNOTE_REFERENCE": 1,
+      "INLINE_EQUATION": 1
+    },
     "equationNumbers": ["1"],
     "mergedParagraphNodes": 3,
     "multiFragmentAnchors": 3,
@@ -47,6 +67,130 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "frontMatterRoles": ["title", "author", "date", "abstract"],
-    "sectionParentOf": { "1.1": "1" }
-  }
+    "sectionParentOf": {
+      "1.1": "1"
+    }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 192.29,
+        "y": 169.13,
+        "width": 209.77,
+        "height": 15.84
+      },
+      "textPreview": "Anatomy of a Synthetic Paper"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.06,
+        "y": 355.62,
+        "width": 109.69,
+        "height": 10.17
+      },
+      "textPreview": "1 Introduction"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.63,
+        "y": 640.34,
+        "width": 82.83,
+        "height": 10.17
+      },
+      "textPreview": "2 Methods"
+    },
+    {
+      "pageIndex": 1,
+      "label": "FORMULA",
+      "geometry": {
+        "kind": "rect",
+        "x": 272.09,
+        "y": 155.0,
+        "width": 49.55,
+        "height": 9.49
+      },
+      "textPreview": "y  = 2x  + 1 "
+    },
+    {
+      "pageIndex": 1,
+      "label": "FIGURE",
+      "geometry": {
+        "kind": "rect",
+        "x": 207.49,
+        "y": 198.73,
+        "width": 179.33,
+        "height": 85.04
+      },
+      "textPreview": ""
+    },
+    {
+      "pageIndex": 1,
+      "label": "CAPTION_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 174.21,
+        "y": 299.47,
+        "width": 245.31,
+        "height": 10.05
+      },
+      "textPreview": "Figure 1: Placeholder figure for composite recovery."
+    },
+    {
+      "pageIndex": 1,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.5,
+        "y": 345.77,
+        "width": 73.07,
+        "height": 10.26
+      },
+      "textPreview": "3 Results"
+    },
+    {
+      "pageIndex": 1,
+      "label": "TABLE",
+      "geometry": {
+        "kind": "rect",
+        "x": 215.73,
+        "y": 418.19,
+        "width": 162.85,
+        "height": 51.56
+      },
+      "textPreview": "Paragraph Heading Figure Table 9 4 1 1 0.93 0.90 0.84 0.80"
+    },
+    {
+      "pageIndex": 1,
+      "label": "CAPTION_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 208.37,
+        "y": 485.17,
+        "width": 177.03,
+        "height": 10.04
+      },
+      "textPreview": "Table 1: Composite recovery metrics."
+    },
+    {
+      "pageIndex": 1,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.37,
+        "y": 601.44,
+        "width": 74.41,
+        "height": 10.34
+      },
+      "textPreview": "References"
+    }
+  ]
 }

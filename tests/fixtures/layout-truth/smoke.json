@@ -25,5 +25,31 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 247.41,
+        "y": 169.28,
+        "width": 99.92,
+        "height": 12.46
+      },
+      "textPreview": "Smoke Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 135.12,
+        "y": 270.32,
+        "width": 291.45,
+        "height": 35.02
+      },
+      "textPreview": "This fixture is the minimum LuaLaTeX regression document. Unicode: Café, naïve, "
+    }
+  ]
 }

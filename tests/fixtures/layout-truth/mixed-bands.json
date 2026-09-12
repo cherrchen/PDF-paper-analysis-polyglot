@@ -46,5 +46,139 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 224.37,
+        "y": 158.41,
+        "width": 146.12,
+        "height": 12.24
+      },
+      "textPreview": "Mixed Bands Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.56,
+        "y": 261.46,
+        "width": 60.24,
+        "height": 10.26
+      },
+      "textPreview": "Abstract"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.36,
+        "y": 288.2,
+        "width": 449.63,
+        "height": 21.47
+      },
+      "textPreview": "Full-width title and abstract band followed by two columns, a wide figure band, "
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 73.23,
+        "y": 328.47,
+        "width": 165.33,
+        "height": 10.17
+      },
+      "textPreview": "1 First column section"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.2,
+        "y": 356.81,
+        "width": 219.81,
+        "height": 365.67
+      },
+      "textPreview": "Body text begins in two-column mode after the full-width front matter. The openi"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 302.94,
+        "y": 362.8,
+        "width": 181.38,
+        "height": 10.31
+      },
+      "textPreview": "2 Second column section"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 302.34,
+        "y": 389.51,
+        "width": 219.65,
+        "height": 145.53
+      },
+      "textPreview": "More column text precedes a spanning figure band. This right-column block must b"
+    },
+    {
+      "pageIndex": 1,
+      "label": "FIGURE",
+      "geometry": {
+        "kind": "rect",
+        "x": 117.03,
+        "y": 126.8,
+        "width": 360.25,
+        "height": 70.87
+      },
+      "textPreview": ""
+    },
+    {
+      "pageIndex": 1,
+      "label": "CAPTION_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 188.44,
+        "y": 213.36,
+        "width": 216.86,
+        "height": 10.05
+      },
+      "textPreview": "Figure 1: Wide figure between column bands."
+    },
+    {
+      "pageIndex": 2,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.67,
+        "y": 127.57,
+        "width": 141.87,
+        "height": 13.06
+      },
+      "textPreview": "3 After wide figure"
+    },
+    {
+      "pageIndex": 2,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.21,
+        "y": 154.31,
+        "width": 219.74,
+        "height": 129.86
+      },
+      "textPreview": "Columns resume below the figure band for page-band detection benchmarks. This se"
+    }
+  ]
 }

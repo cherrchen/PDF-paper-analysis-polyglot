@@ -32,5 +32,67 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 225.09,
+        "y": 158.33,
+        "width": 144.25,
+        "height": 12.46
+      },
+      "textPreview": "Two-Column Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 73.23,
+        "y": 254.64,
+        "width": 143.82,
+        "height": 10.26
+      },
+      "textPreview": "1 Left column start"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.2,
+        "y": 285.03,
+        "width": 219.79,
+        "height": 437.58
+      },
+      "textPreview": "This fixture exercises a standard two-column article layout with sequential para"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 302.94,
+        "y": 411.06,
+        "width": 157.98,
+        "height": 12.97
+      },
+      "textPreview": "2 Right column body"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 302.34,
+        "y": 437.71,
+        "width": 219.65,
+        "height": 143.41
+      },
+      "textPreview": "Right column material appears after the left column block in source order when u"
+    }
+  ]
 }

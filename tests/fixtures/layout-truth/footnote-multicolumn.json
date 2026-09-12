@@ -33,5 +33,67 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 239.36,
+        "y": 158.64,
+        "width": 116.1,
+        "height": 12.02
+      },
+      "textPreview": "Footnote Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 73.23,
+        "y": 254.73,
+        "width": 170.29,
+        "height": 10.17
+      },
+      "textPreview": "1 Main text with notes"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.21,
+        "y": 280.47,
+        "width": 219.77,
+        "height": 199.76
+      },
+      "textPreview": "A claim about sample efficiency1  the first column. The surrounding paragraph is"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.8,
+        "y": 628.46,
+        "width": 89.52,
+        "height": 12.87
+      },
+      "textPreview": "2 Follow-up"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 72.21,
+        "y": 655.61,
+        "width": 219.6,
+        "height": 23.72
+      },
+      "textPreview": "Additional body text without footnotes checks that footnote regions are isolated"
+    }
+  ]
 }

@@ -41,5 +41,79 @@
     "coverageMin": 0.95,
     "noErrors": true,
     "headingLevels": [1]
-  }
+  },
+  "regions": [
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 225.82,
+        "y": 169.37,
+        "width": 143.2,
+        "height": 15.61
+      },
+      "textPreview": "Bibliography Fixture"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.06,
+        "y": 272.5,
+        "width": 109.69,
+        "height": 10.17
+      },
+      "textPreview": "1 Introduction"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.04,
+        "y": 298.67,
+        "width": 357.82,
+        "height": 24.09
+      },
+      "textPreview": "Prior work on document understanding [1] and citation resolution [2] moti vates"
+    },
+    {
+      "pageIndex": 0,
+      "label": "HEADING_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 118.37,
+        "y": 344.72,
+        "width": 74.41,
+        "height": 10.34
+      },
+      "textPreview": "References"
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.12,
+        "y": 370.97,
+        "width": 270.37,
+        "height": 24.57
+      },
+      "textPreview": "[1] A. Smith. Synthetic references for regression tests. "
+    },
+    {
+      "pageIndex": 0,
+      "label": "PARAGRAPH_LIKE",
+      "geometry": {
+        "kind": "rect",
+        "x": 119.12,
+        "y": 407.03,
+        "width": 222.1,
+        "height": 22.08
+      },
+      "textPreview": "[2] J. Doe. Citation marks in academic PDFs. "
+    }
+  ]
 }
