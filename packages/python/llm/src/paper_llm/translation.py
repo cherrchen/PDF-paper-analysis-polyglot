@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 from document_model import stable_uuid
 from document_model.generated import schema_models as generated
 
+from paper_llm.cache import TRANSLATION_CACHE_VERSION
 from paper_llm.config import load_translation_config
 from paper_llm.context import build_translation_contexts
 from paper_llm.prompt import TRANSLATION_PROMPT_VERSION
@@ -309,7 +310,13 @@ def _cache_key(
     node_kind: str | None = None,
     candidate_terms: tuple[str, ...] = (),
 ) -> str:
+    """Cache address of one node (or table cell): key material + rules version.
+
+    ``version`` carries ``TRANSLATION_CACHE_VERSION`` so changing what the key
+    means invalidates every stored row instead of silently reusing it.
+    """
     payload = {
+        "version": TRANSLATION_CACHE_VERSION,
         "node": semantic_node_id,
         "content": content_digest,
         "target": target_locale,
@@ -328,6 +335,37 @@ def _cache_key(
 
 def _content_digest(content: generated.NodeContent) -> str:
     return hashlib.sha256(content.model_dump_json().encode()).hexdigest()[:16]
+
+
+def _node_cache_key(
+    semantic_node_id: str,
+    content: generated.NodeContent,
+    *,
+    context: TranslationContext,
+    node_kind: str,
+    candidate_terms: tuple[str, ...],
+    provider_model: str,
+    provider_endpoint: str,
+    terminology_revision: str,
+    target_locale: str,
+) -> str:
+    """Cache key of one node's (or cell's) source content under this config.
+
+    Computed once per node by ``translate_document`` / ``_translate_table_content``
+    and shared by the provider lookup and the written ``TranslationEntry``, so
+    a layer can never advertise a key its own result was not fetched under.
+    """
+    return _cache_key(
+        semantic_node_id=semantic_node_id,
+        content_digest=_content_digest(content),
+        target_locale=target_locale,
+        provider_model=provider_model,
+        terminology_revision=terminology_revision,
+        provider_endpoint=provider_endpoint,
+        context=context,
+        node_kind=node_kind,
+        candidate_terms=candidate_terms,
+    )
 
 
 def create_provider(
@@ -420,14 +458,18 @@ def translate_document(
                 _make_entry(
                     node.id,
                     result_content,
-                    source_content=source_content,
-                    context=node_context,
-                    node_kind=node.kind,
-                    candidate_terms=candidate_terms,
+                    cache_key=_node_cache_key(
+                        node.id,
+                        source_content,
+                        context=node_context,
+                        node_kind=node.kind,
+                        candidate_terms=candidate_terms,
+                        provider_model=provider_model,
+                        provider_endpoint=provider_endpoint,
+                        terminology_revision=terminology_revision,
+                        target_locale=target_locale,
+                    ),
                     provider_model=provider_model,
-                    provider_endpoint=provider_endpoint,
-                    terminology_revision=terminology_revision,
-                    target_locale=target_locale,
                 )
             )
             continue
@@ -436,6 +478,17 @@ def translate_document(
             source = node.content
             if not isinstance(source, generated.RichText):
                 continue
+            cache_key = _node_cache_key(
+                node.id,
+                source,
+                context=node_context,
+                node_kind=node.kind,
+                candidate_terms=candidate_terms,
+                provider_model=provider_model,
+                provider_endpoint=provider_endpoint,
+                terminology_revision=terminology_revision,
+                target_locale=target_locale,
+            )
             result = _translate_node(
                 source,
                 provider,
@@ -445,6 +498,7 @@ def translate_document(
                 node_kind=node.kind,
                 semantic_node_id=node.id,
                 cache=cache,
+                cache_key=cache_key,
                 provider_model=provider_model,
                 provider_endpoint=provider_endpoint,
                 terminology_revision=terminology_revision,
@@ -456,15 +510,9 @@ def translate_document(
                 _make_entry(
                     node.id,
                     content,
-                    source_content=source,
-                    context=node_context,
-                    node_kind=node.kind,
-                    candidate_terms=candidate_terms,
+                    cache_key=cache_key,
                     confidence=result.confidence,
                     provider_model=provider_model,
-                    provider_endpoint=provider_endpoint,
-                    terminology_revision=terminology_revision,
-                    target_locale=target_locale,
                 )
             )
     layer = generated.TranslationLayer(
@@ -557,23 +605,13 @@ def _translate_node(
     node_kind: str,
     semantic_node_id: str,
     cache: TranslationCache | None,
+    cache_key: str,
     provider_model: str,
     provider_endpoint: str,
     terminology_revision: str,
     target_locale: str,
     skip_cache_read: bool = False,
 ) -> TranslationResult:
-    cache_key = _cache_key(
-        semantic_node_id=semantic_node_id,
-        content_digest=_content_digest(source),
-        target_locale=target_locale,
-        provider_model=provider_model,
-        terminology_revision=terminology_revision,
-        provider_endpoint=provider_endpoint,
-        context=context,
-        node_kind=node_kind,
-        candidate_terms=candidate_terms,
-    )
     if cache is not None and not skip_cache_read and (cached := cache.get(cache_key)) is not None:
         return TranslationResult(text=cached.text, marks=cached.marks, confidence=cached.confidence)
     request = TranslationRequest(
@@ -619,6 +657,17 @@ def _translate_table_content(
             node_kind=node_kind,
             semantic_node_id=semantic_node_id,
             cache=cache,
+            cache_key=_node_cache_key(
+                semantic_node_id,
+                cell.content,
+                context=context,
+                node_kind=node_kind,
+                candidate_terms=candidate_terms,
+                provider_model=provider_model,
+                provider_endpoint=provider_endpoint,
+                terminology_revision=terminology_revision,
+                target_locale=target_locale,
+            ),
             provider_model=provider_model,
             provider_endpoint=provider_endpoint,
             terminology_revision=terminology_revision,
@@ -641,31 +690,23 @@ def _make_entry(
     semantic_node_id: str,
     content: generated.NodeContent,
     *,
-    source_content: generated.NodeContent,
-    context: TranslationContext,
-    node_kind: str,
-    candidate_terms: tuple[str, ...],
+    cache_key: str,
     confidence: float = 1.0,
     provider_model: str,
-    provider_endpoint: str,
-    terminology_revision: str,
-    target_locale: str,
 ) -> generated.TranslationEntry:
+    """Build one entry from a translated node and its precomputed cache key.
+
+    ``cache_key`` digests the node's *source* content under this
+    configuration, computed by the caller alongside the key it fetched with.
+    For a TABLE node it is the whole-table digest, not a cache address: table
+    cells are cached individually, so ``cache.get(entry.cacheKey)`` misses by
+    design for tables and hits for every other text node.
+    """
     return generated.TranslationEntry(
         semanticNodeId=semantic_node_id,
         content=content,
         confidence=confidence,
         providerModel=provider_model,
-        cacheKey=_cache_key(
-            semantic_node_id=semantic_node_id,
-            content_digest=_content_digest(source_content),
-            target_locale=target_locale,
-            provider_model=provider_model,
-            terminology_revision=terminology_revision,
-            provider_endpoint=provider_endpoint,
-            context=context,
-            node_kind=node_kind,
-            candidate_terms=candidate_terms,
-        ),
+        cacheKey=cache_key,
         provenanceIds=[],
     )

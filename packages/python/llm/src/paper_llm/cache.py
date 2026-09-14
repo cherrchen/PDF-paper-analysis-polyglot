@@ -1,4 +1,4 @@
-"""Local-first translation cache (M5 Phase 5.4)."""
+"""Local-first translation cache (M5 Phase 5.4, versioned in M8 batch C)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,12 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from paper_llm.types import TranslationResult
+
+# Version of both the stored row shape and the cache-key derivation rules.
+# Bump it whenever the key material in ``paper_llm.translation._cache_key``
+# changes meaning: rows written under different rules are ignored, never
+# migrated, so a format change can never produce a silent wrong hit.
+TRANSLATION_CACHE_VERSION = "1"
 
 
 @dataclass
@@ -33,6 +39,8 @@ class TranslationCache:
                 if not line.strip():
                     continue
                 payload = json.loads(line)
+                if payload.get("cacheVersion") != TRANSLATION_CACHE_VERSION:
+                    continue
                 item = CachedTranslation(
                     cache_key=payload["cacheKey"],
                     text=payload["text"],
@@ -60,6 +68,7 @@ class TranslationCache:
             handle.write(
                 json.dumps(
                     {
+                        "cacheVersion": TRANSLATION_CACHE_VERSION,
                         "cacheKey": item.cache_key,
                         "text": item.text,
                         "marks": [mark.model_dump() for mark in item.marks],

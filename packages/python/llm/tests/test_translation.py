@@ -93,13 +93,30 @@ def test_translation_layer_validates() -> None:
     assert data == translation
 
 
-def test_translation_entries_carry_cache_keys() -> None:
-    semantic = _smoke_semantic()
-    translation = translate_document(semantic)
+def test_translation_entries_carry_cache_keys(tmp_path: Path) -> None:
+    pytest.importorskip("document_model")
+    from document_model.generated import schema_models as generated
+    from paper_llm.cache import TranslationCache
+
+    semantic = generated.SemanticDocument.model_validate(
+        json.loads(SEMANTIC_FIXTURE.read_text(encoding="utf-8"))
+    )
+    cache = TranslationCache(tmp_path / "translation-cache.jsonl")
+    translation = translate_document(semantic, DummyTranslationProvider(), cache=cache)
+
     assert translation.entries
+    table_entries = [
+        e for e in translation.entries if isinstance(e.content, generated.TableContent)
+    ]
+    assert table_entries, "fixture must exercise the table branch"
     for entry in translation.entries:
-        assert entry.cacheKey
-        assert len(entry.cacheKey) == 16
+        assert len(entry.cacheKey or "") == 16
+    # A table entry's key digests the whole table, while its cells are cached
+    # individually; every other text node's key is its own cache address.
+    for entry in translation.entries:
+        if not isinstance(entry.content, generated.TableContent):
+            assert entry.cacheKey is not None
+            assert cache.get(entry.cacheKey) is not None, entry.semanticNodeId
 
 
 def test_bibliography_entries_are_not_translated() -> None:

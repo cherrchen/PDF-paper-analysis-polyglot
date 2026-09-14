@@ -258,3 +258,32 @@ def test_failed_placeholder_translation_is_not_cached(tmp_path: Path) -> None:
         target_locale="zh-CN",
     )
     assert calls == 2
+
+
+@pytest.mark.unit
+def test_unknown_cache_version_entries_are_ignored(tmp_path: Path) -> None:
+    import json
+
+    from paper_llm.cache import TRANSLATION_CACHE_VERSION
+
+    path = tmp_path / "translation-cache.jsonl"
+    rows: list[dict[str, object]] = [
+        {"cacheKey": "unversioned", "text": "old", "marks": [], "confidence": 1.0},
+        {"cacheVersion": "0", "cacheKey": "stale", "text": "older", "marks": [], "confidence": 1.0},
+        {
+            "cacheVersion": TRANSLATION_CACHE_VERSION,
+            "cacheKey": "current",
+            "text": "new",
+            "marks": [],
+            "confidence": 1.0,
+        },
+    ]
+    path.write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+
+    cache = TranslationCache(path)
+
+    assert cache.get("unversioned") is None
+    assert cache.get("stale") is None
+    current = cache.get("current")
+    assert current is not None
+    assert current.text == "new"
