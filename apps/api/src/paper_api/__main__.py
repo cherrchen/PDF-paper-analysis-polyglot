@@ -10,6 +10,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from paper_api import health
+from paper_api.jobs import (
+    handle_get_job,
+    handle_list_jobs,
+    handle_retry_job,
+    handle_submit_job,
+    match_jobs_path,
+)
 from paper_api.retranslate import BODY_READ_TIMEOUT_S, MAX_BODY_BYTES, handle_retranslate
 
 if TYPE_CHECKING:
@@ -42,7 +49,7 @@ def read_limited_body(
     return raw, None
 
 
-def make_handler(workspace: Path, data_dir: Path) -> type[BaseHTTPRequestHandler]:
+def make_handler(workspace: Path, data_dir: Path, jobs_root: Path) -> type[BaseHTTPRequestHandler]:
     class ReaderHandler(BaseHTTPRequestHandler):
         def _json(self, status: int, payload: Mapping[str, object]) -> None:
             body = json.dumps(payload).encode("utf-8")
@@ -52,6 +59,17 @@ def make_handler(workspace: Path, data_dir: Path) -> type[BaseHTTPRequestHandler
             self.end_headers()
             self.wfile.write(body)
 
+        def _read_body(self) -> bytes | None:
+            """Read a bounded POST body, writing the error response on failure."""
+            raw, error = read_limited_body(self)
+            if error is not None:
+                try:
+                    self._json(*error)
+                except OSError:
+                    return None
+                return None
+            return raw
+
         def do_GET(self) -> None:
             if self.path in {"/", "/health", "/api/health"}:
                 self._json(200, health())
@@ -59,26 +77,47 @@ def make_handler(workspace: Path, data_dir: Path) -> type[BaseHTTPRequestHandler
             if self.path == "/api/retranslate":
                 self._json(405, {"ok": False, "error": "method not allowed"})
                 return
-            self.send_error(404)
-
-        def do_POST(self) -> None:
-            if self.path != "/api/retranslate":
+            route = match_jobs_path(self.path)
+            if route is None:
                 self.send_error(404)
                 return
-            raw, error = read_limited_body(self)
-            if error is not None:
-                try:
-                    self._json(*error)
-                except OSError:
+            kind, job_id = route
+            if kind == "collection":
+                status, payload = handle_list_jobs(jobs_root=jobs_root)
+            elif kind == "item" and job_id is not None:
+                status, payload = handle_get_job(job_id, jobs_root=jobs_root)
+            else:
+                self._json(405, {"ok": False, "error": "method not allowed"})
+                return
+            self._json(status, payload)
+
+        def do_POST(self) -> None:
+            if self.path == "/api/retranslate":
+                raw = self._read_body()
+                if raw is None:
                     return
+                status, payload = handle_retranslate(
+                    raw,
+                    workspace=workspace,
+                    data_dir=data_dir,
+                )
+                self._json(status, payload)
                 return
-            if raw is None:
+            route = match_jobs_path(self.path)
+            if route is None:
+                self.send_error(404)
                 return
-            status, payload = handle_retranslate(
-                raw,
-                workspace=workspace,
-                data_dir=data_dir,
-            )
+            kind, job_id = route
+            if kind == "collection":
+                raw = self._read_body()
+                if raw is None:
+                    return
+                status, payload = handle_submit_job(raw, jobs_root=jobs_root)
+            elif kind == "retry" and job_id is not None:
+                status, payload = handle_retry_job(job_id, jobs_root=jobs_root)
+            else:
+                self._json(405, {"ok": False, "error": "method not allowed"})
+                return
             self._json(status, payload)
 
         def do_PUT(self) -> None:
@@ -91,7 +130,7 @@ def make_handler(workspace: Path, data_dir: Path) -> type[BaseHTTPRequestHandler
             self._method_not_allowed()
 
         def _method_not_allowed(self) -> None:
-            if self.path == "/api/retranslate":
+            if self.path == "/api/retranslate" or match_jobs_path(self.path) is not None:
                 self._json(405, {"ok": False, "error": "method not allowed"})
                 return
             self.send_error(404)
@@ -106,11 +145,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="M6 reader API")
     parser.add_argument("--workspace", type=Path, default=Path("apps/web/.viewer-fixture"))
     parser.add_argument("--data-dir", type=Path, default=Path("apps/web/public/data"))
+    parser.add_argument("--jobs-root", type=Path, default=Path(".jobs"))
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     server = ThreadingHTTPServer(
         ("127.0.0.1", args.port),
-        make_handler(args.workspace, args.data_dir),
+        make_handler(args.workspace, args.data_dir, args.jobs_root),
     )
     print(f"api listening on http://127.0.0.1:{args.port}/health", flush=True)
     server.serve_forever()

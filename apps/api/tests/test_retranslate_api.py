@@ -53,7 +53,9 @@ def server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Threadin
     workspace = tmp_path / "ws"
     workspace.mkdir()
     (workspace / "semantic.json").write_text("{}")
-    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(workspace, tmp_path / "data"))
+    httpd = ThreadingHTTPServer(
+        ("127.0.0.1", 0), make_handler(workspace, tmp_path / "data", tmp_path / "jobs")
+    )
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     try:
@@ -135,7 +137,9 @@ def test_retranslate_unknown_node_error_message(server: ThreadingHTTPServer) -> 
 
 def test_retranslate_uninitialized_workspace_is_409(tmp_path: Path) -> None:
     missing = tmp_path / "missing"
-    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(missing, tmp_path / "d"))
+    httpd = ThreadingHTTPServer(
+        ("127.0.0.1", 0), make_handler(missing, tmp_path / "d", tmp_path / "jobs")
+    )
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     try:
