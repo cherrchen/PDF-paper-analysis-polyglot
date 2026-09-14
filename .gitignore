@@ -89,6 +89,9 @@ tests/fixtures/source/latex/build/
 *.pdf
 !tests/fixtures/pdf/**/*.pdf
 
+# Local job queue (M8 batch B)
+.jobs/
+
 # Coverage / reports
 reports/
 .nyc_output/
