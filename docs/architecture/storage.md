@@ -2,9 +2,9 @@
 
 [中文](./storage.md) | [English](./storage.en.md)
 
-持久对象存储、制品布局与数据集托管**有意未决**；本地 Project / Document Workspace 与任务编排约定已分别由 [M8 初版批次 A / B](../development/m8.md) 收口，见下。
+持久对象存储、制品布局与数据集托管**有意未决**；本地 Project / Document Workspace 与任务编排约定已分别由 [M8 初版批次 A–C](../development/m8.md) 收口，见下。
 
-## 本地 workspace（M8 批次 A，已收口）
+## 本地 workspace（M8 批次 A / C，已收口）
 
 `run_pipeline(source_pdf, out_dir)` 把 `out_dir` 变成一个**可恢复的本地 workspace**。目录布局：
 
@@ -26,18 +26,43 @@
 
 阶段枚举：`INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC → TRANSLATE → RENDER → INDEX`（`pdf_pipeline.workspace`）。
 
-- 每阶段在 `workspace.json` 记录：status、产物相对路径 + sha256、producer 版本、输入指纹（生产者版本 + 上游产物哈希）。
+- 每阶段在 `workspace.json` 记录：status、产物相对路径 + sha256、producer 版本、阶段缓存键 `inputFingerprint`（见下）。
 - 提交顺序：产物先写入 `.staging/`，逐文件原子 replace，最后原子重写 `workspace.json`——清单是**唯一提交指针**。
-- 恢复：`stage_completed` 为真（COMPLETED + 产物哈希校验通过 + 输入指纹与上游记录一致）才跳过；否则重跑该阶段。中断后重启只重跑未完成阶段；半写入目录永远不会被当成成功。
+- 恢复：`stage_completed` 为真（COMPLETED + 产物哈希校验通过 + 缓存键与上游记录和阶段配置一致）才跳过；否则重跑该阶段。中断后重启只重跑未完成阶段；半写入目录永远不会被当成成功。
 - 源绑定：manifest 的 `sourceFingerprint` 锁定源 PDF；未知 `workspaceVersion` 与外来源 PDF 一律明确报错（迁移属批次 E）。
 
 权威实现：`packages/python/pdf-pipeline/src/pdf_pipeline/workspace.py` 与 `pipeline.py` 的阶段 runner；决策理由见 Agent Note `2026-09-12-m8-batch-a-workspace-stages`。
 
+### 阶段缓存键与失效传播（M8 批次 C，已收口）
+
+缓存键 = producer 版本 + 上游产物 sha256 + 阶段配置（`pipeline.stage_config_inputs`）。`schemaVersion` 与 `pipelineVersion` 是每个阶段的公共项；其余按阶段：
+
+| 输入变化 | 失效阶段 |
+| --- | --- |
+| capability registry 字节（`registry_fingerprint`，sha256） | EVIDENCE、LAYOUT |
+| parser dump 字节（按 adapter 的解析规则定位）/ `MINERU_CMD` / `DOCLING_CMD` / `GROBID_URL` | EVIDENCE |
+| 翻译配置：target/source locale、provider model、endpoint、terminology 文件字节 | TRANSLATE |
+| render profile / policy / LaTeX 模板字节（`template_fingerprint`） | RENDER |
+| 阶段代码或 schema 版本（`pipelineVersion` / `schemaVersion`） | 全阶段 |
+| 上游产物哈希（既有规则） | 该阶段及其下游 |
+
+- 配置折进同一个 `inputFingerprint` 字段，**不新增清单字段**，`WORKSPACE_VERSION` 保持 `0.1.0`：键材料扩展只让旧 workspace 全阶段重跑一次（安全方向），升版本反而会拒绝既有 workspace，而迁移/拒绝边界属批次 E。
+- registry 与 parser dump 用**内容摘要**而非版本常量：它们是手改数据，改了却忘了升版本时仍必须失效。
+- api key、`timeout_s`、`max_retries`、`cache_dir` **不入键**：它们不影响产物语义。
+- 三个真实 parser adapter 一律入键，不按 routing 收窄（routing 需要 probe）：过度失效只多跑一次，误命中会静默陈旧。
+- 显式局部重跑：`run_pipeline(..., rerun_from=<stage>)`、CLI `--rerun-from <stage>` 在运行前丢弃该阶段及其下游全部记录（`WorkspaceManager.invalidate_from`），上游记录不动。
+- 源 PDF 字节变化默认明确报 `WorkspaceSourceMismatchError`；显式 opt-in `accept_source_change=True` / CLI `--accept-source-change` 重绑 `sourceFingerprint` 并丢弃全部阶段记录，整链重跑（盘上旧产物由各阶段重跑覆写自身声明路径）。
+- SEMANTIC 提交前清空 `<ws>/resources/`：该阶段的产物集合是「目录内所有文件」，否则换源或换 figure 集合后旧文件会被当成新产物记录。
+
+翻译缓存（`paper_llm.cache.TranslationCache`）行带 `cacheVersion`（`TRANSLATION_CACHE_VERSION`，当前 `"1"`）；该常量同时是**键派生规则版本**，未知/旧版本的行一律忽略、不做迁移。表节点按 cell 缓存，节点级 `cacheKey` 是整表内容/配置摘要而非缓存地址。
+
+权威实现：`pipeline.stage_config_inputs`、`WorkspaceManager`、`paper_llm.cache`；决策理由见 Agent Note `2026-09-14-m8-batch-c-cache-keys-invalidation`。
+
 ### 当前边界
 
 - `workspace.json` 是 ad-hoc 文件，schema 变更不走 `just schema` 冻结流程。
-- 翻译配置变化导致的阶段失效与跨配置缓存键属批次 C；本版恢复只按上游产物哈希判断。
 - viewer revision 发布沿用 `_publish_viewer_revision` 事务，不在清单内逐文件追踪。
+- 源 PDF 变化只支持「报错」或「整链重绑」两种模式，不做按阶段合并（Project 分组属后续批次）。
 
 ## 任务与 Job 记录（M8 批次 B，已收口）
 

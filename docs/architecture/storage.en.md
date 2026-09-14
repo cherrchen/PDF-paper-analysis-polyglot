@@ -2,9 +2,9 @@
 
 [中文](./storage.md) | [English](./storage.en.md)
 
-Persistent object storage, artifact layout, and dataset hosting remain **intentionally unresolved**; the local Project / Document Workspace and job-orchestration conventions were closed by [M8 v1 batches A / B](../development/m8.en.md), see below.
+Persistent object storage, artifact layout, and dataset hosting remain **intentionally unresolved**; the local Project / Document Workspace and job-orchestration conventions were closed by [M8 v1 batches A–C](../development/m8.en.md), see below.
 
-## Local workspace (M8 batch A, closed)
+## Local workspace (M8 batches A / C, closed)
 
 `run_pipeline(source_pdf, out_dir)` turns `out_dir` into a **resumable local workspace**. Directory layout:
 
@@ -26,18 +26,43 @@ Persistent object storage, artifact layout, and dataset hosting remain **intenti
 
 Stage enum: `INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC → TRANSLATE → RENDER → INDEX` (`pdf_pipeline.workspace`).
 
-- Each stage records in `workspace.json`: status, artifact relative paths + sha256, producer version, and an input fingerprint (producer version + upstream artifact hashes).
+- Each stage records in `workspace.json`: status, artifact relative paths + sha256, producer version, and the stage cache key `inputFingerprint` (below).
 - Commit order: artifacts are staged under `.staging/`, replaced one atomic rename at a time, and `workspace.json` is rewritten atomically last — the manifest is the **single commit pointer**.
-- Resume: a stage is skipped only when `stage_completed` holds (COMPLETED + artifact hashes verify + input fingerprint matches upstream records); otherwise it reruns. After an interrupt, restart reruns only unfinished stages; a half-written artifact set is never accepted as success.
+- Resume: a stage is skipped only when `stage_completed` holds (COMPLETED + artifact hashes verify + cache key matches upstream records and stage config); otherwise it reruns. After an interrupt, restart reruns only unfinished stages; a half-written artifact set is never accepted as success.
 - Source binding: the manifest's `sourceFingerprint` locks the source PDF; unknown `workspaceVersion` and a foreign source PDF are explicit errors (migration belongs to batch E).
 
 Authoritative implementation: `packages/python/pdf-pipeline/src/pdf_pipeline/workspace.py` and the stage runners in `pipeline.py`; decision rationale in Agent Note `2026-09-12-m8-batch-a-workspace-stages`.
 
+### Stage cache keys and invalidation (M8 batch C, closed)
+
+The cache key is producer version + upstream artifact sha256 + stage configuration (`pipeline.stage_config_inputs`). `schemaVersion` and `pipelineVersion` are common to every stage; the rest is per stage:
+
+| Input change | Stages invalidated |
+| --- | --- |
+| capability registry bytes (`registry_fingerprint`, sha256) | EVIDENCE, LAYOUT |
+| parser dump bytes (resolved the way the adapters resolve them) / `MINERU_CMD` / `DOCLING_CMD` / `GROBID_URL` | EVIDENCE |
+| translation config: target/source locale, provider model, endpoint, terminology file bytes | TRANSLATE |
+| render profile / policy / LaTeX template bytes (`template_fingerprint`) | RENDER |
+| stage code or schema version (`pipelineVersion` / `schemaVersion`) | every stage |
+| upstream artifact hashes (pre-existing rule) | that stage and everything downstream |
+
+- Config folds into the existing `inputFingerprint` field: **no new manifest field**, and `WORKSPACE_VERSION` stays `0.1.0`, because extending the key material only reruns an old workspace once (the safe direction), while bumping the version would reject existing workspaces — and migration/rejection boundaries belong to batch E.
+- The registry and parser dumps key on **content digests**, not version constants: they are hand-edited data, and an edit that forgets to bump a version must still invalidate.
+- API key, `timeout_s`, `max_retries`, and `cache_dir` are **not** keyed: they do not change produced artifacts.
+- All three real parser adapters participate regardless of routing (which needs a probe): over-invalidating costs one rerun, a false hit goes silently stale.
+- Explicit local rerun: `run_pipeline(..., rerun_from=<stage>)` and the CLI `--rerun-from <stage>` drop that stage and every downstream record before running (`WorkspaceManager.invalidate_from`); upstream records are untouched.
+- Changed source PDF bytes raise `WorkspaceSourceMismatchError` by default; the explicit opt-in `accept_source_change=True` / CLI `--accept-source-change` rebinds `sourceFingerprint`, drops every stage record, and reruns the whole chain (old files on disk are overwritten by each stage rerun at its own declared paths).
+- SEMANTIC clears `<ws>/resources/` before committing: that stage's artifact set is "every file in the directory", so without the purge a stale raster or figure fragment from an earlier run or source would be recorded as current output.
+
+Translation cache rows (`paper_llm.cache.TranslationCache`) carry `cacheVersion` (`TRANSLATION_CACHE_VERSION`, currently `"1"`); the constant is also the **key-derivation version**, so rows from an unknown version are ignored and never migrated. Table nodes are cached per cell: for a TABLE the node-level `cacheKey` is a whole-table content/config digest, not a cache address.
+
+Authoritative implementation: `pipeline.stage_config_inputs`, `WorkspaceManager`, `paper_llm.cache`; decision rationale in Agent Note `2026-09-14-m8-batch-c-cache-keys-invalidation`.
+
 ### Current boundaries
 
 - `workspace.json` is an ad-hoc file; its schema changes do not go through the `just schema` frozen flow.
-- Stage invalidation on translation-config changes and cross-config cache keys belong to batch C; this version's resume only compares upstream artifact hashes.
 - Viewer revision publishing keeps the existing `_publish_viewer_revision` transaction and is not tracked file-by-file in the manifest.
+- A changed source PDF supports only "error" or "rebind the whole chain"; per-stage merging is not implemented (Project grouping belongs to a later batch).
 
 ## Jobs and job records (M8 batch B, closed)
 
