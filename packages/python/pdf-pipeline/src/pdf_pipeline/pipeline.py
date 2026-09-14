@@ -73,6 +73,8 @@ from pdf_pipeline.workspace import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from document_model.generated.schema_models import (
         LayoutDocument,
         PhysicalDocument,
@@ -99,6 +101,29 @@ STAGE_PRODUCER_VERSIONS: dict[Stage, str] = {
     Stage.RENDER: RENDER_STAGE_VERSION,
     Stage.INDEX: INDEX_STAGE_VERSION,
 }
+
+
+class StageExecutionError(RuntimeError):
+    """A stage raised while executing; carries the stage for job attribution."""
+
+    stage: Stage
+
+    def __init__(self, stage: Stage, cause: BaseException) -> None:
+        super().__init__(f"{stage.value} stage failed: {cause}")
+        self.stage = stage
+
+
+def _execute_stage[T](stage: Stage, action: Callable[[], T]) -> T:
+    """Run one stage body, tagging any failure with the stage that raised.
+
+    The job layer needs to know *which* stage failed to attribute the issue
+    and to decide whether a retry can resume from the batch A stage state.
+    """
+    try:
+        return action()
+    except Exception as error:
+        raise StageExecutionError(stage, error) from error
+
 
 # Workspace file -> canonical document kind (document_model.serialize._ROOT_MODELS).
 _WORKSPACE_KINDS = {
@@ -840,14 +865,16 @@ def _ensure_analysis_stages(
 ]:
     """Run or reload INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC."""
     if not workspace.stage_completed(Stage.INGEST, STAGE_PRODUCER_VERSIONS[Stage.INGEST]):
-        _run_ingest_stage(workspace, source_bytes)
+        _execute_stage(Stage.INGEST, lambda: _run_ingest_stage(workspace, source_bytes))
 
     if workspace.stage_completed(Stage.PHYSICAL, STAGE_PRODUCER_VERSIONS[Stage.PHYSICAL]):
         physical = cast(
             "PhysicalDocument", _load_canonical(out_dir / "physical.json", "physical-document")
         )
     else:
-        physical = _run_physical_stage(workspace, source_bytes)
+        physical = _execute_stage(
+            Stage.PHYSICAL, lambda: _run_physical_stage(workspace, source_bytes)
+        )
 
     if workspace.stage_completed(Stage.EVIDENCE, STAGE_PRODUCER_VERSIONS[Stage.EVIDENCE]):
         bundles = _load_evidence_bundles(out_dir / "evidence-bundles.json")
@@ -855,12 +882,16 @@ def _ensure_analysis_stages(
             "generated.EvidenceBundle", _load_canonical(out_dir / "evidence.json", "evidence")
         )
     else:
-        bundles, evidence = _run_evidence_stage(workspace, physical)
+        bundles, evidence = _execute_stage(
+            Stage.EVIDENCE, lambda: _run_evidence_stage(workspace, physical)
+        )
 
     if workspace.stage_completed(Stage.LAYOUT, STAGE_PRODUCER_VERSIONS[Stage.LAYOUT]):
         layout = cast("LayoutDocument", _load_canonical(out_dir / "layout.json", "layout-document"))
     else:
-        layout = _run_layout_stage(workspace, physical, bundles)
+        layout = _execute_stage(
+            Stage.LAYOUT, lambda: _run_layout_stage(workspace, physical, bundles)
+        )
 
     if workspace.stage_completed(Stage.SEMANTIC, STAGE_PRODUCER_VERSIONS[Stage.SEMANTIC]):
         semantic = cast(
@@ -870,13 +901,16 @@ def _ensure_analysis_stages(
             "generated.ResourceDocument", _load_canonical(out_dir / "resources.json", "resources")
         )
     else:
-        semantic, resources = _run_semantic_stage(
-            workspace,
-            source_bytes,
-            out_dir,
-            physical=physical,
-            layout=layout,
-            evidence=evidence,
+        semantic, resources = _execute_stage(
+            Stage.SEMANTIC,
+            lambda: _run_semantic_stage(
+                workspace,
+                source_bytes,
+                out_dir,
+                physical=physical,
+                layout=layout,
+                evidence=evidence,
+            ),
         )
     return physical, layout, semantic, resources, evidence
 
@@ -900,7 +934,9 @@ def _ensure_rebuild_stages(
             _load_canonical(out_dir / "translation.json", "translation-layer"),
         )
     else:
-        translation = _run_translation_stage(workspace, semantic, config)
+        translation = _execute_stage(
+            Stage.TRANSLATE, lambda: _run_translation_stage(workspace, semantic, config)
+        )
 
     if workspace.stage_completed(Stage.RENDER, STAGE_PRODUCER_VERSIONS[Stage.RENDER]):
         render = cast(
@@ -908,12 +944,15 @@ def _ensure_rebuild_stages(
         )
         target_pdf = out_dir / "target.pdf"
     else:
-        render, target_pdf = _run_render_stage(
-            workspace,
-            semantic=semantic,
-            translation=translation,
-            resources=resources,
-            out_dir=out_dir,
+        render, target_pdf = _execute_stage(
+            Stage.RENDER,
+            lambda: _run_render_stage(
+                workspace,
+                semantic=semantic,
+                translation=translation,
+                resources=resources,
+                out_dir=out_dir,
+            ),
         )
     return translation, render, target_pdf
 
@@ -962,17 +1001,20 @@ def run_pipeline(
     if not workspace.stage_completed(
         Stage.INDEX, STAGE_PRODUCER_VERSIONS[Stage.INDEX]
     ) or not _viewer_current(out_dir, data_dir):
-        _run_index_stage(
-            workspace,
-            source_bytes,
-            physical=physical,
-            layout=layout,
-            semantic=semantic,
-            translation=translation,
-            render=render,
-            evidence=evidence,
-            target_pdf=target_pdf,
-            viewer_data_dir=data_dir,
+        _execute_stage(
+            Stage.INDEX,
+            lambda: _run_index_stage(
+                workspace,
+                source_bytes,
+                physical=physical,
+                layout=layout,
+                semantic=semantic,
+                translation=translation,
+                render=render,
+                evidence=evidence,
+                target_pdf=target_pdf,
+                viewer_data_dir=data_dir,
+            ),
         )
 
     paths: dict[str, Path] = {
