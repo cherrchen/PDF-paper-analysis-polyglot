@@ -11,12 +11,19 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pypdfium2 as pdfium
 import pytest
+from paper_llm.config import load_translation_config
 from pdf_pipeline import pipeline
-from pdf_pipeline.workspace import MANIFEST_NAME, STAGE_ORDER, Stage, WorkspaceManager
+from pdf_pipeline.workspace import (
+    MANIFEST_NAME,
+    STAGE_ORDER,
+    Stage,
+    WorkspaceManager,
+    WorkspaceSourceMismatchError,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -245,3 +252,163 @@ def test_rerender_survives_pipeline_resume(
     assert (workspace / "viewer/data/target.pdf").read_bytes() == (
         workspace / "target.pdf"
     ).read_bytes()
+
+
+def _manifest_records(workspace: Path) -> dict[str, dict[str, object]]:
+    stages = json.loads((workspace / MANIFEST_NAME).read_text())["stages"]
+    return cast("dict[str, dict[str, object]]", stages)
+
+
+def test_registry_change_reruns_evidence_and_layout(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pipeline, "registry_fingerprint", lambda: "changed-registry")
+    counts = _count_stage_runs(monkeypatch)
+
+    pipeline.run_pipeline(smoke_pdf, workspace)
+
+    assert counts["_run_evidence_stage"] == 1
+    assert counts["_run_layout_stage"] == 1
+    assert counts["_run_ingest_stage"] == 0
+    assert counts["_run_physical_stage"] == 0
+    assert counts["_run_semantic_stage"] == 0
+    # Identical output bytes, so the tail is still current.
+    assert counts["_run_translation_stage"] == 0
+
+
+def test_parser_dump_change_reruns_evidence(
+    smoke_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
+    dump = tmp_path / "mineru.json"
+    dump.write_text("{}")
+    monkeypatch.setenv("MINERU_DUMP", str(dump))
+    out = tmp_path / "ws"
+    pipeline.run_pipeline(smoke_pdf, out)
+
+    # Freshness is judged against the same stage config the run used.
+    manager = WorkspaceManager(
+        out,
+        stage_configs=pipeline.stage_config_inputs(
+            load_translation_config(), smoke_pdf.read_bytes()
+        ),
+    )
+    manager.open_or_create(smoke_pdf.read_bytes())
+    assert manager.stage_completed(Stage.EVIDENCE)
+
+    dump.write_text('{"pdf_info": []}')
+    counts = _count_stage_runs(monkeypatch)
+    pipeline.run_pipeline(smoke_pdf, out)
+
+    assert counts["_run_evidence_stage"] == 1
+    assert counts["_run_ingest_stage"] == 0
+    assert counts["_run_physical_stage"] == 0
+    # LAYOUT keys on the registry, not on parser dumps.
+    assert counts["_run_layout_stage"] == 0
+    assert counts["_run_semantic_stage"] == 0
+
+
+def test_live_parser_env_change_reruns_evidence(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DOCLING_CMD", "docling --json")
+    counts = _count_stage_runs(monkeypatch)
+
+    pipeline.run_pipeline(smoke_pdf, workspace)
+
+    assert counts["_run_evidence_stage"] == 1
+    assert counts["_run_ingest_stage"] == 0
+    assert counts["_run_physical_stage"] == 0
+    assert counts["_run_layout_stage"] == 0
+    assert counts["_run_semantic_stage"] == 0
+
+
+def test_translation_config_change_reruns_translate(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert json.loads((workspace / "translation.json").read_text())["targetLocale"] == "zh-CN"
+    monkeypatch.setenv("PAPER_TARGET_LOCALE", "ja-JP")
+    counts = _count_stage_runs(monkeypatch)
+
+    pipeline.run_pipeline(smoke_pdf, workspace)
+
+    assert counts["_run_translation_stage"] == 1
+    assert counts["_run_semantic_stage"] == 0
+    assert counts["_run_physical_stage"] == 0
+    assert counts["_run_evidence_stage"] == 0
+    assert json.loads((workspace / "translation.json").read_text())["targetLocale"] == "ja-JP"
+
+
+def test_rerun_from_stage_reruns_only_tail(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    before = _manifest_records(workspace)
+    counts = _count_stage_runs(monkeypatch)
+
+    pipeline.run_pipeline(smoke_pdf, workspace, rerun_from=Stage.TRANSLATE)
+
+    for runner in _RUNNERS[: _RUNNERS.index("_run_translation_stage")]:
+        assert counts[runner] == 0, runner
+    assert counts["_run_translation_stage"] == 1
+    assert counts["_run_render_stage"] == 1
+    assert counts["_run_index_stage"] == 1
+    after = _manifest_records(workspace)
+    for stage in ("ingest", "physical", "evidence", "layout", "semantic"):
+        assert after[stage] == before[stage], stage
+
+
+def test_source_change_requires_accept_flag(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    other = (
+        Path(__file__).resolve().parents[4] / "tests/fixtures/source/latex/build/figure-caption.pdf"
+    )
+    if not other.exists():
+        pytest.skip("second fixture PDF not built; run `just latex-smoke`")
+    with pytest.raises(WorkspaceSourceMismatchError):
+        pipeline.run_pipeline(other, workspace)
+    assert (workspace / "source.pdf").read_bytes() == smoke_pdf.read_bytes()
+
+    counts = _count_stage_runs(monkeypatch)
+    pipeline.run_pipeline(other, workspace, accept_source_change=True)
+
+    assert all(counts[runner] == 1 for runner in _RUNNERS), counts
+    assert (workspace / "source.pdf").read_bytes() == other.read_bytes()
+    records = _manifest_records(workspace)
+    assert set(records) == {stage.value for stage in STAGE_ORDER}
+
+
+def test_rerender_records_match_stage_configs(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    translation = json.loads((workspace / "translation.json").read_text())
+    node_id = translation["entries"][0]["semanticNodeId"]
+    pipeline.rerender_workspace(
+        workspace,
+        viewer_data_dir=workspace / "viewer/data",
+        node_ids={node_id},
+    )
+    counts = _count_stage_runs(monkeypatch)
+
+    pipeline.run_pipeline(smoke_pdf, workspace)
+
+    # rerender rebuilds translation/render cleanly, so no stage up to RENDER
+    # reruns; INDEX was deliberately invalidated by the viewer republication.
+    assert all(counts[runner] == 0 for runner in _RUNNERS if runner != "_run_index_stage"), counts
+    assert counts["_run_index_stage"] == 1
+
+
+def test_semantic_stage_drops_stale_resource_files(
+    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stale = workspace / "resources" / "stale.png"
+    stale.parent.mkdir(exist_ok=True)
+    stale.write_bytes(b"stale raster from an earlier run")
+
+    counts = _count_stage_runs(monkeypatch)
+    pipeline.run_pipeline(smoke_pdf, workspace, rerun_from=Stage.SEMANTIC)
+
+    assert counts["_run_semantic_stage"] == 1
+    assert not stale.exists()
+    artifacts = cast("dict[str, str]", _manifest_records(workspace)["semantic"]["artifacts"])
+    assert "resources/stale.png" not in artifacts

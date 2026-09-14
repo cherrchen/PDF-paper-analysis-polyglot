@@ -1,10 +1,12 @@
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
-"""Unit tests for the local workspace manifest (M8 batch A).
+"""Unit tests for the local workspace manifest (M8 batches A/C).
 
 Covers the commit protocol guarantees: the manifest is the single commit
 pointer, a COMPLETED stage is trusted only while its artifacts verify and
-its input fingerprint still matches upstream records, and unknown manifest
-versions or foreign source PDFs are rejected instead of silently migrated.
+its cache key (producer version + upstream artifacts + stage config) still
+matches, and unknown manifest versions or foreign source PDFs are rejected
+instead of silently migrated — unless a rebinding to new source bytes is
+explicitly requested.
 """
 
 from __future__ import annotations
@@ -36,11 +38,28 @@ from pdf_pipeline.workspace import (
 
 SOURCE = b"fake source pdf bytes"
 
+PRODUCER = "test-producer"
 
-def _open(tmp_path: Path, source: bytes = SOURCE) -> WorkspaceManager:
-    workspace = WorkspaceManager(tmp_path)
-    workspace.open_or_create(source)
+
+def _open(
+    tmp_path: Path,
+    source: bytes = SOURCE,
+    *,
+    stage_configs: dict[Stage, dict[str, str]] | None = None,
+    accept_source_change: bool = False,
+) -> WorkspaceManager:
+    workspace = WorkspaceManager(tmp_path, stage_configs=stage_configs)
+    workspace.open_or_create(source, accept_source_change=accept_source_change)
     return workspace
+
+
+def _commit(workspace: WorkspaceManager, stage: Stage, payload: bytes | None = None) -> None:
+    """Commit ``stage`` with one artifact, distinct per stage and payload."""
+    workspace.commit_stage(
+        stage,
+        producer_version=PRODUCER,
+        artifacts={f"{stage.value}.json": payload or f"{stage.value} bytes".encode()},
+    )
 
 
 def test_stage_order_matches_m8_enum() -> None:
@@ -84,19 +103,17 @@ def test_foreign_source_rejected(tmp_path: Path) -> None:
 
 def test_commit_stage_round_trip(tmp_path: Path) -> None:
     workspace = _open(tmp_path)
-    producer = "test-producer"
-    fingerprint = input_fingerprint(producer, {})
+    fingerprint = input_fingerprint(PRODUCER, {})
     workspace.commit_stage(
         Stage.INGEST,
-        producer_version=producer,
-        input_fingerprint=fingerprint,
+        producer_version=PRODUCER,
         artifacts={"source.pdf": SOURCE},
     )
     reloaded = _open(tmp_path)
     record = reloaded.stage_record(Stage.INGEST)
     assert record is not None
     assert record.status is StageStatus.COMPLETED
-    assert record.producer_version == producer
+    assert record.producer_version == PRODUCER
     assert record.input_fingerprint == fingerprint
     assert record.artifacts == {"source.pdf": sha256_bytes(SOURCE)}
     assert reloaded.stage_completed(Stage.INGEST)
@@ -104,49 +121,92 @@ def test_commit_stage_round_trip(tmp_path: Path) -> None:
 
 def test_stage_completed_detects_tampered_artifact(tmp_path: Path) -> None:
     workspace = _open(tmp_path)
-    workspace.commit_stage(
-        Stage.INGEST,
-        producer_version="test-producer",
-        input_fingerprint=input_fingerprint("test-producer", {}),
-        artifacts={"source.pdf": SOURCE},
-    )
-    (tmp_path / "source.pdf").write_bytes(b"tampered")
+    _commit(workspace, Stage.INGEST, SOURCE)
+    (tmp_path / "ingest.json").write_bytes(b"tampered")
     assert not workspace.stage_completed(Stage.INGEST)
 
 
 def test_stage_completed_detects_stale_upstream(tmp_path: Path) -> None:
     workspace = _open(tmp_path)
-    producer = "test-producer"
-    workspace.commit_stage(
-        Stage.INGEST,
-        producer_version=producer,
-        input_fingerprint=input_fingerprint(producer, {}),
-        artifacts={"source.pdf": SOURCE},
-    )
-    upstream_hashes = {"source.pdf": sha256_bytes(SOURCE)}
-    workspace.commit_stage(
-        Stage.PHYSICAL,
-        producer_version=producer,
-        input_fingerprint=input_fingerprint(producer, upstream_hashes),
-        artifacts={"physical.json": b"{}"},
-    )
+    _commit(workspace, Stage.INGEST, SOURCE)
+    _commit(workspace, Stage.PHYSICAL)
     assert workspace.stage_completed(Stage.PHYSICAL)
 
     # Re-commit INGEST with new bytes: PHYSICAL's recorded fingerprint no
     # longer matches the upstream records, so it must rerun.
-    new_source = b"updated source"
-    workspace.commit_stage(
-        Stage.INGEST,
-        producer_version=producer,
-        input_fingerprint=input_fingerprint(producer, {}),
-        artifacts={"source.pdf": new_source},
-    )
+    _commit(workspace, Stage.INGEST, b"updated source")
     assert not workspace.stage_completed(Stage.PHYSICAL)
     assert workspace.stage_completed(Stage.INGEST)
 
 
+def test_stage_config_change_invalidates_stage(tmp_path: Path) -> None:
+    configs = {Stage.INGEST: {"k": "1"}}
+    workspace = _open(tmp_path, stage_configs=configs)
+    _commit(workspace, Stage.INGEST)
+    assert workspace.stage_completed(Stage.INGEST)
+
+    changed = _open(tmp_path, stage_configs={Stage.INGEST: {"k": "2"}})
+    assert not changed.stage_completed(Stage.INGEST)
+
+
+def test_commit_requires_committed_upstream(tmp_path: Path) -> None:
+    workspace = _open(tmp_path)
+    with pytest.raises(WorkspaceError, match="upstream stage not committed: ingest"):
+        _commit(workspace, Stage.PHYSICAL)
+
+
+def test_invalidate_from_drops_stage_and_downstream(tmp_path: Path) -> None:
+    workspace = _open(tmp_path)
+    for stage in STAGE_ORDER[: STAGE_ORDER.index(Stage.SEMANTIC) + 1]:
+        _commit(workspace, stage)
+    assert workspace.stage_record(Stage.SEMANTIC) is not None
+
+    workspace.invalidate_from(Stage.LAYOUT)
+
+    assert workspace.stage_record(Stage.LAYOUT) is None
+    assert workspace.stage_record(Stage.SEMANTIC) is None
+    for stage in (Stage.INGEST, Stage.PHYSICAL, Stage.EVIDENCE):
+        assert workspace.stage_record(stage) is not None
+    # The manifest, not just memory, lost the dropped records.
+    on_disk = json.loads((tmp_path / MANIFEST_NAME).read_text())["stages"]
+    assert set(on_disk) == {"ingest", "physical", "evidence"}
+
+
+def test_accept_source_change_rebinds_and_invalidates(tmp_path: Path) -> None:
+    workspace = _open(tmp_path)
+    _commit(workspace, Stage.INGEST)
+    _commit(workspace, Stage.PHYSICAL)
+
+    with pytest.raises(WorkspaceSourceMismatchError):
+        _open(tmp_path, source=b"different pdf bytes")
+
+    new_source = b"different pdf bytes"
+    rebound = _open(tmp_path, source=new_source, accept_source_change=True)
+    assert rebound.stages == {}
+    assert rebound.source_fingerprint == sha256_bytes(new_source)
+    on_disk = json.loads((tmp_path / MANIFEST_NAME).read_text())
+    assert on_disk["sourceFingerprint"] == sha256_bytes(new_source)
+    assert on_disk["stages"] == {}
+
+
+def test_make_stage_record_matches_commit_stage(tmp_path: Path) -> None:
+    configs = {Stage.PHYSICAL: {"pipelineVersion": "1.2.3"}}
+    workspace = _open(tmp_path, stage_configs=configs)
+    _commit(workspace, Stage.INGEST)
+    record = workspace.make_stage_record(
+        Stage.PHYSICAL,
+        producer_version=PRODUCER,
+        artifacts={"physical.json": sha256_bytes(b"physical bytes")},
+    )
+    _commit(workspace, Stage.PHYSICAL)
+    committed = workspace.stage_record(Stage.PHYSICAL)
+    assert committed is not None
+    assert record == committed
+
+
 def test_commit_failure_keeps_manifest_unchanged(tmp_path: Path) -> None:
     workspace = _open(tmp_path)
+    _commit(workspace, Stage.INGEST)
     # A non-empty directory at an artifact target makes the second replace
     # fail mid-commit, the filesystem-level stand-in for a crash.
     blocked = tmp_path / "resources"
@@ -156,8 +216,7 @@ def test_commit_failure_keeps_manifest_unchanged(tmp_path: Path) -> None:
     with pytest.raises(OSError, match="Is a directory"):
         workspace.commit_stage(
             Stage.PHYSICAL,
-            producer_version="test-producer",
-            input_fingerprint=input_fingerprint("test-producer", {}),
+            producer_version=PRODUCER,
             artifacts={"physical.json": b"{}", "resources": b"new"},
         )
 
@@ -175,6 +234,19 @@ def test_input_fingerprint_is_order_stable() -> None:
     assert a == b
     assert a != input_fingerprint("1.1.0", {"a.json": "hash-a", "b.json": "hash-b"})
     assert a != input_fingerprint("1.0.0", {"a.json": "hash-a"})
+
+
+def test_input_fingerprint_covers_config() -> None:
+    inputs = {"physical.json": "hash"}
+    assert input_fingerprint("1.0.0", inputs) != input_fingerprint(
+        "1.0.0", inputs, {"registry": "a"}
+    )
+    assert input_fingerprint("1.0.0", inputs, {"registry": "a"}) != input_fingerprint(
+        "1.0.0", inputs, {"registry": "b"}
+    )
+    assert input_fingerprint("1.0.0", inputs, {"a": "1", "b": "2"}) == input_fingerprint(
+        "1.0.0", inputs, {"b": "2", "a": "1"}
+    )
 
 
 def test_stage_dependencies_cover_every_stage() -> None:
@@ -197,7 +269,6 @@ def test_manifest_write_failure_restores_memory(
         workspace.commit_stage(
             Stage.INGEST,
             producer_version="1",
-            input_fingerprint=input_fingerprint("1", {}),
             artifacts={"source.pdf": SOURCE},
         )
     assert workspace.stage_record(Stage.INGEST) is None
@@ -224,7 +295,6 @@ def test_artifact_paths_cannot_escape_or_replace_manifest(tmp_path: Path, name: 
         workspace.commit_stage(
             Stage.INGEST,
             producer_version="1",
-            input_fingerprint=input_fingerprint("1", {}),
             artifacts={name: b"invalid"},
         )
     assert workspace.manifest_path.read_bytes() == before

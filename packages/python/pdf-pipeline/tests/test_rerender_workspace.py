@@ -316,3 +316,27 @@ def test_rerender_keeps_previous_revision_readable(
         (viewer / "revisions" / first["revision"] / "viewer-meta.json").read_text(encoding="utf-8")
     )
     assert concurrent["targetPageCount"] == 2
+
+
+def test_rerender_leaves_analysis_records_untouched(
+    workspace: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pdf_pipeline.workspace import MANIFEST_NAME
+
+    before = json.loads((workspace / MANIFEST_NAME).read_text(encoding="utf-8"))["stages"]
+    calls = 0
+
+    def counting(*_args: object, **_kwargs: object) -> None:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("rerender must not re-run physical extraction")
+
+    monkeypatch.setattr(pipeline, "extract_physical_document", counting)
+    node_id = _load_translation(workspace).entries[0].semanticNodeId
+
+    rerender_workspace(workspace, viewer_data_dir=tmp_path / "viewer", node_ids={node_id})
+
+    after = json.loads((workspace / MANIFEST_NAME).read_text(encoding="utf-8"))["stages"]
+    for stage in ("ingest", "physical", "evidence", "layout", "semantic"):
+        assert after[stage] == before[stage], stage
+    assert calls == 0

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 import uuid
@@ -20,7 +21,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pypdfium2 as pdfium
-from document_model import dump_document, load_document, validate_bundle_references
+from document_model import (
+    SCHEMA_VERSION,
+    dump_document,
+    load_document,
+    validate_bundle_references,
+)
 from document_model.generated import schema_models as generated
 from paper_llm import translate_document
 from paper_llm.cache import TranslationCache
@@ -34,7 +40,19 @@ from paper_llm.translation import (
     translation_requires_provider,
 )
 
-from pdf_pipeline.capabilities import load_registry
+from pdf_pipeline.capabilities import load_registry, registry_fingerprint
+from pdf_pipeline.evidence.docling import (
+    DOCLING_CMD_ENV,
+    DOCLING_DUMP_ENV,
+    DOCLING_PROVIDER,
+)
+from pdf_pipeline.evidence.grobid import GROBID_DUMP_ENV, GROBID_PROVIDER, GROBID_URL_ENV
+from pdf_pipeline.evidence.mineru import (
+    MINERU_CMD_ENV,
+    MINERU_DUMP_ENV,
+    MINERU_PROVIDER,
+)
+from pdf_pipeline.evidence.native import resolve_dump_path
 from pdf_pipeline.evidence.normalize import merge_evidence_bundles
 from pdf_pipeline.fusion import RegionLine
 from pdf_pipeline.geometry import as_rect
@@ -53,6 +71,7 @@ from pdf_pipeline.render_latex import (
     compile_latex,
     project_to_latex,
     render_target_document_id,
+    template_fingerprint,
 )
 from pdf_pipeline.resource_store import (
     attach_figure_pdf_fragments,
@@ -63,12 +82,9 @@ from pdf_pipeline.routing import ROUTING_VERSION, collect_bundles, route_provide
 from pdf_pipeline.sem_validate import validate_semantic_recovery
 from pdf_pipeline.semantic import SEMANTIC_PRODUCER_VERSION, recover_semantic_document
 from pdf_pipeline.workspace import (
-    STAGE_DEPENDENCIES,
+    STAGE_ORDER,
     Stage,
-    StageRecord,
-    StageStatus,
     WorkspaceManager,
-    input_fingerprint,
     sha256_bytes,
 )
 
@@ -513,6 +529,19 @@ def _write_viewer_assets(
     )
 
 
+def _provider_identity(config: TranslationConfig) -> tuple[str, str]:
+    """Provider model identity and endpoint used for cache keys and entries.
+
+    Single source shared by ``_build_translation_provider`` (which records it
+    on ``TranslationLayer.providerModel``) and ``stage_config_inputs`` (which
+    keys TRANSLATE on it), so a stage record can never disagree with the layer
+    it produced.
+    """
+    if config.provider is None:
+        return DUMMY_PROVIDER_MODEL, ""
+    return f"openai-compat:{config.provider.model}", config.provider.endpoint
+
+
 def _build_translation_provider(
     config: TranslationConfig,
 ) -> tuple[TranslationProvider | None, str, str, TranslationCache | None]:
@@ -524,15 +553,89 @@ def _build_translation_provider(
     cache: TranslationCache | None = None
     if config.cache_dir is not None:
         cache = TranslationCache(config.cache_dir / "translation-cache.jsonl")
+    provider_model, provider_endpoint = _provider_identity(config)
     if config.provider is None:
-        return None, DUMMY_PROVIDER_MODEL, "", cache
+        return None, provider_model, provider_endpoint, cache
     provider = create_provider(provider_model="openai-compat", provider_config=config.provider)
-    return (
-        provider,
-        f"openai-compat:{config.provider.model}",
-        config.provider.endpoint,
-        cache,
-    )
+    return provider, provider_model, provider_endpoint, cache
+
+
+# Parser inputs whose identity the EVIDENCE cache key covers: recorded dumps
+# (content-hashed) and live-parser environment (literal value). Every real
+# adapter participates regardless of routing, which needs a probe to narrow;
+# over-invalidating costs one rerun, a false hit would be silent staleness.
+_PARSER_DUMP_INPUTS: tuple[tuple[str, str], ...] = (
+    (MINERU_PROVIDER, MINERU_DUMP_ENV),
+    (DOCLING_PROVIDER, DOCLING_DUMP_ENV),
+    (GROBID_PROVIDER, GROBID_DUMP_ENV),
+)
+_PARSER_LIVE_INPUTS: tuple[str, ...] = (MINERU_CMD_ENV, DOCLING_CMD_ENV, GROBID_URL_ENV)
+
+
+def _file_digest(path: Path | None) -> str:
+    """sha256 of a configured file; ``none``/``unreadable`` are distinct states."""
+    if path is None:
+        return "none"
+    try:
+        return sha256_bytes(path.read_bytes())
+    except OSError:
+        return "unreadable"
+
+
+def _parser_config_inputs(source_fingerprint: str) -> dict[str, str]:
+    """Dump digests and live-parser environment for the EVIDENCE cache key.
+
+    Dumps are resolved exactly as the adapters resolve them (explicit env path,
+    else ``PAPER_PARSER_DUMP_DIR/<provider>/<fingerprint>.*``), so changing the
+    recorded parser output — not just the environment — reruns evidence.
+    """
+    config: dict[str, str] = {}
+    for provider, dump_env in _PARSER_DUMP_INPUTS:
+        env_dump = os.environ.get(dump_env)
+        path = resolve_dump_path(provider, source_fingerprint, Path(env_dump) if env_dump else None)
+        config[f"parserDump:{provider}"] = _file_digest(path)
+    for cmd_env in _PARSER_LIVE_INPUTS:
+        config[f"liveEnv:{cmd_env}"] = os.environ.get(cmd_env, "")
+    return config
+
+
+def stage_config_inputs(
+    config: TranslationConfig, source_bytes: bytes
+) -> dict[Stage, dict[str, str]]:
+    """Every stage's configuration inputs, i.e. non-artifact parts of its cache key.
+
+    ``schemaVersion``/``pipelineVersion`` are common to all stages: the
+    canonical document contract and this driver's code, so a schema or stage
+    code change reruns the chain. The rest is per-stage — capability registry
+    and parser dumps for EVIDENCE/LAYOUT, translation target for TRANSLATE,
+    render profile/policy and LaTeX template for RENDER.
+
+    Deliberately excluded: API key, timeout, retry count, cache directory —
+    they do not change produced artifacts, only how the provider is reached.
+    """
+    common = {"schemaVersion": SCHEMA_VERSION, "pipelineVersion": PIPELINE_VERSION}
+    registry_input = {"capabilityRegistry": registry_fingerprint()}
+    provider_model, provider_endpoint = _provider_identity(config)
+    per_stage: dict[Stage, dict[str, str]] = {
+        Stage.EVIDENCE: {
+            **registry_input,
+            **_parser_config_inputs(sha256_bytes(source_bytes)),
+        },
+        Stage.LAYOUT: dict(registry_input),
+        Stage.TRANSLATE: {
+            "targetLocale": config.target_locale,
+            "sourceLocale": config.source_locale or "",
+            "providerModel": provider_model,
+            "providerEndpoint": provider_endpoint,
+            "terminologyFile": _file_digest(config.terminology_file),
+        },
+        Stage.RENDER: {
+            "renderProfile": sha256_bytes(DEFAULT_PROFILE.model_dump_json().encode("utf-8")),
+            "renderPolicy": sha256_bytes(DEFAULT_POLICY.model_dump_json().encode("utf-8")),
+            "latexTemplate": template_fingerprint(),
+        },
+    }
+    return {stage: {**common, **per_stage.get(stage, {})} for stage in STAGE_ORDER}
 
 
 def _bind_figure_assets(
@@ -555,17 +658,6 @@ def _bind_figure_assets(
     )
 
 
-def _stage_inputs(workspace: WorkspaceManager, stage: Stage) -> dict[str, str]:
-    """Content hashes of every artifact committed by the stage's upstream."""
-    inputs: dict[str, str] = {}
-    for dep in STAGE_DEPENDENCIES[stage]:
-        record = workspace.stage_record(dep)
-        if record is None:
-            raise RuntimeError(f"upstream stage not committed: {dep.value}")
-        inputs.update(record.artifacts)
-    return inputs
-
-
 def _run_ingest_stage(workspace: WorkspaceManager, source_bytes: bytes) -> None:
     """INGEST: keep the source PDF bytes in the workspace.
 
@@ -575,7 +667,6 @@ def _run_ingest_stage(workspace: WorkspaceManager, source_bytes: bytes) -> None:
     workspace.commit_stage(
         Stage.INGEST,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.INGEST],
-        input_fingerprint=input_fingerprint(STAGE_PRODUCER_VERSIONS[Stage.INGEST], {}),
         artifacts={"source.pdf": source_bytes},
     )
 
@@ -585,9 +676,6 @@ def _run_physical_stage(workspace: WorkspaceManager, source_bytes: bytes) -> Phy
     workspace.commit_stage(
         Stage.PHYSICAL,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.PHYSICAL],
-        input_fingerprint=input_fingerprint(
-            STAGE_PRODUCER_VERSIONS[Stage.PHYSICAL], _stage_inputs(workspace, Stage.PHYSICAL)
-        ),
         artifacts={"physical.json": _canonical_artifact(physical)},
     )
     return physical
@@ -609,10 +697,6 @@ def _run_evidence_stage(
     workspace.commit_stage(
         Stage.EVIDENCE,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.EVIDENCE],
-        input_fingerprint=input_fingerprint(
-            STAGE_PRODUCER_VERSIONS[Stage.EVIDENCE],
-            _stage_inputs(workspace, Stage.EVIDENCE),
-        ),
         artifacts={
             "evidence.json": _canonical_artifact(evidence),
             "evidence-bundles.json": _json_artifact([dump_document(b) for b in bundles]),
@@ -638,10 +722,6 @@ def _run_layout_stage(
     workspace.commit_stage(
         Stage.LAYOUT,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.LAYOUT],
-        input_fingerprint=input_fingerprint(
-            STAGE_PRODUCER_VERSIONS[Stage.LAYOUT],
-            _stage_inputs(workspace, Stage.LAYOUT),
-        ),
         artifacts={"layout.json": _canonical_artifact(layout)},
     )
     return layout
@@ -678,16 +758,17 @@ def _run_semantic_stage(
             }
         )
     resource_dir = out_dir / "resources"
+    # The SEMANTIC record declares every file under resources/, so a stale
+    # raster or figure fragment from an earlier run or source would be
+    # recorded as current output. Drop the directory first and let figure
+    # binding repopulate it.
+    shutil.rmtree(resource_dir, ignore_errors=True)
     semantic, resources = _bind_figure_assets(
         semantic, layout, physical, source_bytes, resource_dir
     )
     workspace.commit_stage(
         Stage.SEMANTIC,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.SEMANTIC],
-        input_fingerprint=input_fingerprint(
-            STAGE_PRODUCER_VERSIONS[Stage.SEMANTIC],
-            _stage_inputs(workspace, Stage.SEMANTIC),
-        ),
         artifacts={
             "semantic.json": _canonical_artifact(semantic),
             "resources.json": _canonical_artifact(resources),
@@ -716,10 +797,6 @@ def _run_translation_stage(
     workspace.commit_stage(
         Stage.TRANSLATE,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.TRANSLATE],
-        input_fingerprint=input_fingerprint(
-            STAGE_PRODUCER_VERSIONS[Stage.TRANSLATE],
-            _stage_inputs(workspace, Stage.TRANSLATE),
-        ),
         artifacts={"translation.json": _canonical_artifact(translation)},
     )
     return translation
@@ -758,10 +835,6 @@ def _run_render_stage(
     workspace.commit_stage(
         Stage.RENDER,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.RENDER],
-        input_fingerprint=input_fingerprint(
-            STAGE_PRODUCER_VERSIONS[Stage.RENDER],
-            _stage_inputs(workspace, Stage.RENDER),
-        ),
         artifacts={
             "render.json": _canonical_artifact(render),
             "target.pdf": target_pdf.read_bytes(),
@@ -843,9 +916,6 @@ def _run_index_stage(
     workspace.commit_stage(
         Stage.INDEX,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.INDEX],
-        input_fingerprint=input_fingerprint(
-            STAGE_PRODUCER_VERSIONS[Stage.INDEX], _stage_inputs(workspace, Stage.INDEX)
-        ),
         artifacts={
             "mapping.json": _canonical_artifact(mapping),
             "viewer-publication.json": _viewer_receipt(viewer_data_dir),
@@ -963,22 +1033,32 @@ def run_pipeline(
     *,
     viewer_data_dir: Path | None = None,
     translation_config: TranslationConfig | None = None,
+    rerun_from: Stage | None = None,
+    accept_source_change: bool = False,
 ) -> dict[str, Path]:
     """Run the Walking Skeleton pipeline into a resumable local workspace.
 
     Each stage (INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC →
     TRANSLATE → RENDER → INDEX) commits its artifacts and its manifest
     record atomically (``workspace.json`` written last). A restart skips
-    stages whose recorded artifacts still verify and reruns only the rest,
-    so completed JSON/PDF artifacts survive an interrupted run and a
-    half-written stage is never accepted as success. Returns produced
-    artifact paths.
+    stages whose recorded artifacts still verify and whose cache key
+    (producer version + upstream artifacts + stage config) still matches, and
+    reruns only the rest, so completed JSON/PDF artifacts survive an
+    interrupted run and a half-written stage is never accepted as success.
+
+    ``rerun_from`` drops that stage and every downstream record before
+    running, an explicit local rerun. Source PDF bytes differing from the
+    manifest raise ``WorkspaceSourceMismatchError`` unless
+    ``accept_source_change`` is set, which rebinds the workspace and reruns
+    every stage. Returns produced artifact paths.
     """
     source_bytes = source_pdf.read_bytes()
     out_dir.mkdir(parents=True, exist_ok=True)
-    workspace = WorkspaceManager(out_dir)
-    workspace.open_or_create(source_bytes)
     config = translation_config or load_translation_config()
+    workspace = WorkspaceManager(out_dir, stage_configs=stage_config_inputs(config, source_bytes))
+    workspace.open_or_create(source_bytes, accept_source_change=accept_source_change)
+    if rerun_from is not None:
+        workspace.invalidate_from(rerun_from)
 
     capability = probe_input_capability(source_bytes)
     if not capability.usable:
@@ -1071,6 +1151,7 @@ def rerender_workspace(
         raise ValueError(f"not re-translatable nodes: {sorted(unknown)}")
 
     config = translation_config or load_translation_config()
+    source_bytes = (workspace_dir / "source.pdf").read_bytes()
     provider, provider_model, provider_endpoint, cache = _build_translation_provider(config)
     if provider is None and translation_requires_provider(translation):
         raise TranslationProviderNotConfiguredError
@@ -1128,27 +1209,27 @@ def rerender_workspace(
         }
         workspace_updates[workspace_dir / "target.pdf"] = target_pdf.read_bytes()
         if (workspace_dir / "workspace.json").is_file():
-            workspace = WorkspaceManager(workspace_dir)
-            workspace.open_or_create((workspace_dir / "source.pdf").read_bytes())
+            workspace = WorkspaceManager(
+                workspace_dir, stage_configs=stage_config_inputs(config, source_bytes)
+            )
+            workspace.open_or_create(source_bytes)
             for stage, names in (
                 (Stage.TRANSLATE, ("translation.json",)),
                 (Stage.RENDER, ("render.json", "target.pdf")),
             ):
-                version = STAGE_PRODUCER_VERSIONS[stage]
-                workspace.stages[stage] = StageRecord(
-                    status=StageStatus.COMPLETED,
-                    producer_version=version,
-                    input_fingerprint=input_fingerprint(version, _stage_inputs(workspace, stage)),
+                workspace.stages[stage] = workspace.make_stage_record(
+                    stage,
+                    producer_version=STAGE_PRODUCER_VERSIONS[stage],
                     artifacts={
                         name: sha256_bytes(workspace_updates[workspace_dir / name])
                         for name in names
                     },
                 )
-            workspace.stages.pop(Stage.INDEX, None)
+            workspace.drop_stage_records(Stage.INDEX)
             workspace_updates[workspace.manifest_path] = workspace.manifest_bytes()
         _write_viewer_assets(
             data_dir=viewer_data_dir,
-            source_pdf=(workspace_dir / "source.pdf").read_bytes(),
+            source_pdf=source_bytes,
             target_pdf=target_pdf,
             mapping=new_mapping,
             render_anchors=render_anchors,
@@ -1172,8 +1253,26 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="optional Vite public/data output directory for viewer assets",
     )
+    parser.add_argument(
+        "--rerun-from",
+        choices=[stage.value for stage in STAGE_ORDER],
+        type=Stage,
+        default=None,
+        help="drop this stage and every downstream stage record before running",
+    )
+    parser.add_argument(
+        "--accept-source-change",
+        action="store_true",
+        help="rebind the workspace to different source PDF bytes and rerun every stage",
+    )
     args = parser.parse_args(argv)
-    paths = run_pipeline(args.input, args.outdir, viewer_data_dir=args.viewer_data_dir)
+    paths = run_pipeline(
+        args.input,
+        args.outdir,
+        viewer_data_dir=args.viewer_data_dir,
+        rerun_from=args.rerun_from,
+        accept_source_change=args.accept_source_change,
+    )
     sys.stdout.write(json.dumps({name: str(path) for name, path in paths.items()}, indent=2) + "\n")
     return 0
 

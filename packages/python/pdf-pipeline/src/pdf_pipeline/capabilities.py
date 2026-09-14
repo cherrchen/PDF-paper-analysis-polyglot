@@ -13,6 +13,7 @@ runtime-editable config only if a real deployment needs it (Agent Note:
 
 from __future__ import annotations
 
+import hashlib
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -62,13 +63,27 @@ def load_registry() -> Registry:
 
 
 @lru_cache(maxsize=1)
-def _load_registry_impl() -> Registry:
-    text = (
+def _registry_text() -> str:
+    return (
         resources.files("pdf_pipeline")
         .joinpath(f"data/{REGISTRY_RESOURCE}")
         .read_text(encoding="utf-8")
     )
-    raw = tomllib.loads(text)
+
+
+def registry_fingerprint() -> str:
+    """Content hash of the bundled registry, for stage cache keys.
+
+    A digest rather than a version constant: the registry is hand-edited
+    data, so any edit — including one that forgets to bump a version — must
+    invalidate the stages that routed providers with it.
+    """
+    return hashlib.sha256(_registry_text().encode("utf-8")).hexdigest()
+
+
+@lru_cache(maxsize=1)
+def _load_registry_impl() -> Registry:
+    raw = tomllib.loads(_registry_text())
     parsed: dict[str, Capability] = {}
     for domain, slots in raw.items():
         for slot, providers in slots.items():

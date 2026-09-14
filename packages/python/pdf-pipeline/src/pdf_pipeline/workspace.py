@@ -1,5 +1,5 @@
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
-"""Local workspace manifest and stage-state commit protocol (M8 batch A).
+"""Local workspace manifest and stage-state commit protocol (M8 batches A/C).
 
 A workspace directory holds one document's pipeline artifacts together with
 an ad-hoc ``workspace.json`` manifest — the same artifact category as
@@ -7,6 +7,13 @@ an ad-hoc ``workspace.json`` manifest — the same artifact category as
 records, per pipeline stage (INGEST → PHYSICAL → EVIDENCE → LAYOUT →
 SEMANTIC → TRANSLATE → RENDER → INDEX), the stage status, produced artifact
 paths with content hashes, the producer version, and the input fingerprint.
+
+The input fingerprint is the stage cache key: producer version + hashes of
+every upstream artifact + the stage's configuration inputs (registry, parser
+dump/command identity, translation config, render profile, schema and
+pipeline versions). Changing any of them reruns exactly the stages that
+consume that input; a stage whose recorded fingerprint still matches its
+upstream records is skipped.
 
 Commit protocol: stage artifacts are staged under ``.staging/`` and replace
 their final paths one atomic rename at a time; ``workspace.json`` is
@@ -16,10 +23,14 @@ as unfinished and reruns it — a half-written artifact set is never accepted
 as success. On restart a COMPLETED stage is skipped only when every
 recorded artifact still exists and still hashes to the recorded value.
 
-Version/source handling is strict: an unknown ``workspaceVersion`` or a
-source PDF whose fingerprint differs from the manifest is an explicit
-error, never a silent migration or silent reuse (migration belongs to
-M8 batch E).
+``invalidate_from`` drops one stage's record plus every downstream record so
+the next run reruns that tail (explicit local rerun). Version/source
+handling is strict: an unknown ``workspaceVersion``, or a source PDF whose
+fingerprint differs from the manifest, is an explicit error, never a silent
+migration or silent reuse (migration belongs to M8 batch E). Rebinding a
+workspace to different source bytes is opt-in via
+``open_or_create(..., accept_source_change=True)`` and drops every stage
+record.
 """
 
 from __future__ import annotations
@@ -35,6 +46,7 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
 
 WORKSPACE_VERSION = "0.1.0"
@@ -121,15 +133,25 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def input_fingerprint(producer_version: str, inputs: dict[str, str]) -> str:
-    """Stable fingerprint of a stage's inputs: producer version + artifact hashes.
+def input_fingerprint(
+    producer_version: str,
+    inputs: Mapping[str, str],
+    config: Mapping[str, str] | None = None,
+) -> str:
+    """Stable stage cache key: producer version + upstream hashes + config.
 
-    ``inputs`` maps artifact names to their content hashes. Names are sorted
-    so the fingerprint does not depend on insertion order. Batch C extends
-    this into full stage cache keys (config, code/schema versions).
+    ``inputs`` maps upstream artifact names to their content hashes;
+    ``config`` maps this stage's configuration inputs (registry digest,
+    parser dump digest, locale, render profile, schema/pipeline version, …)
+    to a digest or literal value. Both mappings are sorted, so the key never
+    depends on insertion order.
     """
     material = json.dumps(
-        {"producerVersion": producer_version, "inputs": dict(sorted(inputs.items()))},
+        {
+            "producerVersion": producer_version,
+            "inputs": dict(sorted(inputs.items())),
+            "config": dict(sorted((config or {}).items())),
+        },
         sort_keys=True,
         ensure_ascii=False,
     )
@@ -189,23 +211,52 @@ def _atomic_write_json(path: Path, data: object) -> None:
 class WorkspaceManager:
     """Manifest-backed access to one local workspace directory."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(
+        self,
+        root: Path,
+        stage_configs: Mapping[Stage, Mapping[str, str]] | None = None,
+    ) -> None:
         self.root = root
         self.manifest_path = root / MANIFEST_NAME
         self.source_fingerprint = ""
         self.stages: dict[Stage, StageRecord] = {}
+        self._stage_configs: dict[Stage, dict[str, str]] = {
+            stage: dict(values) for stage, values in (stage_configs or {}).items()
+        }
 
-    def open_or_create(self, source_bytes: bytes) -> None:
-        """Load the existing manifest or initialize a fresh one for this source."""
-        self.source_fingerprint = sha256_bytes(source_bytes)
+    def _stage_config(self, stage: Stage) -> dict[str, str]:
+        return self._stage_configs.get(stage, {})
+
+    def open_or_create(self, source_bytes: bytes, *, accept_source_change: bool = False) -> None:
+        """Load the existing manifest or initialize a fresh one for this source.
+
+        A source fingerprint that differs from the manifest is an error unless
+        ``accept_source_change`` is set: then every stage record is dropped and
+        the workspace is rebound to the new source bytes, so the whole chain
+        reruns against the new document.
+        """
+        fingerprint = sha256_bytes(source_bytes)
         if self.manifest_path.is_file():
-            self._load_existing()
+            mismatch = self._load_existing(fingerprint)
+            if mismatch is not None and not accept_source_change:
+                raise mismatch
+            if mismatch is not None:
+                self.stages = {}
+                self.source_fingerprint = fingerprint
+                self._write_manifest()
         else:
+            self.source_fingerprint = fingerprint
             self.stages = {}
             self._write_manifest()
         self.cleanup_staging()
 
-    def _load_existing(self) -> None:
+    def _load_existing(self, source_fingerprint: str) -> WorkspaceSourceMismatchError | None:
+        """Parse the on-disk manifest; return a mismatch instead of raising it.
+
+        The caller decides whether a foreign source is fatal (default) or an
+        accepted rebinding. Loading must not mutate anything first, so a
+        rejected manifest leaves the in-memory state untouched.
+        """
         try:
             payload = json.loads(self.manifest_path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as error:
@@ -220,15 +271,16 @@ class WorkspaceManager:
                 f"(expected {WORKSPACE_VERSION!r})"
             )
         recorded_source = payload.get("sourceFingerprint")
-        if recorded_source != self.source_fingerprint:
-            raise WorkspaceSourceMismatchError(
+        mismatch = None
+        if recorded_source != source_fingerprint:
+            mismatch = WorkspaceSourceMismatchError(
                 "workspace belongs to a different source PDF; "
                 "remove the workspace or use a new output directory"
             )
         raw_stages = payload.get("stages")
         if not isinstance(raw_stages, dict):
             raise WorkspaceError("workspace manifest requires a stages object")
-        self.stages = {}
+        stages: dict[Stage, StageRecord] = {}
         for name, record in raw_stages.items():
             try:
                 stage = Stage(name)
@@ -237,7 +289,11 @@ class WorkspaceManager:
             parsed = StageRecord.from_json(record)
             for artifact_name in parsed.artifacts:
                 self._artifact_path(artifact_name)
-            self.stages[stage] = parsed
+            stages[stage] = parsed
+        if mismatch is None:
+            self.source_fingerprint = source_fingerprint
+            self.stages = stages
+        return mismatch
 
     def manifest_bytes(self) -> bytes:
         """Serialize records for inclusion in a wider workspace transaction."""
@@ -272,11 +328,11 @@ class WorkspaceManager:
 
     def stage_completed(self, stage: Stage, producer_version: str | None = None) -> bool:
         """True only when committed, every artifact still verifies, and the
-        recorded input fingerprint still matches the upstream records.
+        recorded input fingerprint still matches upstream records and config.
 
         A committed stage whose upstream stage was recommitted (new artifact
-        hashes) is treated as unfinished so downstream output never goes
-        stale.
+        hashes) or whose stage configuration inputs changed is treated as
+        unfinished so downstream output never goes stale.
         """
         record = self.stages.get(stage)
         if record is None or record.status is not StageStatus.COMPLETED:
@@ -288,38 +344,82 @@ class WorkspaceManager:
             if not path.is_file() or sha256_bytes(path.read_bytes()) != digest:
                 return False
         return record.input_fingerprint == input_fingerprint(
-            record.producer_version, self._upstream_artifacts(stage)
+            record.producer_version, self._upstream_artifacts(stage), self._stage_config(stage)
         )
 
-    def _upstream_artifacts(self, stage: Stage) -> dict[str, str]:
+    def _upstream_artifacts(self, stage: Stage, *, required: bool = False) -> dict[str, str]:
+        """Content hashes of every artifact committed by the stage's upstream.
+
+        ``stage_completed`` reads this tolerantly — a missing upstream record
+        simply means "not committed yet". ``commit_stage`` reads it strictly:
+        a stage is only ever committed after its upstream committed, so a
+        missing record there means the stage order was violated, never a
+        silently empty input set.
+        """
         inputs: dict[str, str] = {}
         for dep in STAGE_DEPENDENCIES[stage]:
             record = self.stages.get(dep)
             if record is None:
+                if required:
+                    raise WorkspaceError(f"upstream stage not committed: {dep.value}")
                 return {}
             inputs.update(record.artifacts)
         return inputs
+
+    def make_stage_record(
+        self, stage: Stage, *, producer_version: str, artifacts: Mapping[str, str]
+    ) -> StageRecord:
+        """Build the record ``stage`` would get for these already-hashed artifacts.
+
+        Callers that rewrite artifacts outside ``commit_stage`` (the
+        rerender transaction) use this so their record carries the same
+        cache key the next ``run_pipeline`` computes.
+        """
+        return StageRecord(
+            status=StageStatus.COMPLETED,
+            producer_version=producer_version,
+            input_fingerprint=input_fingerprint(
+                producer_version,
+                self._upstream_artifacts(stage, required=True),
+                self._stage_config(stage),
+            ),
+            artifacts=dict(artifacts),
+        )
+
+    def drop_stage_records(self, stage: Stage) -> None:
+        """Drop ``stage`` and every downstream record in memory (no manifest write)."""
+        dropped = STAGE_ORDER[STAGE_ORDER.index(stage) :]
+        for dropped_stage in dropped:
+            self.stages.pop(dropped_stage, None)
+
+    def invalidate_from(self, stage: Stage) -> None:
+        """Forget ``stage`` and every downstream stage, then persist the manifest.
+
+        The next run reruns that tail; artifacts of the dropped stages stay on
+        disk until each rerun overwrites its own declared paths.
+        """
+        self.drop_stage_records(stage)
+        self._write_manifest()
 
     def commit_stage(
         self,
         stage: Stage,
         *,
         producer_version: str,
-        input_fingerprint: str,
         artifacts: dict[str, bytes],
     ) -> None:
         """Atomically publish one stage's artifacts, then the manifest.
 
         Artifacts map workspace-relative paths to their bytes. Files are
         staged, each replaced via atomic rename, and only then does the
-        manifest gain this stage's COMPLETED record. Any failure before the
-        manifest write leaves the manifest unchanged, so the next run
-        reruns the stage instead of trusting half-written output.
+        manifest gain this stage's COMPLETED record with the cache key
+        computed from upstream records and this workspace's stage config. Any
+        failure before the manifest write leaves the manifest unchanged, so
+        the next run reruns the stage instead of trusting half-written output.
         """
-        record = StageRecord(
-            status=StageStatus.COMPLETED,
+        record = self.make_stage_record(
+            stage,
             producer_version=producer_version,
-            input_fingerprint=input_fingerprint,
             artifacts={name: sha256_bytes(data) for name, data in artifacts.items()},
         )
         targets = {name: self._artifact_path(name) for name in artifacts}

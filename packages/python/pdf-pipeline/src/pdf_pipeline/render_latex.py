@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 import shutil
 import subprocess
@@ -23,6 +24,7 @@ __all__ = [
     "escape_latex",
     "project_to_latex",
     "render_target_document_id",
+    "template_fingerprint",
 ]
 
 TEMPLATE_BODY_MARKER = "% BODY"
@@ -352,6 +354,21 @@ def _repo_root() -> Path:
 
 def _template_path() -> Path:
     return _repo_root() / "templates/latex/generic-academic.tex"
+
+
+def template_fingerprint() -> str:
+    """Content hash of the LaTeX template, for stage cache keys.
+
+    Editing the template changes the compiled target PDF without touching any
+    document, so RENDER keys on the template bytes. A missing template hashes
+    to the literal ``"missing"`` rather than raising: the RENDER stage itself
+    reports the read failure.
+    """
+    path = _template_path()
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return "missing"
 
 
 def compile_latex(tex_source: str, out_dir: Path, job_name: str = "target") -> Path:
