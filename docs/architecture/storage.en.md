@@ -2,7 +2,7 @@
 
 [中文](./storage.md) | [English](./storage.en.md)
 
-Persistent object storage, artifact layout, and dataset hosting remain **intentionally unresolved**; the local Project / Document Workspace convention was closed by [M8 v1 batch A](../development/m8.en.md), see below.
+Persistent object storage, artifact layout, and dataset hosting remain **intentionally unresolved**; the local Project / Document Workspace and job-orchestration conventions were closed by [M8 v1 batches A / B](../development/m8.en.md), see below.
 
 ## Local workspace (M8 batch A, closed)
 
@@ -38,6 +38,40 @@ Authoritative implementation: `packages/python/pdf-pipeline/src/pdf_pipeline/wor
 - `workspace.json` is an ad-hoc file; its schema changes do not go through the `just schema` frozen flow.
 - Stage invalidation on translation-config changes and cross-config cache keys belong to batch C; this version's resume only compares upstream artifact hashes.
 - Viewer revision publishing keeps the existing `_publish_viewer_revision` transaction and is not tracked file-by-file in the manifest.
+
+## Jobs and job records (M8 batch B, closed)
+
+`pdf_pipeline.jobs` wraps "one workspace run" in a **Job** that can be submitted, queried, and retried; the applications (`apps/api`, `apps/worker`) only wire it up. The jobs root defaults to `.jobs/`:
+
+```text
+<jobsRoot>/
+  queued/    <jobId>.json     waiting for a claim
+  running/   <jobId>.json     claimed by a live worker
+  finished/  <jobId>.json     terminal (succeeded / failed)
+  locks/     job-<jobId>.lock and workspace-<workspaceHash>.lock
+```
+
+Job record fields: `jobVersion` (currently `0.1.0`), `id` (32 lowercase hex), `status`, `source`, `workspace`, `viewerDataDir`, `attempt` (from 1), `createdAt`, `updatedAt`, `stage`, `error`, `issues`. Records move between the three directories by atomic rename; `get_job` / `list_jobs` deduplicate with `queued > running > finished` priority, so a crash window never exposes two visible records. An unknown `jobVersion`, an invalid `id`, and an unparsable record are all explicit errors.
+
+### State machine and claiming
+
+- `queued → running → succeeded | failed`; `failed → queued` only through a manual `retry_job` (`attempt + 1`, clearing `stage` / `error` / `issues`). `error is None` means `succeeded`. **There is no automatic retry or backoff.**
+- `claim_next` takes the oldest queued job by `(createdAt, id)` and takes two POSIX `fcntl.flock` locks: a per-job lock (mutual exclusion between workers) and a per-workspace lock (jobs sharing one workspace run serially, because `lualatex` shares one `build/` per workspace).
+- A `flock` belongs to the open file description, so the kernel releases it when the process exits. `recover_running` therefore distinguishes a dead owner (lock free → requeue as `queued`, `attempt` unchanged) from a live one (lock held → skip). Worker concurrency is configurable (`--concurrency`, default 1): different workspaces run in parallel, one workspace always serially.
+- Requeuing only rewinds the Job and **never** touches workspace artifacts; which stages actually rerun is still decided by the batch A stage state, so completed artifacts are never lost.
+
+### Failure attribution
+
+Stage execution is wrapped in `pipeline._execute_stage`, which raises `StageExecutionError` carrying the `Stage`. `JobWorker` turns that into a canonical job-level Issue:
+
+| Failure site | `severity` | `recoverable` | `category` |
+| --- | --- | --- | --- |
+| Inside a stage (`stage` is the stage name) | `ERROR` | `true` | `STAGE_ISSUE_CATEGORIES[stage]` (e.g. SEMANTIC → `SECTION_STRUCTURE`, TRANSLATE → `TRANSLATION`) |
+| Before any stage (`stage: null`) | `FATAL` | `false` | `PHYSICAL_EXTRACTION` |
+
+The Issue shape must validate against `document_model.generated.schema_models.Issue` (including `id`, `producer`, `message`, `affectedIds`). A job-level Issue is stored **only in the job record**, never appended to `semantic.json` (no second source of truth; in-document issues belong to batch D).
+
+Authoritative implementation: `packages/python/pdf-pipeline/src/pdf_pipeline/jobs.py` and `_execute_stage` in `pipeline.py`; HTTP contract in [HTTP API](api.en.md); decision rationale in Agent Note `2026-09-14-m8-batch-b-job-orchestration`.
 
 ## Still unresolved
 

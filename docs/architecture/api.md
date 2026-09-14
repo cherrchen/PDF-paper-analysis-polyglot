@@ -2,6 +2,23 @@
 
 [中文](./api.md) | [English](./api.en.md)
 
-API 应用是 `apps/api` 下的运行时入口（stdlib `ThreadingHTTPServer`，仓库有意不引入 web 框架）。产品 HTTP 契约 **有意未决**；当前唯一落地的是 M6 reader API：`GET /api/health` 与 `POST /api/retranslate`（局部重渲染，见 [`reader.md`](reader.md)）。业务逻辑在 `paper_api/retranslate.py`，`__main__` 只做接线。
+API 应用是 `apps/api` 下的运行时入口（stdlib `ThreadingHTTPServer`，仓库有意不引入 web 框架）。产品 HTTP 契约 **有意未决**，但以下端点已落地：M6 reader API（见 [`reader.md`](reader.md)）与 M8 批次 B 的 Job API（记录格式与状态机见 [`storage.md`](storage.md) 的「任务与 Job 记录」）。业务逻辑在 `paper_api/retranslate.py` 与 `paper_api/jobs.py`，`__main__` 只做接线。
+
+| 路径 | GET | POST | PUT / DELETE / PATCH |
+| --- | --- | --- | --- |
+| `/`、`/health`、`/api/health` | 200 `{"status":"ok","service":"api"}` | 404 | 404 |
+| `/api/retranslate` | 405 | 200 / 400 / 408 / 409 / 413 / 503 | 405 |
+| `/api/jobs` | 200 列表 | 202 提交（400 / 413 / 500） | 405 |
+| `/api/jobs/<id>` | 200 / 404 | 405 | 405 |
+| `/api/jobs/<id>/retry` | 405 | 202 / 404 / 409 | 405 |
+| 其它路径 | 404 | 404 | 404 |
+
+- `/api/jobs` 的提交 body：`source` 与 `workspace` 必填、`viewerDataDir` 可选；三者都必须是**绝对路径**，且 `source` 必须已存在（否则 400）。成功响应 `202 {"ok": true, "job": <记录>}`，`job.status == "queued"`、`job.attempt == 1`。
+- `/api/jobs/<id>/retry` 不读 body；非 `failed` 状态返回 `409`，未知 id 返回 `404`。
+- body 上限与 `/api/retranslate` 共用 `MAX_BODY_BYTES`（4096），超限 413。
+- 方法或路径不匹配时：已知路径给 `405 {"ok": false, ...}`，未知路径给 `404`。
+- 端点的 `pdf_pipeline` 导入都是惰性执行，API 启动不加载 pdfium。
+
+命令行：`python -m paper_api [--workspace DIR] [--data-dir DIR] [--jobs-root DIR] [--port N]`，`--jobs-root` 默认 `.jobs`。
 
 更广的契约存在时将作为 OpenAPI 放在 `schemas/api/`。`just schema` 目前报告尚未定义 OpenAPI 文档。

@@ -14,4 +14,4 @@ PDF → PhysicalDocument → Evidence → LayoutDocument
 
 Python / Rust 性能边界见同文档第 45 节与已落地 note [`.agents/notes/implemented/architecture/2026-09-03-document-architecture.md`](../../.agents/notes/implemented/architecture/2026-09-03-document-architecture.md)。
 
-自 M7 起，Evidence 阶段由 DocumentProbe + Capability Registry 驱动自适应路由：`run_pipeline` 先探测（`probe.json`），再按 registry 选出 provider ensemble（layout 主 provider、表格/学术 specialist），逐 provider 归属进融合，合并 bundle 进语义恢复。当前态见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。M8 批次 A 已使 `run_pipeline` 支持恢复；当前提交与恢复契约见 [存储](storage.md)。任务编排仍属 [M8 计划](../development/m8.md) 的批次 B。
+自 M7 起，Evidence 阶段由 DocumentProbe + Capability Registry 驱动自适应路由：`run_pipeline` 先探测（`probe.json`），再按 registry 选出 provider ensemble（layout 主 provider、表格/学术 specialist），逐 provider 归属进融合，合并 bundle 进语义恢复。当前态见 [M7 落地 note](../../.agents/notes/implemented/architecture/2026-09-12-m7-parser-ensemble.md)。M8 批次 A 已使 `run_pipeline` 支持恢复，批次 B 已在其上加 Job 编排（文件式队列 + `flock` 认领 + 阶段归因失败 + 手动重试）：当前提交与恢复契约、Job 记录与状态机见 [存储](storage.md)，HTTP 端点见 [HTTP API](api.md)。
