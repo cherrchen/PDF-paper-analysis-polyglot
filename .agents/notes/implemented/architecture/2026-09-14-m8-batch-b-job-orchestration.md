@@ -12,7 +12,7 @@ Status: implemented
 
 1. **Job 存储放 `pdf_pipeline.jobs`（新增模块），不放 `apps/`**。`apps/api`、`apps/worker` 只做接线；仓库规则要求可复用逻辑不落应用目录。job 记录与锁协议是本地实现细节，**不进冻结 schema**、不走 `just schema`（与批次 A 的 `workspace.json` 同类）。
 2. **文件式队列 + 原子 rename**。jobs root（默认 `.jobs/`）下 `queued/`、`running/`、`finished/`、`locks/` 四个目录，每个 job 是 `<jobId>.json`。记录只在目录间以原子 rename 迁移，因此读者永远看不到半写记录；`get_job` / `list_jobs` 按 `queued > running > finished` 去重，崩溃窗口内不出现两份可见记录。
-3. **`flock` 认领 + 内核级死亡检测**。`claim_next` 用 POSIX `fcntl.flock` 取两把独占锁：per-job（worker 互斥）与 per-workspace（同 workspace 串行，因 `lualatex` 每 workspace 共用 `build/`）。锁属于 open file description，**进程退出即由内核释放**——`recover_running` 因此能把「持有者已死」（锁空闲 → 重排为 `queued`）与「仍活着」（跳过）区分开，无需心跳、租约或超时猜测。`FileLock` 是唯一的平台替换点（POSIX-only：macOS / Linux / ubuntu CI）。
+3. **`flock` 认领 + 内核级死亡检测**。`claim_next` 用 POSIX `fcntl.flock` 取两把独占锁：per-job（worker 互斥）与 per-workspace（同 workspace 串行，因 `lualatex` 每 workspace 共用 `build/`）。锁属于 open file description，**进程退出即由内核释放**——`recover_running` 因此能把「持有者已死」（锁空闲 → 重排为 `queued`）与「仍活着」（跳过）区分开，无需心跳、租约或超时猜测。`FileLock` 是唯一的平台替换点（POSIX-only：macOS / Linux / Ubuntu CI）。
 4. **仅手动重试**。`failed → queued` 只能经 `retry_job`（`attempt + 1`，清空 `stage`/`error`/`issues`）；不做自动重试与退避。重排只回退 Job，**不清 workspace 产物**——实际重跑哪些阶段由批次 A 的 `stage_completed` 判定，因此已完成产物不丢。
 5. **worker 并发可配置 N，同 workspace 恒串行**。`JobWorker(concurrency=N)` 的认领数量上界是 N（已认领但未执行的 job 会白占锁）。默认 1，因为本地单文档场景不需要并行；提高默认值只动 `apps/worker` 的 argparse，不影响存储与协议。
 6. **阶段归因失败**。`pipeline._execute_stage(stage, action)` 把每个阶段执行包起来，失败抛 `StageExecutionError`（携带 `Stage`）。`run_pipeline` / `rerender_workspace` 签名不变，既有调用点与测试无需改动。

@@ -30,7 +30,7 @@ Batch D's contract ([`docs/development/m8.md`](../../../../docs/development/m8.m
 ## Alternatives considered
 
 - **Silently skip a failed provider without an Issue**: that is exactly the gap being fixed — the failure must be observable, otherwise the viewer and benchmark never see the degradation.
-- **Resolve substitution recursively (a fallback's fallback)**: one failure would extend the substitution chain indefinitely, and `substitutes` would lose its meaning (who actually produced the bundle?). One level plus name deduplication is predictable.
+- **Resolve substitution recursively (the fallback of a fallback)**: one failure would extend the substitution chain indefinitely, and `substitutes` would lose its meaning (who actually produced the bundle?). One level plus name deduplication is predictable.
 - **Substitute the challenger**: a challenger is the second-best evidence source for the same capability, not the stand-in after the primary dies; the registry already has a fallback slot for the latter.
 - **Add an `IssueCategory` member** (e.g. `EVIDENCE_PROVIDER`): that means changing the frozen schema and regenerating the bindings; the existing categories already express the affected capability.
 - **Record a provider failure as WARNING**: it hides a real defect; the sim registry never fails and a real adapter failure is an ERROR.
