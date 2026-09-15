@@ -7,6 +7,7 @@
 import { workspaceLabel } from "@paper/ui";
 import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { bootImportPanel } from "./import-panel.js";
 import { DualPaneReader } from "./reader.js";
 import { requiredElement } from "./reader-dom.js";
 
@@ -18,6 +19,7 @@ async function init(): Promise<void> {
   try {
     const reader = await DualPaneReader.boot((url) => pdfjsLib.getDocument({ url }).promise);
     await reader.start();
+    bootImportPanel(reader);
     status.textContent = `${workspaceLabel()} workspace is running.`;
   } catch (error) {
     viewerStatus.textContent = `Viewer unavailable. Run “just viewer-fixture” to create the local data (${String(error)}).`;

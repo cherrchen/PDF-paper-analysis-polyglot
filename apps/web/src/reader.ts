@@ -321,6 +321,43 @@ export class DualPaneReader {
     }
   }
 
+  /**
+   * Swap the whole reader onto the currently published revision in place.
+   *
+   * `manifest.json` is the commit pointer, so a failed candidate load leaves
+   * the current revision fully intact and rethrows for the caller to report.
+   * The swap/destroy sequence mirrors the proven success path of
+   * `retranslate()`, applied to both PDFs.
+   */
+  async load(revisionBust: string): Promise<void> {
+    const manifest = await fetchViewerManifest({ cacheBust: revisionBust, fallback: false });
+    const candidate = await loadViewerAssets(this.loadPdf, manifest, { includeSource: true });
+    if (!candidate.source) {
+      await candidate.target.loadingTask.destroy();
+      throw new Error("source pdf missing in revision");
+    }
+    const previousSource = this.pdfs.source;
+    const previousTarget = this.pdfs.target;
+    this.meta = candidate.meta;
+    this.model = buildReaderModel(candidate.mappings, pageSizesFrom(candidate.meta));
+    this.revision = candidate.revision;
+    this.pdfs.source = candidate.source;
+    this.pdfs.target = candidate.target;
+    this.currentPage.source = -1;
+    this.currentPage.target = -1;
+    this.activeNodeId = undefined;
+    this.lastOrigin = undefined;
+    this.setViewerChrome();
+    await Promise.all([this.showPage("source", 0), this.showPage("target", 0)]);
+    for (const previous of [previousSource, previousTarget]) {
+      if (previous && previous !== this.pdfs.source && previous !== this.pdfs.target) {
+        await previous.loadingTask.destroy();
+      }
+    }
+    this.refreshInspector();
+    this.viewerStatus.textContent = `Bidirectional navigation ready · ${this.model.pairs.size} linked regions`;
+  }
+
   bindEvents(): void {
     let syncQueued = false;
     for (const side of ["source", "target"] as const) {

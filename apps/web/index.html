@@ -19,6 +19,14 @@
             ><input type="checkbox" id="sync-scroll" />Sync scroll</label
           >
           <button id="inspector-toggle" type="button" aria-expanded="false">Inspector</button>
+          <form id="import-panel" onsubmit="return false">
+            <label for="import-source">Source PDF path</label>
+            <input type="text" id="import-source" autocomplete="off" spellcheck="false" />
+            <label for="import-workspace">Workspace path</label>
+            <input type="text" id="import-workspace" autocomplete="off" spellcheck="false" />
+            <button id="import-submit" type="button">Import &amp; analyze</button>
+            <output id="import-status" aria-live="polite"></output>
+          </form>
         </div>
         <div id="reader-body">
         <div id="panes">
