@@ -80,7 +80,7 @@ Authoritative implementation: `pdf_pipeline.routing`, `pdf_pipeline.evidence.nor
 ### Current boundaries
 
 - `workspace.json` is an ad-hoc file; its schema changes do not go through the `just schema` frozen flow.
-- Viewer revision publishing keeps the existing `_publish_viewer_revision` transaction and is not tracked file-by-file in the manifest.
+- Viewer revision publishing keeps the existing `_publish_viewer_revision` transaction and is not tracked file-by-file in the manifest. `PAPER_PUBLISH_FAULT=<file name>` (batch F, `pdf_pipeline.config.load_publish_fault`) makes the commit of that named file raise `OSError` mid-transaction so operator/test processes can exercise the rollback path in a real process; unset means no behavior change, and the env is configuration only — it keys nothing and alters no published bytes.
 - A changed source PDF supports only "error" or "rebind the whole chain"; per-stage merging is not implemented (Project grouping belongs to a later batch).
 - No workspace version converter is written: a version outside the readable set is always refused, and that set currently holds only the written version `("0.1.0",)`.
 - `apps/api` and `apps/worker` gain no registry argument: both paths end at the defaults of `run_pipeline` / `rerender_workspace`, which read the environment, so setting `PAPER_CAPABILITY_REGISTRY` on the worker process covers both.

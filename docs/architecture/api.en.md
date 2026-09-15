@@ -13,7 +13,7 @@ The API application is a runtime entry point under `apps/api` (stdlib `Threading
 | `/api/jobs/<id>/retry` | 405 | 202 / 404 / 409 | 405 |
 | any other path | 404 | 404 | 404 |
 
-- `/api/jobs` submission body: `source` and `workspace` required, `viewerDataDir` optional; all three must be **absolute paths**, and `source` must already exist (otherwise 400). Success is `202 {"ok": true, "job": <record>}` with `job.status == "queued"` and `job.attempt == 1`.
+- `/api/jobs` submission body: `source` and `workspace` required, `viewerDataDir` optional (omitted or `null` ⇒ the server's own `--data-dir`, the directory the local viewer reads — M8 batch F); an explicit value and the other two fields must be **absolute paths**, and `source` must already exist (otherwise 400). Success is `202 {"ok": true, "job": <record>}` with `job.status == "queued"`, `job.attempt == 1`, and the record carrying the **effective** `viewerDataDir`.
 - `/api/jobs/<id>/retry` reads no body; a non-`failed` job returns `409` and an unknown id returns `404`.
 - The body limit is shared with `/api/retranslate` (`MAX_BODY_BYTES`, 4096); over it returns 413.
 - On method/path mismatch: a known path gives `405 {"ok": false, ...}`, an unknown path gives `404`.

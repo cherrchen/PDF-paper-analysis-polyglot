@@ -56,9 +56,13 @@
 
 `pdf_pipeline.pipeline.rerender_workspace(workspace_dir, viewer_data_dir=…, node_ids=…)`（FR-TRANS-004：零源 PDF 重解析）：载入 workspace 六份 canonical 文档 → 校验 `node_ids ⊆ translation.entries` 键集 → 用**当前** provider 身份 `retranslate_nodes`（所选节点跳过缓存读取）→ compose → LaTeX 投影 + 暂存编译 → `recover_render_anchors` → 复用旧 mapping 的 source 侧绑定重建 MappingBundle → 校验通过后写不可变 viewer revision，再把稳定别名、workspace 三份 JSON 与 manifest 纳入可回滚提交。真实 workspace 缺失 provider 时失败，不用 dummy 覆盖。注意重新投影意味着整文档 target 重编译（lualatex 秒级~几十秒），这是有意的代价集中。
 
-前端接线：vite dev/preview 把 `/api` proxy 到 `:8000`，并把 `/data/*` 从 `public/data` 按请求提供；`just serve-reader` 一次起 API + dev server（Playwright webServer 用同一命令）。`main.ts` 只负责启动；`DualPaneReader` 拥有 pane 生命周期、导航与重译状态。重译成功后：按新 manifest 整组加载候选 mapping/meta/PDF，成功才切换并销毁旧 target document；加载失败保留旧阅读状态，切换后首屏渲染失败则重绘旧 target 页并恢复页码、overlay、focus 与滚动位置。状态行 `Node re-translated · <id 前 8 位> · <revision 前 8 位>`，`#viewer` 的 `data-busy` / `data-revision` 供 e2e 等待 busy→idle。
+前端接线：vite dev/preview 把 `/api` proxy 到 `:8000`，并把 `/data/*` 按请求从数据根提供——数据根默认 `public/data`，设了 `PAPER_VIEWER_DATA_DIR` 时改为其解析结果（批次 F 的发布故障 e2e 用它服务 fixture 数据的副本；未设时行为逐字节不变）。`just serve-reader` 一次起三进程本地栈——API、`paper_worker --jobs-root .jobs`、vite（Playwright webServer 镜像同一命令）。`main.ts` 只负责启动（`reader.start()` 后 `bootImportPanel(reader)`）；`DualPaneReader` 拥有 pane 生命周期、导航与重译状态。重译成功后：按新 manifest 整组加载候选 mapping/meta/PDF，成功才切换并销毁旧 target document；加载失败保留旧阅读状态，切换后首屏渲染失败则重绘旧 target 页并恢复页码、overlay、focus 与滚动位置。状态行 `Node re-translated · <id 前 8 位> · <revision 前 8 位>`，`#viewer` 的 `data-busy` / `data-revision` 供 e2e 等待 busy→idle。
 
 正确性修复：[M6 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-11-m6-review-repairs.md)。
+
+## 导入面板（M8 批次 F）
+
+`apps/web/src/import-panel.ts::bootImportPanel` 在阅读工具栏的 `#import-panel` 内渲染路径式 PRD §40 导入表面：绝对 `source` / `workspace` 路径输入框 + 提交按钮（`apiAvailable` 为 false 时禁用，状态显示 `Import unavailable · API offline`）。提交向 `POST /api/jobs` 发 `{"source","workspace"}`——不带 `viewerDataDir`：服务端把它默认成自己的 `--data-dir`，也就是本 viewer 读取的目录——然后每 2 s 轮询 `GET /api/jobs/<id>`（截止 280 s，超时显示 `Job still running · refresh to check`）。`succeeded` 时面板调用 `DualPaneReader.load(revisionBust)`：沿 manifest 提交指针把阅读器**就地**换到 Job 发布的修订（整组加载两份 PDF、重赋 meta/model/revision、双栏从第 0 页重渲染、销毁旧 document）；换页失败时上一修订完好无损，面板显示 `Reload failed · …`。`failed` 时状态显示 `Job failed · <stage ?? "fatal"> · <error 前 160 字符>`，不触碰阅读器。
 
 ## 夹具
 

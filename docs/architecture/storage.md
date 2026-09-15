@@ -80,7 +80,7 @@ EVIDENCE 阶段的 provider 是可选 specialist：一个 provider 失败只降�
 ### 当前边界
 
 - `workspace.json` 是 ad-hoc 文件，schema 变更不走 `just schema` 冻结流程。
-- viewer revision 发布沿用 `_publish_viewer_revision` 事务，不在清单内逐文件追踪。
+- viewer revision 发布沿用 `_publish_viewer_revision` 事务，不在清单内逐文件追踪。`PAPER_PUBLISH_FAULT=<文件名>`（批次 F，`pdf_pipeline.config.load_publish_fault`）让被点名文件的提交在事务中途抛 `OSError`，操作者/测试进程因此能在真实进程里走一遍回滚路径；未设时行为不变，且它纯属配置——不入任何键、不改任何已发布字节。
 - 源 PDF 变化只支持「报错」或「整链重绑」两种模式，不做按阶段合并（Project 分组属后续批次）。
 - 不写 workspace 版本转换函数：可读集合外的版本一律拒绝，当前集合只有写入版本 `("0.1.0",)`。
 - `apps/api` 与 `apps/worker` 不加 registry 参数：两条路径最终都经 `run_pipeline` / `rerender_workspace` 的默认值读 env，操作者给 worker 进程设 `PAPER_CAPABILITY_REGISTRY` 即同时生效。

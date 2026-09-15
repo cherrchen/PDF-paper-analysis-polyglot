@@ -13,7 +13,7 @@ API 应用是 `apps/api` 下的运行时入口（stdlib `ThreadingHTTPServer`，
 | `/api/jobs/<id>/retry` | 405 | 202 / 404 / 409 | 405 |
 | 其它路径 | 404 | 404 | 404 |
 
-- `/api/jobs` 的提交 body：`source` 与 `workspace` 必填、`viewerDataDir` 可选；三者都必须是**绝对路径**，且 `source` 必须已存在（否则 400）。成功响应 `202 {"ok": true, "job": <记录>}`，`job.status == "queued"`、`job.attempt == 1`。
+- `/api/jobs` 的提交 body：`source` 与 `workspace` 必填、`viewerDataDir` 可选（省略或 `null` ⇒ 取服务端自己的 `--data-dir`，即本地 viewer 读取的目录——M8 批次 F）；显式值与另外两个字段都必须是**绝对路径**，且 `source` 必须已存在（否则 400）。成功响应 `202 {"ok": true, "job": <记录>}`，`job.status == "queued"`、`job.attempt == 1`，且记录携带**生效的** `viewerDataDir`。
 - `/api/jobs/<id>/retry` 不读 body；非 `failed` 状态返回 `409`，未知 id 返回 `404`。
 - body 上限与 `/api/retranslate` 共用 `MAX_BODY_BYTES`（4096），超限 413。
 - 方法或路径不匹配时：已知路径给 `405 {"ok": false, ...}`，未知路径给 `404`。
