@@ -21,7 +21,7 @@ The M4 recovery engine (`pdf_pipeline.semantic` + `sem_*` modules) produces:
 - Inline marks: `CITATION` / `FOOTNOTE_REFERENCE` / `INLINE_EQUATION`
 - Failed recognition never loses content: tables fall back to line-major cells by default, equations keep rawText, unresolved citations stay as text and report Issues. Semantic recovery still leaves `FigureResource.embeddedImageIds` empty; `run_pipeline` writes real ResourceIDs after ResourceStore extraction, bound through layout `physicalObjectIds`
 - Every node and relation carries a recovery `ProvenanceRecord` (producer / version / operation / layout region and fusion inputs)
-- After recovery, `pdf_pipeline.sem_validate` audits in document-tree order (including cycles and parent/child consistency); findings land in `SemanticDocument.issues`
+- After recovery, `pdf_pipeline.sem_validate` audits in document-tree order (including cycles and parent/child consistency); findings land in `SemanticDocument.issues`; `run_pipeline` also folds evidence-provider degradation Issues (M8 batch D) into the same IssueStore, see [storage](storage.en.md)
 - Landing: [M4 Semantic Recovery Engine](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.en.md); review repairs: [M4 review repairs](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.en.md); correctness repairs: [M4 correctness repairs](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.en.md)
 
 See implemented note [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.en.md).

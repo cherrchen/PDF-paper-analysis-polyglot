@@ -2,9 +2,9 @@
 
 [中文](./storage.md) | [English](./storage.en.md)
 
-Persistent object storage, artifact layout, and dataset hosting remain **intentionally unresolved**; the local Project / Document Workspace and job-orchestration conventions were closed by [M8 v1 batches A–C](../development/m8.en.md), see below.
+Persistent object storage, artifact layout, and dataset hosting remain **intentionally unresolved**; the local Project / Document Workspace and job-orchestration conventions were closed by [M8 v1 batches A–D](../development/m8.en.md), see below.
 
-## Local workspace (M8 batches A / C, closed)
+## Local workspace (M8 batches A / C / D, closed)
 
 `run_pipeline(source_pdf, out_dir)` turns `out_dir` into a **resumable local workspace**. Directory layout:
 
@@ -13,7 +13,7 @@ Persistent object storage, artifact layout, and dataset hosting remain **intenti
   workspace.json          # ad-hoc manifest (probe.json class, outside frozen schemas)
   source.pdf              # source PDF bytes kept by INGEST
   physical.json …         # per-stage canonical JSON artifacts
-  probe.json              # probe + routing diagnostics (ad-hoc)
+  probe.json              # probe + routing diagnostics + provider degradations (ad-hoc)
   evidence-bundles.json   # ad-hoc persistence of per-provider bundles
   resources/              # images and figure PDF fragments
   target.pdf              # committed render artifact
@@ -27,6 +27,7 @@ Persistent object storage, artifact layout, and dataset hosting remain **intenti
 Stage enum: `INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC → TRANSLATE → RENDER → INDEX` (`pdf_pipeline.workspace`).
 
 - Each stage records in `workspace.json`: status, artifact relative paths + sha256, producer version, and the stage cache key `inputFingerprint` (below).
+- status is one of `pending` / `completed` / `degraded`. `degraded` (batch D) means "artifacts are usable, but the run recorded a degradation": `stage_completed` accepts only `completed`, so that stage **necessarily reruns on the next run** (a failure never becomes a cache hit), while the record still exists so downstream stages read its artifacts and continue. An unknown status is always an explicit error.
 - Commit order: artifacts are staged under `.staging/`, replaced one atomic rename at a time, and `workspace.json` is rewritten atomically last — the manifest is the **single commit pointer**.
 - Resume: a stage is skipped only when `stage_completed` holds (COMPLETED + artifact hashes verify + cache key matches upstream records and stage config); otherwise it reruns. After an interrupt, restart reruns only unfinished stages; a half-written artifact set is never accepted as success.
 - Source binding: the manifest's `sourceFingerprint` locks the source PDF; unknown `workspaceVersion` and a foreign source PDF are explicit errors (migration belongs to batch E).
@@ -57,6 +58,21 @@ The cache key is producer version + upstream artifact sha256 + stage configurati
 Translation cache rows (`paper_llm.cache.TranslationCache`) carry `cacheVersion` (`TRANSLATION_CACHE_VERSION`, currently `"1"`); the constant is also the **key-derivation version**, so rows from an unknown version are ignored and never migrated. Table nodes are cached per cell: for a TABLE the node-level `cacheKey` is a whole-table content/config digest, not a cache address.
 
 Authoritative implementation: `pipeline.stage_config_inputs`, `WorkspaceManager`, `paper_llm.cache`; decision rationale in Agent Note `2026-09-14-m8-batch-c-cache-keys-invalidation`.
+
+### Evidence failure isolation and degradation (M8 batch D, closed)
+
+EVIDENCE providers are optional specialists: one provider failing degrades only its own capability and never breaks the chain.
+
+- `routing.collect_bundles` returns a `ProviderCollection(bundles, degradations)`; a provider exception is isolated at the boundary into one `ProviderDegradation` (`provider` / `capabilities` / `substitutes` / `errorType` / `message`, truncated to 500 characters).
+- Substitution uses only the registry's `Capability.fallback` (never the challenger); each name is attempted at most once per run and **never recurses**. A fallback already collected in this run is reused rather than rerun, and `substitutes` lists only the names that actually produced a bundle; a failing substitute gets its own degradation entry.
+- Each degradation produces one canonical Issue attributed to that provider: `severity = ERROR`, `recoverable = true`, `category` taken from the **existing** `IssueCategory` the capability maps to (`table.*` → `TABLE_RECOVERY`, `layout.region` → `LAYOUT_REGION`, `formula.*` → `FORMULA_RECOVERY`, `scholarly.metadata` → `SECTION_STRUCTURE`, `scholarly.bibliography` → `CITATION_RESOLUTION`), and `fallback` naming either `provider substitution: <names>` or the capability's internal degradation description; the id is derived deterministically from document id + provider + capability + message.
+- `probe.json` gains a `degradations` array (`[]` when nothing failed; the shape is constant). The `evidence.json` `issues` store is the members' own issues plus the degradation Issues (the field is **omitted** when empty, so an undegraded run stays byte-identical).
+- `_run_semantic_stage` folds those Issues into the `semantic.json` IssueStore (deduplicated by id, ordered existing issues → semantic-validation issues → evidence issues); that is the only channel carrying them to the viewer's issue list, `metrics.quality_report`, and the benchmark's ERROR count.
+- Internal baselines keep a degraded run usable: layout regions come from geometric banding independently of any provider, TABLE degrades to a single-column row-per-line fallback (`confidence.reason == "table fallback: line rows"`), and scholarly metadata degrades to front-matter heuristics.
+- EVIDENCE commits as `degraded`: artifacts are published and downstream continues, but the next run reruns that stage (failures are never cached); when the rerun reproduces identical bytes the downstream is still skipped. Only **every routed provider failing** (zero bundles) is a real failure, attributed to EVIDENCE by `_execute_stage`.
+- `ROUTING_VERSION` / `PIPELINE_VERSION` therefore move to `0.2.0`: the former is part of the EVIDENCE cache key, the latter is a common key item for every stage (the fold-in logic changed, so existing workspaces rerun the whole chain once).
+
+Authoritative implementation: `pdf_pipeline.routing`, `pdf_pipeline.evidence.normalize`, the EVIDENCE/SEMANTIC runners in `pdf_pipeline.pipeline`, and `WorkspaceManager.commit_stage(degraded=...)`; decision rationale in Agent Note `2026-09-15-m8-batch-d-specialist-isolation`.
 
 ### Current boundaries
 
@@ -94,7 +110,7 @@ Stage execution is wrapped in `pipeline._execute_stage`, which raises `StageExec
 | Inside a stage (`stage` is the stage name) | `ERROR` | `true` | `STAGE_ISSUE_CATEGORIES[stage]` (e.g. SEMANTIC → `SECTION_STRUCTURE`, TRANSLATE → `TRANSLATION`) |
 | Before any stage (`stage: null`) | `FATAL` | `false` | `PHYSICAL_EXTRACTION` |
 
-The Issue shape must validate against `document_model.generated.schema_models.Issue` (including `id`, `producer`, `message`, `affectedIds`). A job-level Issue is stored **only in the job record**, never appended to `semantic.json` (no second source of truth; in-document issues belong to batch D).
+The Issue shape must validate against `document_model.generated.schema_models.Issue` (including `id`, `producer`, `message`, `affectedIds`). A job-level Issue is stored **only in the job record** and records "which stage failed as a whole"; in-document Issues (including batch D provider degradations) are written into `semantic.json` by the EVIDENCE/SEMANTIC stages, see above.
 
 Authoritative implementation: `packages/python/pdf-pipeline/src/pdf_pipeline/jobs.py` and `_execute_stage` in `pipeline.py`; HTTP contract in [HTTP API](api.en.md); decision rationale in Agent Note `2026-09-14-m8-batch-b-job-orchestration`.
 

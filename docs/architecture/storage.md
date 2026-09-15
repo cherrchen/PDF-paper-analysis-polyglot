@@ -2,9 +2,9 @@
 
 [中文](./storage.md) | [English](./storage.en.md)
 
-持久对象存储、制品布局与数据集托管**有意未决**；本地 Project / Document Workspace 与任务编排约定已分别由 [M8 初版批次 A–C](../development/m8.md) 收口，见下。
+持久对象存储、制品布局与数据集托管**有意未决**；本地 Project / Document Workspace 与任务编排约定已分别由 [M8 初版批次 A–D](../development/m8.md) 收口，见下。
 
-## 本地 workspace（M8 批次 A / C，已收口）
+## 本地 workspace（M8 批次 A / C / D，已收口）
 
 `run_pipeline(source_pdf, out_dir)` 把 `out_dir` 变成一个**可恢复的本地 workspace**。目录布局：
 
@@ -13,7 +13,7 @@
   workspace.json          # ad-hoc 清单（与 probe.json 同类，不进冻结 schema）
   source.pdf              # INGEST 保留的源 PDF 字节
   physical.json …         # 各阶段 canonical JSON 产物
-  probe.json              # 探测 + routing 诊断（ad-hoc）
+  probe.json              # 探测 + routing 诊断 + provider 降级（ad-hoc）
   evidence-bundles.json   # 各 provider bundle 的 ad-hoc 持久化
   resources/              # 图像与 figure PDF fragment
   target.pdf              # committed render artifact
@@ -27,6 +27,7 @@
 阶段枚举：`INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC → TRANSLATE → RENDER → INDEX`（`pdf_pipeline.workspace`）。
 
 - 每阶段在 `workspace.json` 记录：status、产物相对路径 + sha256、producer 版本、阶段缓存键 `inputFingerprint`（见下）。
+- status 取值 `pending` / `completed` / `degraded`。`degraded`（批次 D）表示「产物可用但运行中发生了已记录的降级」：`stage_completed` 只认 `completed`，因此该阶段**下次运行必然重跑**（失败不进缓存），而记录本身存在，下游阶段照常读到它的产物并继续。未知 status 一律明确报错。
 - 提交顺序：产物先写入 `.staging/`，逐文件原子 replace，最后原子重写 `workspace.json`——清单是**唯一提交指针**。
 - 恢复：`stage_completed` 为真（COMPLETED + 产物哈希校验通过 + 缓存键与上游记录和阶段配置一致）才跳过；否则重跑该阶段。中断后重启只重跑未完成阶段；半写入目录永远不会被当成成功。
 - 源绑定：manifest 的 `sourceFingerprint` 锁定源 PDF；未知 `workspaceVersion` 与外来源 PDF 一律明确报错（迁移属批次 E）。
@@ -57,6 +58,21 @@
 翻译缓存（`paper_llm.cache.TranslationCache`）行带 `cacheVersion`（`TRANSLATION_CACHE_VERSION`，当前 `"1"`）；该常量同时是**键派生规则版本**，未知/旧版本的行一律忽略、不做迁移。表节点按 cell 缓存，节点级 `cacheKey` 是整表内容/配置摘要而非缓存地址。
 
 权威实现：`pipeline.stage_config_inputs`、`WorkspaceManager`、`paper_llm.cache`；决策理由见 Agent Note `2026-09-14-m8-batch-c-cache-keys-invalidation`。
+
+### evidence 失败隔离与降级（M8 批次 D，已收口）
+
+EVIDENCE 阶段的 provider 是可选 specialist：一个 provider 失败只降级它自己的 capability，绝不打断整链。
+
+- `routing.collect_bundles` 返回 `ProviderCollection(bundles, degradations)`；provider 异常在边界被隔离成一条 `ProviderDegradation`（`provider` / `capabilities` / `substitutes` / `errorType` / `message`，消息截断到 500 字）。
+- 顶替只取 registry 的 `Capability.fallback`（不取 challenger），每个名字每轮最多尝试一次，**不递归**；已在本次运行中收集过的 fallback 直接复用而不重跑，`substitutes` 只列真正产出 bundle 的名字；顶替者自身失败会单独记一条 degradation。
+- 每条 degradation 产出一条归属该 provider 的 canonical Issue：`severity = ERROR`、`recoverable = true`、`category` 取自该 capability 映射到的**既有** `IssueCategory`（`table.*` → `TABLE_RECOVERY`、`layout.region` → `LAYOUT_REGION`、`formula.*` → `FORMULA_RECOVERY`、`scholarly.metadata` → `SECTION_STRUCTURE`、`scholarly.bibliography` → `CITATION_RESOLUTION`），`fallback` 记 `provider substitution: <names>` 或该 capability 的内建降级描述；id 由文档 id + provider + capability + message 确定性派生。
+- `probe.json` 增 `degradations` 数组（无失败时为 `[]`，形状恒定）；`evidence.json` 的 `issues` 汇总成员 bundle 的 issues 加上降级 Issue（无 issue 时**不写该字段**，因此无失败运行的产物字节不变）。
+- 这些 Issue 经 `_run_semantic_stage` 折进 `semantic.json` 的 IssueStore（按 id 去重，顺序 = 既有 issues → 语义校验 issues → evidence issues），是它们到达 viewer 问题列表、`metrics.quality_report` 与 benchmark ERROR 计数的唯一通道。
+- 内建基线保证「降级仍可用」：layout region 由几何分带独立产生（不依赖 provider），TABLE 退化为一行一线的单列 fallback（`confidence.reason == "table fallback: line rows"`），scholarly metadata 退化为 front-matter 启发式。
+- EVIDENCE 以 `degraded` 提交：产物照常发布、下游继续，但下次运行重跑该阶段（失败不进缓存）；重跑产物字节相同则下游仍被跳过。**所有 routed provider 全失败**（零 bundle）才是真失败，由 `_execute_stage` 归因到 EVIDENCE。
+- `ROUTING_VERSION` / `PIPELINE_VERSION` 因此升到 `0.2.0`：前者是 EVIDENCE 缓存键的一部分，后者是所有阶段的公共键项（折入逻辑变了，既有 workspace 整链重跑一次）。
+
+权威实现：`pdf_pipeline.routing`、`pdf_pipeline.evidence.normalize`、`pdf_pipeline.pipeline` 的 EVIDENCE/SEMANTIC runner、`WorkspaceManager.commit_stage(degraded=...)`；决策理由见 Agent Note `2026-09-15-m8-batch-d-specialist-isolation`。
 
 ### 当前边界
 
@@ -94,7 +110,7 @@ Job 记录字段：`jobVersion`（当前 `0.1.0`）、`id`（32 位小写 hex）
 | 某阶段内（`stage` 为阶段名） | `ERROR` | `true` | `STAGE_ISSUE_CATEGORIES[stage]`（如 SEMANTIC → `SECTION_STRUCTURE`、TRANSLATE → `TRANSLATION`） |
 | 未进入任何阶段（`stage: null`） | `FATAL` | `false` | `PHYSICAL_EXTRACTION` |
 
-Issue 形状必须能通过 `document_model.generated.schema_models.Issue` 校验（含 `id`、`producer`、`message`、`affectedIds`）。job 级 Issue **只存 job 记录**，不追加进 `semantic.json`（避免两个真源；文档内 Issue 属批次 D）。
+Issue 形状必须能通过 `document_model.generated.schema_models.Issue` 校验（含 `id`、`producer`、`message`、`affectedIds`）。job 级 Issue **只存 job 记录**，记录的是「哪个阶段整体失败」；文档内 Issue（含批次 D 的 provider 降级）由 EVIDENCE/SEMANTIC 阶段写入 `semantic.json`，见上。
 
 权威实现：`packages/python/pdf-pipeline/src/pdf_pipeline/jobs.py` 与 `pipeline.py` 的 `_execute_stage`；HTTP 契约见 [HTTP API](api.md)；决策理由见 Agent Note `2026-09-14-m8-batch-b-job-orchestration`。
 
