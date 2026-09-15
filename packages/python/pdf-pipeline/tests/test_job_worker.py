@@ -171,6 +171,24 @@ def test_pre_stage_failure_is_fatal_and_not_recoverable(tmp_path: Path, smoke_pd
     assert stored.issues[0]["recoverable"] is False
 
 
+def test_worker_passes_record_viewer_data_dir_to_runner(tmp_path: Path, smoke_pdf: Path) -> None:
+    """The job-published revision must land in the dir the record names (batch F)."""
+    seen: list[tuple[Path, Path, Path | None]] = []
+
+    def runner(source: Path, workspace: Path, viewer_data_dir: Path | None) -> dict[str, Path]:
+        seen.append((source, workspace, viewer_data_dir))
+        return {}
+
+    root = tmp_path / "jobs"
+    viewer = tmp_path / "viewer-data"
+    record = create_job(root, source=smoke_pdf, workspace=tmp_path / "ws", viewer_data_dir=viewer)
+
+    assert JobWorker(root, runner=runner).run_once() == 1
+
+    assert get_job(root, record.id).status is JobStatus.SUCCEEDED
+    assert seen == [(smoke_pdf, tmp_path / "ws", viewer)]
+
+
 @pytest.mark.parametrize("same_workspace", [True, False])
 def test_concurrency_respects_workspace_lock(
     tmp_path: Path, smoke_pdf: Path, same_workspace: bool

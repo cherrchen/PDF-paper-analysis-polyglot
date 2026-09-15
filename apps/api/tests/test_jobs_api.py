@@ -111,12 +111,41 @@ def test_submit_job_returns_202_and_persists(
     assert (jobs_root / "queued" / f"{job['id']}.json").is_file()
 
 
-def test_submit_omitted_viewer_data_dir_is_null(
+def test_submit_omitted_viewer_data_dir_defaults_to_server_data_dir(
     server: ThreadingHTTPServer, source_pdf: Path, tmp_path: Path
 ) -> None:
     job = _submit(server, tmp_path, source_pdf)
 
-    assert job["viewerDataDir"] is None
+    assert job["viewerDataDir"] == str(tmp_path / "data")
+
+
+def test_submit_explicit_viewer_data_dir_overrides_default(
+    server: ThreadingHTTPServer, source_pdf: Path, tmp_path: Path
+) -> None:
+    explicit = tmp_path / "other-viewer"
+
+    job = _submit(server, tmp_path, source_pdf, viewer_data_dir=explicit)
+
+    assert job["viewerDataDir"] == str(explicit)
+
+
+def test_submit_null_viewer_data_dir_falls_back_to_default(
+    server: ThreadingHTTPServer, source_pdf: Path, tmp_path: Path
+) -> None:
+    body = json.dumps(
+        {
+            "source": str(source_pdf),
+            "workspace": str(tmp_path / "ws"),
+            "viewerDataDir": None,
+        }
+    ).encode()
+    status, payload = call(server, "POST", "/api/jobs", body)
+
+    assert status == 202
+    assert payload is not None
+    job = payload["job"]
+    assert isinstance(job, dict)
+    assert job["viewerDataDir"] == str(tmp_path / "data")
 
 
 def test_submit_job_rejects_bad_requests(

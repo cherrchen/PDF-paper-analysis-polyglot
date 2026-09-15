@@ -60,14 +60,26 @@ def parse_job_request(raw: bytes) -> tuple[Path, Path, Path | None]:
     return source, workspace, viewer_data_dir
 
 
-def handle_submit_job(raw_body: bytes, *, jobs_root: Path) -> tuple[int, dict[str, object]]:
-    """Queue a job; returns (http_status, json_payload)."""
+def handle_submit_job(
+    raw_body: bytes,
+    *,
+    jobs_root: Path,
+    default_viewer_data_dir: Path | None = None,
+) -> tuple[int, dict[str, object]]:
+    """Queue a job; returns (http_status, json_payload).
+
+    An omitted (or null) ``viewerDataDir`` falls back to
+    ``default_viewer_data_dir`` — the server's own ``--data-dir`` — so a
+    browser-submitted job publishes into the directory the viewer reads.
+    Explicit values are still validated by ``parse_job_request``.
+    """
     try:
         source, workspace, viewer_data_dir = parse_job_request(raw_body)
     except (ValueError, TypeError, UnicodeDecodeError) as error:
         return 400, {"ok": False, "error": str(error)}
     if not source.is_file():
         return 400, {"ok": False, "error": f"source PDF not found: {source}"}
+    viewer_data_dir = viewer_data_dir or default_viewer_data_dir
     try:
         from pdf_pipeline.jobs import create_job  # noqa: PLC0415
 

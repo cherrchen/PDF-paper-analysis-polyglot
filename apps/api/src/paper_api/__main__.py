@@ -112,7 +112,11 @@ def make_handler(workspace: Path, data_dir: Path, jobs_root: Path) -> type[BaseH
                 raw = self._read_body()
                 if raw is None:
                     return
-                status, payload = handle_submit_job(raw, jobs_root=jobs_root)
+                status, payload = handle_submit_job(
+                    raw,
+                    jobs_root=jobs_root,
+                    default_viewer_data_dir=data_dir,
+                )
             elif kind == "retry" and job_id is not None:
                 status, payload = handle_retry_job(job_id, jobs_root=jobs_root)
             else:
