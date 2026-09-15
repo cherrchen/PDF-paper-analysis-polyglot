@@ -32,7 +32,13 @@ downstream chain still reads its artifacts and continues.
 the next run reruns that tail (explicit local rerun). Version/source
 handling is strict: an unknown ``workspaceVersion``, or a source PDF whose
 fingerprint differs from the manifest, is an explicit error, never a silent
-migration or silent reuse (migration belongs to M8 batch E). Rebinding a
+migration or silent reuse. The readable set is named by
+``SUPPORTED_WORKSPACE_VERSIONS`` (M8 batch E) and refusal happens before any
+state is assigned, so a rejected workspace is untouched on disk and in
+memory. Batches A-D all wrote ``"0.1.0"``: batch C changed the cache-key
+material and batch D added a status value, but neither changed the manifest
+shape, so old workspaces stay readable and rerun naturally through their
+stale fingerprints instead of being rejected or migrated. Rebinding a
 workspace to different source bytes is opt-in via
 ``open_or_create(..., accept_source_change=True)`` and drops every stage
 record.
@@ -55,6 +61,13 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 WORKSPACE_VERSION = "0.1.0"
+
+# Every workspace manifest version this build can read. Batch A-D all wrote
+# "0.1.0" (batch C changed the cache-key material and batch D added a status
+# value, neither changed the manifest shape), so this build reads exactly
+# one version. A version outside this set is refused, never migrated
+# silently and never partially adopted.
+SUPPORTED_WORKSPACE_VERSIONS: tuple[str, ...] = ("0.1.0",)
 
 MANIFEST_NAME = "workspace.json"
 
@@ -278,11 +291,19 @@ class WorkspaceManager:
         if not isinstance(payload, dict):
             raise WorkspaceError("workspace manifest must be an object")
         version = payload.get("workspaceVersion")
-        if version != WORKSPACE_VERSION:
-            # Batch E owns migration; until then unknown versions are rejected.
+        if not isinstance(version, str) or version not in SUPPORTED_WORKSPACE_VERSIONS:
+            # Refused before any self.* assignment, so a rejected workspace is
+            # left untouched on disk and in memory. Batch E owns this boundary
+            # and deliberately ships no guessed migration: there is no older
+            # manifest shape in the wild to convert, so a converter would be
+            # dead code. A future version bump either adds the old version here
+            # plus a real migration step, or keeps refusing.
             raise WorkspaceVersionError(
-                f"workspace manifest version {version!r} is not supported "
-                f"(expected {WORKSPACE_VERSION!r})"
+                f"workspace manifest {self.manifest_path} was written by workspace "
+                f"version {version!r}; this build reads "
+                f"{', '.join(SUPPORTED_WORKSPACE_VERSIONS)}. "
+                "Use a new output directory, or delete the workspace to rebuild it "
+                "from the source PDF."
             )
         recorded_source = payload.get("sourceFingerprint")
         mismatch = None

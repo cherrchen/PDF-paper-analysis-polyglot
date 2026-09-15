@@ -83,10 +83,41 @@ def test_open_creates_manifest(tmp_path: Path) -> None:
     assert payload["stages"] == {}
 
 
-def test_unknown_workspace_version_rejected(tmp_path: Path) -> None:
-    (tmp_path / MANIFEST_NAME).write_text(json.dumps({"workspaceVersion": "0.0.9"}))
-    with pytest.raises(WorkspaceVersionError):
+def test_supported_workspace_version_loads(tmp_path: Path) -> None:
+    (tmp_path / MANIFEST_NAME).write_text(
+        json.dumps(
+            {
+                "workspaceVersion": WORKSPACE_VERSION,
+                "sourceFingerprint": sha256_bytes(SOURCE),
+                "stages": {},
+            }
+        )
+    )
+    workspace = _open(tmp_path)
+    assert workspace.stages == {}
+
+
+def test_unknown_workspace_version_refused_without_touching(tmp_path: Path) -> None:
+    (tmp_path / MANIFEST_NAME).write_text(json.dumps({"workspaceVersion": "9.9.9"}))
+    before = (tmp_path / MANIFEST_NAME).read_bytes()
+
+    with pytest.raises(WorkspaceVersionError, match=r"9\.9\.9"):
         _open(tmp_path)
+
+    # Refused, not migrated and not partially adopted: no disk write, no
+    # staging directory left behind.
+    assert (tmp_path / MANIFEST_NAME).read_bytes() == before
+    assert not (tmp_path / STAGING_DIR).exists()
+
+
+def test_manifest_absent_directory_is_not_trusted(tmp_path: Path) -> None:
+    """Artifacts without a manifest are a new workspace, not a resumed one."""
+    (tmp_path / "semantic.json").write_text(json.dumps({"nodes": []}))
+
+    workspace = _open(tmp_path)
+
+    assert workspace.manifest_path.is_file()
+    assert not workspace.stage_completed(Stage.SEMANTIC)
 
 
 def test_corrupt_manifest_rejected(tmp_path: Path) -> None:
