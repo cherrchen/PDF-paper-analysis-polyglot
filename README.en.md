@@ -4,7 +4,7 @@
 
 Polyglot monorepo for PDF paper analysis, document understanding, translation, structure reconstruction, and PDF rendering.
 
-**Status:** M1–M3 complete; M4–M7 baselines have landed (including 1 Layout→N Semantic, structured tables, author-year citations, and the parser ensemble). M8 batches A, B, C, and D have landed (local workspace, local job orchestration, stage cache keys and invalidation, specialist failure isolation). M8 admission: the three PRD surfaces are implemented + synthetic-fixture passed; real parser tool output is not verified. v1 plan: [M8 admission and v1 development plan](docs/development/m8.en.md). See the [development roadmap](docs/development/roadmap.en.md) for current progress.
+**Status:** M1–M3 complete; M4–M7 baselines have landed (including 1 Layout→N Semantic, structured tables, author-year citations, and the parser ensemble). M8 batches A, B, C, D, and E have landed (local workspace, local job orchestration, stage cache keys and invalidation, specialist failure isolation, old-workspace version policy and the parser configuration entry point). M8 admission: the three PRD surfaces are implemented + synthetic-fixture passed; real parser tool output is not verified. v1 plan: [M8 admission and v1 development plan](docs/development/m8.en.md). See the [development roadmap](docs/development/roadmap.en.md) for current progress.
 
 ## Rendering
 

@@ -2,9 +2,9 @@
 
 [中文](./storage.md) | [English](./storage.en.md)
 
-Persistent object storage, artifact layout, and dataset hosting remain **intentionally unresolved**; the local Project / Document Workspace and job-orchestration conventions were closed by [M8 v1 batches A–D](../development/m8.en.md), see below.
+Persistent object storage, artifact layout, and dataset hosting remain **intentionally unresolved**; the local Project / Document Workspace and job-orchestration conventions were closed by [M8 v1 batches A–E](../development/m8.en.md), see below.
 
-## Local workspace (M8 batches A / C / D, closed)
+## Local workspace (M8 batches A / C / D / E, closed)
 
 `run_pipeline(source_pdf, out_dir)` turns `out_dir` into a **resumable local workspace**. Directory layout:
 
@@ -30,7 +30,7 @@ Stage enum: `INGEST → PHYSICAL → EVIDENCE → LAYOUT → SEMANTIC → TRANSL
 - status is one of `pending` / `completed` / `degraded`. `degraded` (batch D) means "artifacts are usable, but the run recorded a degradation": `stage_completed` accepts only `completed`, so that stage **necessarily reruns on the next run** (a failure never becomes a cache hit), while the record still exists so downstream stages read its artifacts and continue. An unknown status is always an explicit error.
 - Commit order: artifacts are staged under `.staging/`, replaced one atomic rename at a time, and `workspace.json` is rewritten atomically last — the manifest is the **single commit pointer**.
 - Resume: a stage is skipped only when `stage_completed` holds (COMPLETED + artifact hashes verify + cache key matches upstream records and stage config); otherwise it reruns. After an interrupt, restart reruns only unfinished stages; a half-written artifact set is never accepted as success.
-- Source binding: the manifest's `sourceFingerprint` locks the source PDF; unknown `workspaceVersion` and a foreign source PDF are explicit errors (migration belongs to batch E).
+- Source binding: the manifest's `sourceFingerprint` locks the source PDF; an unknown `workspaceVersion` and a foreign source PDF are explicit errors. The readable set is the named constant `SUPPORTED_WORKSPACE_VERSIONS` (currently `("0.1.0",)`); a version outside it is refused **before any `self.*` assignment**, so a rejected workspace is untouched on disk and in memory and leaves no `.staging`. Batch E ships no version converter: batches A–D all wrote `"0.1.0"` and the manifest shape never changed (batch C changed the key material, batch D added a status value), so an old workspace reruns naturally through stale cache keys rather than needing migration — a converter would be dead code. A future bump either adds the old version to that set plus a real migration step in `_load_existing`, or keeps refusing.
 
 Authoritative implementation: `packages/python/pdf-pipeline/src/pdf_pipeline/workspace.py` and the stage runners in `pipeline.py`; decision rationale in Agent Note `2026-09-12-m8-batch-a-workspace-stages`.
 
@@ -40,7 +40,7 @@ The cache key is producer version + upstream artifact sha256 + stage configurati
 
 | Input change | Stages invalidated |
 | --- | --- |
-| capability registry bytes (`registry_fingerprint`, sha256) | EVIDENCE, LAYOUT |
+| capability registry bytes **actually used** (bundled `data/capability-registry.toml`, or the file named by `PAPER_CAPABILITY_REGISTRY` / `--registry`; `registry_fingerprint`, sha256) | EVIDENCE, LAYOUT |
 | parser dump bytes (resolved the way the adapters resolve them) / `MINERU_CMD` / `DOCLING_CMD` / `GROBID_URL` | EVIDENCE |
 | translation config: target/source locale, provider model, endpoint, terminology file bytes | TRANSLATE |
 | render profile / policy / LaTeX template bytes (`template_fingerprint`) | RENDER |
@@ -49,6 +49,9 @@ The cache key is producer version + upstream artifact sha256 + stage configurati
 
 - Config folds into the existing `inputFingerprint` field: **no new manifest field**, and `WORKSPACE_VERSION` stays `0.1.0`, because extending the key material only reruns an old workspace once (the safe direction), while bumping the version would reject existing workspaces — and migration/rejection boundaries belong to batch E.
 - The registry and parser dumps key on **content digests**, not version constants: they are hand-edited data, and an edit that forgets to bump a version must still invalidate.
+- Parser configuration has exactly one entry point (`pdf_pipeline.config.load_parser_config`, mirroring `paper_llm.config`): the `--registry` flag wins, then `PAPER_CAPABILITY_REGISTRY`, then the bundled registry. `run_pipeline` resolves `(Registry, digest)` with a single `resolve_registry` read **before the workspace is constructed**: the table used for routing and the digest written into the cache key must come from the same read, or an edit between two reads would record a digest that does not match the artifacts — a silent cache hit. An override file is **read fresh every time and never cached** (the operator may edit it at any moment); the bundled registry is immutable package data, parsed once and `lru_cache`d.
+- The override path is only a source: **the path is not keyed**, so the same content at two paths yields one digest and a byte-identical copy of the bundled registry triggers no rerun.
+- An unreadable or invalid override (TOML parse failure, missing internal capability, a provider listed twice for one capability) always raises `CapabilityRegistryError` and **never falls back to the bundled registry** — a silent fallback is a silent parser swap. The bundled primaries stay `mock` / `docling-sim` / `grobid-sim`; changing a bundled primary requires proving it first with an override file plus `just benchmark`.
 - API key, `timeout_s`, `max_retries`, and `cache_dir` are **not** keyed: they do not change produced artifacts.
 - All three real parser adapters participate regardless of routing (which needs a probe): over-invalidating costs one rerun, a false hit goes silently stale.
 - Explicit local rerun: `run_pipeline(..., rerun_from=<stage>)` and the CLI `--rerun-from <stage>` drop that stage and every downstream record before running (`WorkspaceManager.invalidate_from`); upstream records are untouched.
@@ -79,6 +82,8 @@ Authoritative implementation: `pdf_pipeline.routing`, `pdf_pipeline.evidence.nor
 - `workspace.json` is an ad-hoc file; its schema changes do not go through the `just schema` frozen flow.
 - Viewer revision publishing keeps the existing `_publish_viewer_revision` transaction and is not tracked file-by-file in the manifest.
 - A changed source PDF supports only "error" or "rebind the whole chain"; per-stage merging is not implemented (Project grouping belongs to a later batch).
+- No workspace version converter is written: a version outside the readable set is always refused, and that set currently holds only the written version `("0.1.0",)`.
+- `apps/api` and `apps/worker` gain no registry argument: both paths end at the defaults of `run_pipeline` / `rerender_workspace`, which read the environment, so setting `PAPER_CAPABILITY_REGISTRY` on the worker process covers both.
 
 ## Jobs and job records (M8 batch B, closed)
 

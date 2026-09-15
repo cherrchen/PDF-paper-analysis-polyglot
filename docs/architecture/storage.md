@@ -2,9 +2,9 @@
 
 [中文](./storage.md) | [English](./storage.en.md)
 
-持久对象存储、制品布局与数据集托管**有意未决**；本地 Project / Document Workspace 与任务编排约定已分别由 [M8 初版批次 A–D](../development/m8.md) 收口，见下。
+持久对象存储、制品布局与数据集托管**有意未决**；本地 Project / Document Workspace 与任务编排约定已分别由 [M8 初版批次 A–E](../development/m8.md) 收口，见下。
 
-## 本地 workspace（M8 批次 A / C / D，已收口）
+## 本地 workspace（M8 批次 A / C / D / E，已收口）
 
 `run_pipeline(source_pdf, out_dir)` 把 `out_dir` 变成一个**可恢复的本地 workspace**。目录布局：
 
@@ -30,7 +30,7 @@
 - status 取值 `pending` / `completed` / `degraded`。`degraded`（批次 D）表示「产物可用但运行中发生了已记录的降级」：`stage_completed` 只认 `completed`，因此该阶段**下次运行必然重跑**（失败不进缓存），而记录本身存在，下游阶段照常读到它的产物并继续。未知 status 一律明确报错。
 - 提交顺序：产物先写入 `.staging/`，逐文件原子 replace，最后原子重写 `workspace.json`——清单是**唯一提交指针**。
 - 恢复：`stage_completed` 为真（COMPLETED + 产物哈希校验通过 + 缓存键与上游记录和阶段配置一致）才跳过；否则重跑该阶段。中断后重启只重跑未完成阶段；半写入目录永远不会被当成成功。
-- 源绑定：manifest 的 `sourceFingerprint` 锁定源 PDF；未知 `workspaceVersion` 与外来源 PDF 一律明确报错（迁移属批次 E）。
+- 源绑定：manifest 的 `sourceFingerprint` 锁定源 PDF；未知 `workspaceVersion` 与外来源 PDF 一律明确报错。可读版本集合是具名常量 `SUPPORTED_WORKSPACE_VERSIONS`（当前 `("0.1.0",)`）；集合外的版本在**任何 `self.*` 赋值之前**被拒绝，因此被拒绝的 workspace 在磁盘与内存里都不被触碰，也不留 `.staging`。批次 E 不写版本转换函数：批次 A–D 写的都是 `"0.1.0"`，清单形状没有变过（批次 C 改的是键材料，批次 D 加的是 status 取值），旧 workspace 因缓存键自然失配而重跑，不需要迁移，写转换器只会是死代码。未来提升 `WORKSPACE_VERSION` 时，要么把旧版本加进该集合并在 `_load_existing` 里加真实迁移步骤，要么保持拒绝。
 
 权威实现：`packages/python/pdf-pipeline/src/pdf_pipeline/workspace.py` 与 `pipeline.py` 的阶段 runner；决策理由见 Agent Note `2026-09-12-m8-batch-a-workspace-stages`。
 
@@ -40,7 +40,7 @@
 
 | 输入变化 | 失效阶段 |
 | --- | --- |
-| capability registry 字节（`registry_fingerprint`，sha256） | EVIDENCE、LAYOUT |
+| **实际使用的** capability registry 字节（内置 `data/capability-registry.toml`，或 `PAPER_CAPABILITY_REGISTRY` / `--registry` 指向的文件；`registry_fingerprint`，sha256） | EVIDENCE、LAYOUT |
 | parser dump 字节（按 adapter 的解析规则定位）/ `MINERU_CMD` / `DOCLING_CMD` / `GROBID_URL` | EVIDENCE |
 | 翻译配置：target/source locale、provider model、endpoint、terminology 文件字节 | TRANSLATE |
 | render profile / policy / LaTeX 模板字节（`template_fingerprint`） | RENDER |
@@ -49,6 +49,9 @@
 
 - 配置折进同一个 `inputFingerprint` 字段，**不新增清单字段**，`WORKSPACE_VERSION` 保持 `0.1.0`：键材料扩展只让旧 workspace 全阶段重跑一次（安全方向），升版本反而会拒绝既有 workspace，而迁移/拒绝边界属批次 E。
 - registry 与 parser dump 用**内容摘要**而非版本常量：它们是手改数据，改了却忘了升版本时仍必须失效。
+- parser 配置只有一个入口（`pdf_pipeline.config.load_parser_config`，镜像 `paper_llm.config`）：优先 `--registry` flag，其次 `PAPER_CAPABILITY_REGISTRY`，最后内置 registry。`run_pipeline` 在**构造 workspace 之前**用 `resolve_registry` 单次读取解析出 `(Registry, digest)`：路由用的表与写进缓存键的摘要必须来自同一次读取，否则两次读取之间的编辑会让记录的摘要与产物不符，形成静默缓存命中。覆盖文件**每次实读、不缓存**（操作者可随时编辑）；内置 registry 是进程内不可变的 package data，解析并 `lru_cache` 一次。
+- 覆盖路径只是来源，**路径不入键**：同一份内容放在两个路径得到同一摘要；内容相同的内置副本不会引发重跑。
+- 覆盖文件不可读或不合法（TOML 解析失败、缺 internal capability、某 capability 重复列 provider）一律抛 `CapabilityRegistryError`，**绝不回退到内置 registry**——静默回退等于静默换了 parser。默认 registry 的 primary 仍是 `mock` / `docling-sim` / `grobid-sim`；换内置 primary 前必须先用覆盖文件跑 `just benchmark` 证明。
 - api key、`timeout_s`、`max_retries`、`cache_dir` **不入键**：它们不影响产物语义。
 - 三个真实 parser adapter 一律入键，不按 routing 收窄（routing 需要 probe）：过度失效只多跑一次，误命中会静默陈旧。
 - 显式局部重跑：`run_pipeline(..., rerun_from=<stage>)`、CLI `--rerun-from <stage>` 在运行前丢弃该阶段及其下游全部记录（`WorkspaceManager.invalidate_from`），上游记录不动。
@@ -79,6 +82,8 @@ EVIDENCE 阶段的 provider 是可选 specialist：一个 provider 失败只降�
 - `workspace.json` 是 ad-hoc 文件，schema 变更不走 `just schema` 冻结流程。
 - viewer revision 发布沿用 `_publish_viewer_revision` 事务，不在清单内逐文件追踪。
 - 源 PDF 变化只支持「报错」或「整链重绑」两种模式，不做按阶段合并（Project 分组属后续批次）。
+- 不写 workspace 版本转换函数：可读集合外的版本一律拒绝，当前集合只有写入版本 `("0.1.0",)`。
+- `apps/api` 与 `apps/worker` 不加 registry 参数：两条路径最终都经 `run_pipeline` / `rerender_workspace` 的默认值读 env，操作者给 worker 进程设 `PAPER_CAPABILITY_REGISTRY` 即同时生效。
 
 ## 任务与 Job 记录（M8 批次 B，已收口）
 

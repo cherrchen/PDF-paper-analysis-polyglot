@@ -4,7 +4,7 @@
 
 面向 PDF 论文分析、文档理解、翻译、结构重建与 PDF 渲染的多语言单仓。
 
-**状态：** M1–M3 完成；M4–M7 基线已落地（含 1 Layout→N Semantic、结构化表格、作者-年引用与 parser ensemble）。M8 批次 A、B、C、D 已落地（本地 workspace、本地 Job 编排、阶段缓存键与失效传播、specialist 失败隔离）。M8 准入：三项 PRD 表面为已实现 + 合成夹具通过；真实 parser 工具输出未验证。初版计划见 [M8 准入与初版开发计划](docs/development/m8.md)。当前进度以[开发路线图](docs/development/roadmap.md)为准。
+**状态：** M1–M3 完成；M4–M7 基线已落地（含 1 Layout→N Semantic、结构化表格、作者-年引用与 parser ensemble）。M8 批次 A、B、C、D、E 已落地（本地 workspace、本地 Job 编排、阶段缓存键与失效传播、specialist 失败隔离、旧 workspace 版本策略与 parser 配置入口）。M8 准入：三项 PRD 表面为已实现 + 合成夹具通过；真实 parser 工具输出未验证。初版计划见 [M8 准入与初版开发计划](docs/development/m8.md)。当前进度以[开发路线图](docs/development/roadmap.md)为准。
 
 ## 渲染
 
