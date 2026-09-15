@@ -1,4 +1,4 @@
-# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false
+# pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnknownArgumentType=false, reportPrivateUsage=false
 """M6 rerender_workspace: local re-translation without re-parsing the source.
 
 LaTeX compilation is faked (empty PDFium pages) so the unit test exercises the
@@ -278,6 +278,96 @@ def test_rerender_mid_publish_failure_rolls_back_viewer_and_workspace(
 
     assert {path: path.read_bytes() for path in before} == before
     assert {path.name for path in (viewer / "revisions").iterdir()} == before_revisions
+
+
+def test_publish_fault_env_rolls_back_replace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The seam fires inside _replace_files_with_rollback, restoring every alias."""
+    from pdf_pipeline.config import PUBLISH_FAULT_ENV
+    from pdf_pipeline.pipeline import _replace_files_with_rollback
+
+    manifest = tmp_path / "manifest.json"
+    manifest.write_bytes(b"old manifest")
+    target = tmp_path / "target.pdf"
+    target.write_bytes(b"old pdf")
+    contents = {
+        tmp_path / "mapping.json": b"new mapping",
+        target: b"new pdf",
+        manifest: b"new manifest",
+    }
+    monkeypatch.setenv(PUBLISH_FAULT_ENV, "target.pdf")
+    with pytest.raises(OSError, match=r"publish fault injected for target.pdf"):
+        _replace_files_with_rollback(contents, commit_last=manifest)
+    # mapping.json committed before target.pdf; it did not exist before, so
+    # rollback removes it rather than restoring bytes.
+    assert not (tmp_path / "mapping.json").exists()
+    assert target.read_bytes() == b"old pdf"
+    assert manifest.read_bytes() == b"old manifest"
+    assert [p.name for p in tmp_path.iterdir() if p.name.startswith(".")] == []
+
+
+def test_publish_fault_restores_preexisting_and_absent_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fault on the manifest commit: old bytes everywhere, manifest never created."""
+    from pdf_pipeline.config import PUBLISH_FAULT_ENV
+    from pdf_pipeline.pipeline import _replace_files_with_rollback
+
+    manifest = tmp_path / "manifest.json"  # deliberately absent before publish
+    target = tmp_path / "target.pdf"
+    target.write_bytes(b"old pdf")
+    contents = {
+        target: b"new pdf",
+        manifest: b"new manifest",
+    }
+    monkeypatch.setenv(PUBLISH_FAULT_ENV, "manifest.json")
+    with pytest.raises(OSError, match=r"publish fault injected for manifest.json"):
+        _replace_files_with_rollback(contents, commit_last=manifest)
+    assert target.read_bytes() == b"old pdf"
+    assert not manifest.exists()
+
+
+def test_publish_fault_manifest_keeps_previous_revision_intact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Publish-level: a manifest fault raises; the old revision stays byte-identical."""
+    from pdf_pipeline.config import PUBLISH_FAULT_ENV
+    from pdf_pipeline.pipeline import _publish_viewer_revision
+
+    viewer = tmp_path / "viewer"
+    first = _publish_viewer_revision(
+        viewer,
+        mapping_text='{"a": 1}',
+        meta_text='{"b": 2}',
+        source_pdf=b"source-one",
+        target_pdf=b"target-one",
+    )
+    before = {
+        name: (viewer / name).read_bytes()
+        for name in (
+            "mapping.json",
+            "viewer-meta.json",
+            "source.pdf",
+            "target.pdf",
+            "manifest.json",
+        )
+    }
+    monkeypatch.setenv(PUBLISH_FAULT_ENV, "manifest.json")
+    with pytest.raises(OSError, match=r"publish fault injected for manifest.json"):
+        _publish_viewer_revision(
+            viewer,
+            mapping_text='{"a": 2}',
+            meta_text='{"b": 2}',
+            source_pdf=b"source-two",
+            target_pdf=b"target-two",
+        )
+    after = {name: (viewer / name).read_bytes() for name in before}
+    assert after == before
+    assert json.loads((viewer / "manifest.json").read_text())["revision"] == first
+    # The staged-but-unpublished revision directory is removed.
+    revisions = {path.name for path in (viewer / "revisions").iterdir()}
+    assert revisions == {first}
 
 
 def test_rerender_keeps_previous_revision_readable(

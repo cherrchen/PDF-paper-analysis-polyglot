@@ -41,7 +41,7 @@ from paper_llm.translation import (
 )
 
 from pdf_pipeline.capabilities import registry_fingerprint, resolve_registry
-from pdf_pipeline.config import ParserConfig, load_parser_config
+from pdf_pipeline.config import ParserConfig, load_parser_config, load_publish_fault
 from pdf_pipeline.evidence.docling import (
     DOCLING_CMD_ENV,
     DOCLING_DUMP_ENV,
@@ -305,6 +305,8 @@ def _prune_viewer_revisions(data_dir: Path, keep: set[str]) -> None:
 
 def _commit_prepared_file(staged: Path, target: Path) -> None:
     """Commit one prepared sibling file (a seam for publish fault injection)."""
+    if load_publish_fault() == target.name:
+        raise OSError(f"publish fault injected for {target.name}")
     staged.replace(target)
 
 

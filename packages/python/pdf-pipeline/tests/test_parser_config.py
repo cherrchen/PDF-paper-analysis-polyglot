@@ -22,7 +22,12 @@ from pdf_pipeline.capabilities import (
     registry_text,
     resolve_registry,
 )
-from pdf_pipeline.config import REGISTRY_PATH_ENV, load_parser_config
+from pdf_pipeline.config import (
+    PUBLISH_FAULT_ENV,
+    REGISTRY_PATH_ENV,
+    load_parser_config,
+    load_publish_fault,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -123,3 +128,18 @@ def test_resolve_registry_defaults_to_bundled() -> None:
     registry, digest = resolve_registry()
     assert registry["layout.region"].primary == "mock"
     assert digest == registry_fingerprint()
+
+
+def test_publish_fault_defaults_to_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(PUBLISH_FAULT_ENV, raising=False)
+    assert load_publish_fault() is None
+
+
+def test_publish_fault_empty_string_is_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(PUBLISH_FAULT_ENV, "")
+    assert load_publish_fault() is None
+
+
+def test_publish_fault_reads_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(PUBLISH_FAULT_ENV, "target.pdf")
+    assert load_publish_fault() == "target.pdf"
