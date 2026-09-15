@@ -62,6 +62,7 @@ def run_corpus() -> dict[str, Any]:
     from document_model.generated import schema_models as generated
     from pdf_pipeline.calibration import calibrate, calibration_samples
     from pdf_pipeline.capabilities import load_registry
+    from pdf_pipeline.config import load_parser_config
     from pdf_pipeline.evidence.normalize import merge_evidence_bundles
     from pdf_pipeline.layout import recover_layout_document
     from pdf_pipeline.metrics import quality_report
@@ -72,7 +73,9 @@ def run_corpus() -> dict[str, Any]:
     from pdf_pipeline.sem_validate import validate_semantic_recovery
     from pdf_pipeline.semantic import recover_semantic_document
 
-    registry = load_registry()
+    # Same entry point the pipeline uses, so `just benchmark` can prove a
+    # replacement registry: PAPER_CAPABILITY_REGISTRY=<file> just benchmark.
+    registry = load_registry(load_parser_config().registry_path)
     truths = _truths()
     fixtures: dict[str, Any] = {}
     samples: list[tuple[float, bool]] = []

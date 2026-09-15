@@ -20,12 +20,17 @@ import pypdfium2 as pdfium
 import pytest
 from paper_llm.config import load_translation_config
 from pdf_pipeline import pipeline
-from pdf_pipeline.capabilities import Capability, load_registry
+from pdf_pipeline.capabilities import (
+    Capability,
+    load_registry,
+    registry_fingerprint,
+)
+from pdf_pipeline.config import ParserConfig
 from pdf_pipeline.pipeline import stage_config_inputs
 from pdf_pipeline.workspace import Stage, StageStatus, WorkspaceManager
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
 FIXTURE_DIR = Path(__file__).resolve().parents[4] / "tests/fixtures/source/latex/build"
 
@@ -59,6 +64,22 @@ def _overlay(capability: str, **changes: str) -> dict[str, Capability]:
         fallback=changes.get("fallback", slot.fallback),
     )
     return overlay
+
+
+def _registry_override(tmp_path: Path, registry: Mapping[str, Capability]) -> ParserConfig:
+    """Write an overlaid registry to disk and point the pipeline at it."""
+    lines: list[str] = []
+    for name, capability in registry.items():
+        lines.append(f"[{name}]")
+        lines.append(f'primary = "{capability.primary}"')
+        if capability.challenger is not None:
+            lines.append(f'challenger = "{capability.challenger}"')
+        if capability.fallback is not None:
+            lines.append(f'fallback = "{capability.fallback}"')
+        lines.append("")
+    path = tmp_path / "registry.toml"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return ParserConfig(registry_path=path)
 
 
 def _count_stage_runs(monkeypatch: pytest.MonkeyPatch, *names: str) -> dict[str, int]:
@@ -100,12 +121,12 @@ def test_table_specialist_failure_degrades_and_continues(
     fixture = _fixture("table-heavy")
     source = fixture.read_bytes()
     overlay = _overlay("table.structure", primary="docling", fallback="mock")
+    parser_config = _registry_override(tmp_path, overlay)
     monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
-    monkeypatch.setattr(pipeline, "load_registry", lambda: overlay)
     monkeypatch.setenv("DOCLING_DUMP", str(tmp_path / "missing-docling.json"))
 
     out = tmp_path / "ws"
-    pipeline.run_pipeline(fixture, out)
+    pipeline.run_pipeline(fixture, out, pipeline_config=parser_config)
 
     semantic = _semantic(out)
     tables = [node for node in semantic["nodes"] if node["kind"] == "TABLE"]
@@ -136,7 +157,12 @@ def test_table_specialist_failure_degrades_and_continues(
     # A degradation is not a completed stage: the next run retries EVIDENCE,
     # and the tail stays skipped because the retry reproduces identical bytes.
     manager = WorkspaceManager(
-        out, stage_configs=stage_config_inputs(load_translation_config(), source)
+        out,
+        stage_configs=stage_config_inputs(
+            load_translation_config(),
+            source,
+            registry_digest=registry_fingerprint(parser_config.registry_path),
+        ),
     )
     manager.open_or_create(source)
     record = manager.stage_record(Stage.EVIDENCE)
@@ -147,7 +173,7 @@ def test_table_specialist_failure_degrades_and_continues(
     assert manager.stage_completed(Stage.SEMANTIC)
 
     counts = _count_stage_runs(monkeypatch, "_run_evidence_stage", "_run_layout_stage")
-    pipeline.run_pipeline(fixture, out)
+    pipeline.run_pipeline(fixture, out, pipeline_config=parser_config)
     assert counts == {"_run_evidence_stage": 1, "_run_layout_stage": 0}
 
 
@@ -158,12 +184,12 @@ def test_metadata_specialist_failure_keeps_document(
     fixture = _fixture("paper-anatomy")
     source = fixture.read_bytes()
     overlay = _overlay("scholarly.metadata", primary="grobid")
+    parser_config = _registry_override(tmp_path, overlay)
     monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
-    monkeypatch.setattr(pipeline, "load_registry", lambda: overlay)
     monkeypatch.setenv("GROBID_DUMP", str(tmp_path / "missing-grobid.json"))
 
     out = tmp_path / "ws"
-    pipeline.run_pipeline(fixture, out)
+    pipeline.run_pipeline(fixture, out, pipeline_config=parser_config)
 
     semantic = _semantic(out)
     kinds = [node["kind"] for node in semantic["nodes"]]
@@ -178,7 +204,12 @@ def test_metadata_specialist_failure_keeps_document(
     assert issue["fallback"] == "front-matter heuristics"
     assert _statuses(out)["evidence"] == "degraded"
     manager = WorkspaceManager(
-        out, stage_configs=stage_config_inputs(load_translation_config(), source)
+        out,
+        stage_configs=stage_config_inputs(
+            load_translation_config(),
+            source,
+            registry_digest=registry_fingerprint(parser_config.registry_path),
+        ),
     )
     manager.open_or_create(source)
     assert not manager.stage_completed(Stage.EVIDENCE)
@@ -200,14 +231,14 @@ def test_all_providers_failing_is_a_real_stage_failure(
         name="table.structure", primary="mineru", fallback="mock"
     )
     overlay["scholarly.metadata"] = Capability(name="scholarly.metadata", primary="grobid")
+    parser_config = _registry_override(tmp_path, overlay)
     monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
-    monkeypatch.setattr(pipeline, "load_registry", lambda: overlay)
     monkeypatch.setenv("MINERU_DUMP", str(tmp_path / "missing-mineru.json"))
     monkeypatch.setenv("GROBID_DUMP", str(tmp_path / "missing-grobid.json"))
 
     out = tmp_path / "ws"
     with pytest.raises(pipeline.StageExecutionError, match="every routed evidence provider"):
-        pipeline.run_pipeline(fixture, out)
+        pipeline.run_pipeline(fixture, out, pipeline_config=parser_config)
 
     assert not (out / "semantic.json").exists()
     statuses = _statuses(out)

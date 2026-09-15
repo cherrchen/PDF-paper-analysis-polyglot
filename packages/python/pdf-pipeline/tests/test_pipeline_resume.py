@@ -17,6 +17,8 @@ import pypdfium2 as pdfium
 import pytest
 from paper_llm.config import load_translation_config
 from pdf_pipeline import pipeline
+from pdf_pipeline.capabilities import registry_text
+from pdf_pipeline.config import ParserConfig
 from pdf_pipeline.workspace import (
     MANIFEST_NAME,
     STAGE_ORDER,
@@ -259,21 +261,63 @@ def _manifest_records(workspace: Path) -> dict[str, dict[str, object]]:
     return cast("dict[str, dict[str, object]]", stages)
 
 
-def test_registry_change_reruns_evidence_and_layout(
-    workspace: Path, smoke_pdf: Path, monkeypatch: pytest.MonkeyPatch
+def _override_registry(path: Path, **replacements: str) -> Path:
+    """Write the bundled registry text with one provider name replaced."""
+    text = registry_text()
+    for old, new in replacements.items():
+        text = text.replace(f'primary = "{old}"', f'primary = "{new}"', 1)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def test_registry_override_change_reruns_evidence_and_layout(
+    workspace: Path, smoke_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(pipeline, "registry_fingerprint", lambda: "changed-registry")
+    """Switching parser is a config change: change the registry, downstream reruns."""
+    override = _override_registry(tmp_path / "override.toml", mock="mineru")
     counts = _count_stage_runs(monkeypatch)
 
-    pipeline.run_pipeline(smoke_pdf, workspace)
+    pipeline.run_pipeline(
+        smoke_pdf, workspace, pipeline_config=ParserConfig(registry_path=override)
+    )
 
     assert counts["_run_evidence_stage"] == 1
     assert counts["_run_layout_stage"] == 1
     assert counts["_run_ingest_stage"] == 0
     assert counts["_run_physical_stage"] == 0
-    assert counts["_run_semantic_stage"] == 0
-    # Identical output bytes, so the tail is still current.
-    assert counts["_run_translation_stage"] == 0
+
+    # The override really routed: `mineru` has no dump, so batch D isolates
+    # the failure and the stage commits degraded instead of dying.
+    probe = json.loads((workspace / "probe.json").read_text())
+    assert probe["routing"][0]["provider"] == "mineru"
+    assert probe["degradations"][0]["provider"] == "mineru"
+    assert _manifest_records(workspace)["evidence"]["status"] == "degraded"
+
+
+def test_registry_override_same_content_does_not_rerun(
+    workspace: Path, smoke_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The key material is the registry's bytes, not the path naming them."""
+    copy = tmp_path / "copy.toml"
+    copy.write_text(registry_text(), encoding="utf-8")
+    counts = _count_stage_runs(monkeypatch)
+
+    pipeline.run_pipeline(smoke_pdf, workspace, pipeline_config=ParserConfig(registry_path=copy))
+
+    assert all(count == 0 for count in counts.values()), counts
+
+
+def test_cli_registry_flag_switches_providers(
+    workspace: Path, smoke_pdf: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(pipeline, "compile_latex", _fake_compile)
+    override = _override_registry(tmp_path / "override.toml", mock="mineru")
+
+    code = pipeline.main([str(smoke_pdf), str(workspace), "--registry", str(override)])
+
+    assert code == 0
+    probe = json.loads((workspace / "probe.json").read_text())
+    assert probe["routing"][0]["provider"] == "mineru"
 
 
 def test_parser_dump_change_reruns_evidence(

@@ -40,7 +40,8 @@ from paper_llm.translation import (
     translation_requires_provider,
 )
 
-from pdf_pipeline.capabilities import load_registry, registry_fingerprint
+from pdf_pipeline.capabilities import registry_fingerprint, resolve_registry
+from pdf_pipeline.config import ParserConfig, load_parser_config
 from pdf_pipeline.evidence.docling import (
     DOCLING_CMD_ENV,
     DOCLING_DUMP_ENV,
@@ -98,6 +99,8 @@ if TYPE_CHECKING:
     )
     from paper_llm.types import TranslationProvider
     from pydantic import BaseModel
+
+    from pdf_pipeline.capabilities import Registry
 
 PIPELINE_VERSION = "0.2.0"
 
@@ -600,7 +603,10 @@ def _parser_config_inputs(source_fingerprint: str) -> dict[str, str]:
 
 
 def stage_config_inputs(
-    config: TranslationConfig, source_bytes: bytes
+    config: TranslationConfig,
+    source_bytes: bytes,
+    *,
+    registry_digest: str | None = None,
 ) -> dict[Stage, dict[str, str]]:
     """Every stage's configuration inputs, i.e. non-artifact parts of its cache key.
 
@@ -610,11 +616,18 @@ def stage_config_inputs(
     and parser dumps for EVIDENCE/LAYOUT, translation target for TRANSLATE,
     render profile/policy and LaTeX template for RENDER.
 
+    A caller that routes with an overriding registry must pass that
+    registry's digest as ``registry_digest``; omitting it would key the
+    stages on the bundled registry while they actually used the override,
+    which is exactly the silent cache hit batch E exists to prevent. Only
+    the rerender path may omit it: its TRANSLATE/RENDER records carry no
+    registry input at all.
+
     Deliberately excluded: API key, timeout, retry count, cache directory —
     they do not change produced artifacts, only how the provider is reached.
     """
     common = {"schemaVersion": SCHEMA_VERSION, "pipelineVersion": PIPELINE_VERSION}
-    registry_input = {"capabilityRegistry": registry_fingerprint()}
+    registry_input = {"capabilityRegistry": registry_digest or registry_fingerprint()}
     provider_model, provider_endpoint = _provider_identity(config)
     per_stage: dict[Stage, dict[str, str]] = {
         Stage.EVIDENCE: {
@@ -682,7 +695,7 @@ def _run_physical_stage(workspace: WorkspaceManager, source_bytes: bytes) -> Phy
 
 
 def _run_evidence_stage(
-    workspace: WorkspaceManager, physical: PhysicalDocument
+    workspace: WorkspaceManager, physical: PhysicalDocument, *, registry: Registry
 ) -> tuple[list[generated.EvidenceBundle], generated.EvidenceBundle]:
     """Probe, route, and collect per-provider bundles plus the merged bundle.
 
@@ -694,7 +707,6 @@ def _run_evidence_stage(
     *no* bundle means no evidence authority is left at all — that is a real
     stage failure, not a degradation.
     """
-    registry = load_registry()
     probe = probe_document(physical)
     plan = route_providers(probe, registry)
     collection = collect_bundles(plan, physical, registry)
@@ -733,8 +745,10 @@ def _run_layout_stage(
     workspace: WorkspaceManager,
     physical: PhysicalDocument,
     bundles: list[generated.EvidenceBundle],
+    *,
+    registry: Registry,
 ) -> LayoutDocument:
-    layout = recover_layout_document(physical, evidence=bundles, registry=load_registry())
+    layout = recover_layout_document(physical, evidence=bundles, registry=registry)
     workspace.commit_stage(
         Stage.LAYOUT,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.LAYOUT],
@@ -957,7 +971,11 @@ def _run_index_stage(
 
 
 def _ensure_analysis_stages(
-    workspace: WorkspaceManager, source_bytes: bytes, out_dir: Path
+    workspace: WorkspaceManager,
+    source_bytes: bytes,
+    out_dir: Path,
+    *,
+    registry: Registry,
 ) -> tuple[
     PhysicalDocument,
     LayoutDocument,
@@ -985,14 +1003,14 @@ def _ensure_analysis_stages(
         )
     else:
         bundles, evidence = _execute_stage(
-            Stage.EVIDENCE, lambda: _run_evidence_stage(workspace, physical)
+            Stage.EVIDENCE, lambda: _run_evidence_stage(workspace, physical, registry=registry)
         )
 
     if workspace.stage_completed(Stage.LAYOUT, STAGE_PRODUCER_VERSIONS[Stage.LAYOUT]):
         layout = cast("LayoutDocument", _load_canonical(out_dir / "layout.json", "layout-document"))
     else:
         layout = _execute_stage(
-            Stage.LAYOUT, lambda: _run_layout_stage(workspace, physical, bundles)
+            Stage.LAYOUT, lambda: _run_layout_stage(workspace, physical, bundles, registry=registry)
         )
 
     if workspace.stage_completed(Stage.SEMANTIC, STAGE_PRODUCER_VERSIONS[Stage.SEMANTIC]):
@@ -1065,6 +1083,7 @@ def run_pipeline(
     *,
     viewer_data_dir: Path | None = None,
     translation_config: TranslationConfig | None = None,
+    pipeline_config: ParserConfig | None = None,
     rerun_from: Stage | None = None,
     accept_source_change: bool = False,
 ) -> dict[str, Path]:
@@ -1083,11 +1102,24 @@ def run_pipeline(
     manifest raise ``WorkspaceSourceMismatchError`` unless
     ``accept_source_change`` is set, which rebinds the workspace and reruns
     every stage. Returns produced artifact paths.
+
+    ``pipeline_config`` overrides which evidence provider owns which
+    capability; ``None`` reads the environment (``PAPER_CAPABILITY_REGISTRY``),
+    which in turn defaults to the bundled sim registry. The registry is
+    resolved once, before the workspace is opened, and its digest is what
+    keys EVIDENCE/LAYOUT — so a parser switch reruns exactly those stages.
     """
     source_bytes = source_pdf.read_bytes()
     out_dir.mkdir(parents=True, exist_ok=True)
     config = translation_config or load_translation_config()
-    workspace = WorkspaceManager(out_dir, stage_configs=stage_config_inputs(config, source_bytes))
+    parser_config = pipeline_config or load_parser_config()
+    # Resolved before the workspace is constructed: a broken registry must be
+    # refused before anything on disk is touched.
+    registry, registry_digest = resolve_registry(parser_config.registry_path)
+    workspace = WorkspaceManager(
+        out_dir,
+        stage_configs=stage_config_inputs(config, source_bytes, registry_digest=registry_digest),
+    )
     workspace.open_or_create(source_bytes, accept_source_change=accept_source_change)
     if rerun_from is not None:
         workspace.invalidate_from(rerun_from)
@@ -1099,7 +1131,7 @@ def run_pipeline(
         raise ValueError(f"unsupported input PDF: {capability.reason}")
 
     physical, layout, semantic, resources, evidence = _ensure_analysis_stages(
-        workspace, source_bytes, out_dir
+        workspace, source_bytes, out_dir, registry=registry
     )
     translation, render, target_pdf = _ensure_rebuild_stages(
         workspace,
@@ -1297,11 +1329,19 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="rebind the workspace to different source PDF bytes and rerun every stage",
     )
+    parser.add_argument(
+        "--registry",
+        type=Path,
+        default=None,
+        help="capability registry TOML overriding the bundled provider selection",
+    )
     args = parser.parse_args(argv)
+    pipeline_config = ParserConfig(registry_path=args.registry) if args.registry else None
     paths = run_pipeline(
         args.input,
         args.outdir,
         viewer_data_dir=args.viewer_data_dir,
+        pipeline_config=pipeline_config,
         rerun_from=args.rerun_from,
         accept_source_change=args.accept_source_change,
     )
