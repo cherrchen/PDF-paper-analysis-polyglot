@@ -121,9 +121,12 @@ viewer-fixture:
     {{ python }} scripts/latex_run.py compile smoke
     {{ python }} -m pdf_pipeline tests/fixtures/source/latex/build/paper-anatomy.pdf apps/web/.viewer-fixture --viewer-data-dir apps/web/public/data
 
-# Run reader API (:8000) and viewer dev server (:4173) together.
+# Run reader API (:8000), job worker (.jobs), and viewer dev server (:4173)
+# together. --jobs-root is pinned on both Python processes (the recipe and the
+# playwright webServer command must stay identical, and pinning keeps them
+# independent of any default drift).
 serve-reader: viewer-fixture
-    @sh -c 'uv run python -m paper_api --workspace apps/web/.viewer-fixture --data-dir apps/web/public/data & api=$!; trap "kill $api" EXIT; pnpm --filter @paper/web exec vite --host 127.0.0.1 --port 4173 --strictPort'
+    @sh -c 'uv run python -m paper_api --workspace apps/web/.viewer-fixture --data-dir apps/web/public/data --jobs-root .jobs & api=$!; uv run python -m paper_worker --jobs-root .jobs & worker=$!; trap "kill $api $worker" EXIT; pnpm --filter @paper/web exec vite --host 127.0.0.1 --port 4173 --strictPort'
 
 test-e2e: viewer-fixture
     pnpm --filter @paper/web build

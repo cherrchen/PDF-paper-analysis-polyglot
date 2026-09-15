@@ -15,13 +15,21 @@ function contentTypeFor(file: string): string {
 }
 
 /**
- * Serve `/data/*` from `public/data` on every request.
+ * Serve `/data/*` from the viewer data root on every request.
  *
  * Retranslate publishes `revisions/<id>/` after the Vite process starts. The
  * default SPA fallback would otherwise return `index.html` (200) for those
  * paths, and the reader would try to parse HTML as mapping JSON.
+ *
+ * `PAPER_VIEWER_DATA_DIR` redirects the root to another directory (the batch-F
+ * publish-failure e2e serves a copy of the fixture data). Unset, the behavior
+ * is byte-identical to serving `public/data`.
  */
 function servePublicData(): Plugin {
+  const resolveDataRoot = (publicDir: string): string =>
+    process.env.PAPER_VIEWER_DATA_DIR
+      ? path.resolve(process.env.PAPER_VIEWER_DATA_DIR)
+      : path.resolve(publicDir, "data");
   const send = (req: IncomingMessage, res: ServerResponse, publicDir: string): boolean => {
     const rawPath = (req.url ?? "").split("?")[0] ?? "";
     if (!rawPath.startsWith("/data/")) return false;
@@ -33,9 +41,9 @@ function servePublicData(): Plugin {
       res.end();
       return true;
     }
-    const dataRoot = path.resolve(publicDir, "data");
-    const file = path.resolve(publicDir, decoded.slice(1));
-    const relative = path.relative(dataRoot, file);
+    const root = resolveDataRoot(publicDir);
+    const file = path.resolve(root, decoded.slice("/data/".length));
+    const relative = path.relative(root, file);
     if (relative.startsWith("..") || path.isAbsolute(relative)) {
       res.statusCode = 403;
       res.end();
