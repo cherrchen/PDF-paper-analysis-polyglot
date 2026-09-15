@@ -81,8 +81,9 @@ def run_corpus() -> dict[str, Any]:
         truth = truths.get(name)
         physical = extract_physical_document(pdf_path.read_bytes())
         plan = route_providers(probe_document(physical), registry)
-        bundles = collect_bundles(plan, physical)
-        merged = merge_evidence_bundles(bundles)
+        collection = collect_bundles(plan, physical, registry)
+        bundles = list(collection.bundles)
+        merged = merge_evidence_bundles(bundles, issues=collection.issues(physical.id))
         layout = recover_layout_document(physical, evidence=bundles, registry=registry)
         texts = region_texts_from(physical, layout)
         semantic = recover_semantic_document(

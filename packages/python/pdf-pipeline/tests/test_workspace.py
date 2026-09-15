@@ -119,6 +119,36 @@ def test_commit_stage_round_trip(tmp_path: Path) -> None:
     assert reloaded.stage_completed(Stage.INGEST)
 
 
+def test_degraded_commit_reruns_next_time(tmp_path: Path) -> None:
+    workspace = _open(tmp_path)
+    workspace.commit_stage(
+        Stage.INGEST,
+        producer_version=PRODUCER,
+        artifacts={"source.pdf": SOURCE},
+    )
+    workspace.commit_stage(
+        Stage.PHYSICAL,
+        producer_version=PRODUCER,
+        artifacts={"physical.json": b"physical bytes"},
+    )
+    workspace.commit_stage(
+        Stage.EVIDENCE,
+        producer_version=PRODUCER,
+        artifacts={"evidence.json": b"evidence bytes"},
+        degraded=True,
+    )
+
+    manifest = json.loads((tmp_path / MANIFEST_NAME).read_text())
+    assert manifest["stages"]["evidence"]["status"] == "degraded"
+    assert not workspace.stage_completed(Stage.EVIDENCE)
+
+    reloaded = _open(tmp_path)
+    record = reloaded.stage_record(Stage.EVIDENCE)
+    assert record is not None
+    assert record.status is StageStatus.DEGRADED
+    assert not reloaded.stage_completed(Stage.EVIDENCE)
+
+
 def test_stage_completed_detects_tampered_artifact(tmp_path: Path) -> None:
     workspace = _open(tmp_path)
     _commit(workspace, Stage.INGEST, SOURCE)

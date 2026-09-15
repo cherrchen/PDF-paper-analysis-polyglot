@@ -49,7 +49,11 @@ class EvidenceProvider(Protocol):
     version: str
 
     def collect(self, physical: generated.PhysicalDocument) -> generated.EvidenceBundle:
-        """Produce the unified evidence bundle for a document."""
+        """Produce the unified evidence bundle for a document.
+
+        May raise; the router isolates provider failures and substitutes
+        the registry fallback for the lost capabilities (M8 batch D).
+        """
         ...
 
 

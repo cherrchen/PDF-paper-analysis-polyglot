@@ -23,6 +23,11 @@ as unfinished and reruns it — a half-written artifact set is never accepted
 as success. On restart a COMPLETED stage is skipped only when every
 recorded artifact still exists and still hashes to the recorded value.
 
+A DEGRADED stage (M8 batch D) committed usable artifacts after a provider
+failure was covered by a documented fallback. It is not COMPLETED, so the
+next run reruns it — a failure is never cached as an outcome — while the
+downstream chain still reads its artifacts and continues.
+
 ``invalidate_from`` drops one stage's record plus every downstream record so
 the next run reruns that tail (explicit local rerun). Version/source
 handling is strict: an unknown ``workspaceVersion``, or a source PDF whose
@@ -57,10 +62,18 @@ STAGING_DIR = ".staging"
 
 
 class StageStatus(StrEnum):
-    """Lifecycle of one pipeline stage inside a workspace."""
+    """Lifecycle of one pipeline stage inside a workspace.
+
+    ``DEGRADED`` (M8 batch D) marks a stage that committed usable artifacts
+    while a provider failed and a documented fallback covered it. It is
+    deliberately *not* COMPLETED: the stage reruns on the next run (a
+    provider failure is a defect, not a cacheable outcome), while every
+    stage record still exists so the downstream chain continues.
+    """
 
     PENDING = "pending"
     COMPLETED = "completed"
+    DEGRADED = "degraded"
 
 
 class Stage(StrEnum):
@@ -183,6 +196,7 @@ class StageRecord:
         if not isinstance(status, str) or status not in {
             StageStatus.COMPLETED.value,
             StageStatus.PENDING.value,
+            StageStatus.DEGRADED.value,
         }:
             raise WorkspaceError(f"unknown stage status: {status!r}")
         producer_version = data.get("producerVersion")
@@ -332,7 +346,8 @@ class WorkspaceManager:
 
         A committed stage whose upstream stage was recommitted (new artifact
         hashes) or whose stage configuration inputs changed is treated as
-        unfinished so downstream output never goes stale.
+        unfinished so downstream output never goes stale. A DEGRADED stage
+        is never "completed": it reruns on the next run.
         """
         record = self.stages.get(stage)
         if record is None or record.status is not StageStatus.COMPLETED:
@@ -367,16 +382,23 @@ class WorkspaceManager:
         return inputs
 
     def make_stage_record(
-        self, stage: Stage, *, producer_version: str, artifacts: Mapping[str, str]
+        self,
+        stage: Stage,
+        *,
+        producer_version: str,
+        artifacts: Mapping[str, str],
+        degraded: bool = False,
     ) -> StageRecord:
         """Build the record ``stage`` would get for these already-hashed artifacts.
 
         Callers that rewrite artifacts outside ``commit_stage`` (the
         rerender transaction) use this so their record carries the same
-        cache key the next ``run_pipeline`` computes.
+        cache key the next ``run_pipeline`` computes. ``degraded`` marks a
+        run whose artifacts are usable but which fell back after a provider
+        failure; the record then reruns on the next run.
         """
         return StageRecord(
-            status=StageStatus.COMPLETED,
+            status=StageStatus.DEGRADED if degraded else StageStatus.COMPLETED,
             producer_version=producer_version,
             input_fingerprint=input_fingerprint(
                 producer_version,
@@ -407,20 +429,25 @@ class WorkspaceManager:
         *,
         producer_version: str,
         artifacts: dict[str, bytes],
+        degraded: bool = False,
     ) -> None:
         """Atomically publish one stage's artifacts, then the manifest.
 
         Artifacts map workspace-relative paths to their bytes. Files are
         staged, each replaced via atomic rename, and only then does the
-        manifest gain this stage's COMPLETED record with the cache key
-        computed from upstream records and this workspace's stage config. Any
-        failure before the manifest write leaves the manifest unchanged, so
-        the next run reruns the stage instead of trusting half-written output.
+        manifest gain this stage's COMPLETED (or DEGRADED) record with the
+        cache key computed from upstream records and this workspace's stage
+        config. Any failure before the manifest write leaves the manifest
+        unchanged, so the next run reruns the stage instead of trusting
+        half-written output. ``degraded`` records a usable-but-fallen-back
+        run: the stage still publishes its record — downstream stages need
+        it — but the next run reruns it instead of trusting it as current.
         """
         record = self.make_stage_record(
             stage,
             producer_version=producer_version,
             artifacts={name: sha256_bytes(data) for name, data in artifacts.items()},
+            degraded=degraded,
         )
         targets = {name: self._artifact_path(name) for name in artifacts}
         token = uuid.uuid4().hex

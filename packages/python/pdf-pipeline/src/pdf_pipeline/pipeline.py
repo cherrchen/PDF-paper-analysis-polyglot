@@ -99,7 +99,7 @@ if TYPE_CHECKING:
     from paper_llm.types import TranslationProvider
     from pydantic import BaseModel
 
-PIPELINE_VERSION = "0.1.0"
+PIPELINE_VERSION = "0.2.0"
 
 # Stage-level producer versions for stages without a dedicated module
 # constant. TRANSLATE piggybacks on the prompt version: it is the knob
@@ -687,13 +687,25 @@ def _run_evidence_stage(
     """Probe, route, and collect per-provider bundles plus the merged bundle.
 
     The per-provider bundles persist in the ad-hoc ``evidence-bundles.json``
-    so a resumed LAYOUT stage does not rerun evidence providers.
+    so a resumed LAYOUT stage does not rerun evidence providers. A provider
+    failure is isolated here (M8 batch D): the run keeps its remaining
+    bundles, records one degradation per failure in ``probe.json``, and
+    commits the stage as DEGRADED so the next run retries it. Collecting
+    *no* bundle means no evidence authority is left at all — that is a real
+    stage failure, not a degradation.
     """
     registry = load_registry()
     probe = probe_document(physical)
     plan = route_providers(probe, registry)
-    bundles = collect_bundles(plan, physical)
-    evidence = merge_evidence_bundles(bundles)
+    collection = collect_bundles(plan, physical, registry)
+    if not collection.bundles:
+        failures = "; ".join(
+            f"{degradation.provider}: {degradation.message}"
+            for degradation in collection.degradations
+        )
+        raise RuntimeError(f"every routed evidence provider failed ({failures})")
+    bundles = list(collection.bundles)
+    evidence = merge_evidence_bundles(bundles, issues=collection.issues(physical.id))
     workspace.commit_stage(
         Stage.EVIDENCE,
         producer_version=STAGE_PRODUCER_VERSIONS[Stage.EVIDENCE],
@@ -706,9 +718,13 @@ def _run_evidence_stage(
                     "routingVersion": ROUTING_VERSION,
                     **probe.to_json(),
                     "routing": plan.to_json(),
+                    "degradations": [
+                        degradation.to_json() for degradation in collection.degradations
+                    ],
                 }
             ),
         },
+        degraded=collection.degraded,
     )
     return bundles, evidence
 
@@ -756,6 +772,22 @@ def _run_semantic_stage(
             update={
                 "issues": store.model_copy(update={"issues": [*store.issues, *recovery_issues]})
             }
+        )
+    # Evidence-provider failures (M8 batch D) enter the document's Issue
+    # store here — the only channel from the evidence stage into
+    # ``semantic.json``, the viewer's issue list, the quality report, and
+    # the benchmark's ERROR count. Ids are deterministic, so dedupe keeps a
+    # resumed run from double-reporting the same degradation.
+    evidence_issues = evidence.issues.issues if evidence.issues else []
+    if evidence_issues:
+        store = semantic.issues or generated.IssueStore(issues=[])
+        seen = {issue.id for issue in store.issues}
+        merged_issues = [
+            *store.issues,
+            *(issue for issue in evidence_issues if issue.id not in seen),
+        ]
+        semantic = semantic.model_copy(
+            update={"issues": store.model_copy(update={"issues": merged_issues})}
         )
     resource_dir = out_dir / "resources"
     # The SEMANTIC record declares every file under resources/, so a stale

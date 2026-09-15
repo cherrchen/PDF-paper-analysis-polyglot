@@ -452,7 +452,7 @@ def test_ensemble_routes_table_structure_specialist() -> None:
     physical = extract_physical_document(_fixture("table-heavy"))
     plan = route_providers(probe_document(physical), registry)
     assert "docling-sim" in plan.provider_names()
-    bundles = collect_bundles(plan, physical)
+    bundles = list(collect_bundles(plan, physical, registry).bundles)
     merged = merge_evidence_bundles(bundles)
     layout = recover_layout_document(physical, evidence=bundles, registry=registry)
     texts = region_texts_from(physical, layout)

@@ -208,6 +208,8 @@ def normalize_bundle(
 
 def merge_evidence_bundles(
     bundles: Sequence[generated.EvidenceBundle],
+    *,
+    issues: Sequence[generated.Issue] = (),
 ) -> generated.EvidenceBundle:
     """Merge per-provider bundles into one ensemble bundle.
 
@@ -215,6 +217,11 @@ def merge_evidence_bundles(
     attribution survives through each record's ``producer`` string. The
     merged bundle records its member providers in the ``provider`` field
     so downstream artifacts stay self-describing.
+
+    ``issues`` carries failures that have no bundle to live in (a provider
+    that raised, M8 batch D); they are appended after the members' own
+    issues. A merge with no issues at all leaves ``issues`` unset so an
+    undegraded run stays byte-identical.
     """
     if not bundles:
         raise ValueError("cannot merge an empty evidence bundle list")
@@ -223,7 +230,10 @@ def merge_evidence_bundles(
         raise ValueError("cannot merge evidence bundles with mixed schema versions")
     provider = f"ensemble:{'+'.join(bundle.provider for bundle in bundles)}"
     version = "+".join(bundle.providerVersion for bundle in bundles)
-    return generated.EvidenceBundle(
+    merged_issues = [
+        issue for bundle in bundles if bundle.issues for issue in bundle.issues.issues
+    ] + list(issues)
+    merged = generated.EvidenceBundle(
         schemaVersion=schema_version,
         provider=provider,
         providerVersion=version,
@@ -236,6 +246,10 @@ def merge_evidence_bundles(
             ]
         ),
     )
+    if merged_issues:
+        # ``issues`` is a non-nullable optional: pass it only when non-empty.
+        merged = merged.model_copy(update={"issues": generated.IssueStore(issues=merged_issues)})
+    return merged
 
 
 def evidence_bundle_from_json(data: object) -> generated.EvidenceBundle:

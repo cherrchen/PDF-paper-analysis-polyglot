@@ -7,12 +7,17 @@ for math-heavy documents, and refuse textless documents.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from document_model import dump_document, load_document
-from pdf_pipeline.capabilities import load_registry
+from pdf_pipeline.capabilities import Capability, load_registry
 from pdf_pipeline.evidence.normalize import merge_evidence_bundles
 from pdf_pipeline.probe import ProbeResult
 from pdf_pipeline.routing import build_provider, collect_bundles, route_providers
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _probe(
@@ -87,9 +92,142 @@ def test_collect_bundles_produce_schema_valid_evidence() -> None:
 
     physical = table_page()
     plan = route_providers(_probe(table=1.0))
-    bundles = collect_bundles(plan, physical)
-    assert len(bundles) == len(plan.provider_names())
-    merged = merge_evidence_bundles(bundles)
+    collection = collect_bundles(plan, physical)
+    assert collection.degradations == ()
+    assert not collection.degraded
+    assert len(collection.bundles) == len(plan.provider_names())
+    merged = merge_evidence_bundles(collection.bundles)
     assert merged.provider.startswith("ensemble:")
     assert merged.candidates
+    assert merged.issues is None
     load_document("evidence", dump_document(merged))
+
+
+# --- Provider failure isolation (M8 batch D) ------------------------------
+
+
+def _registry_with(
+    capability: str,
+    *,
+    primary: str | None = None,
+    fallback: str | None = None,
+) -> dict[str, Capability]:
+    """Overlay one capability slot on top of the bundled registry."""
+    overlay = dict(load_registry())
+    slot = overlay[capability]
+    overlay[capability] = Capability(
+        name=slot.name,
+        primary=primary if primary is not None else slot.primary,
+        challenger=slot.challenger,
+        fallback=fallback if fallback is not None else slot.fallback,
+    )
+    return overlay
+
+
+def test_failed_table_specialist_substitutes_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A dead Docling dump degrades the table capability, not the run."""
+    from test_fake_specialists import table_page
+
+    monkeypatch.setenv("DOCLING_DUMP", str(tmp_path / "missing.json"))
+    physical = table_page()
+    registry = _registry_with("table.structure", primary="docling", fallback="mock")
+    plan = route_providers(_probe(table=1.0), registry)
+    collection = collect_bundles(plan, physical, registry)
+
+    assert [bundle.provider for bundle in collection.bundles] == ["mock", "grobid-sim"]
+    (degradation,) = collection.degradations
+    assert (
+        degradation.provider,
+        degradation.capabilities,
+        degradation.substitutes,
+        degradation.errorType,
+    ) == ("docling", ("table.structure", "table.detection"), ("mock",), "FileNotFoundError")
+    payload = degradation.to_json()
+    assert payload["category"] == "TABLE_RECOVERY"
+    assert payload["substitutes"] == ["mock"]
+
+    issue = degradation.to_issue(physical.id)
+    assert (issue.category, issue.severity, issue.producer, issue.recoverable) == (
+        "TABLE_RECOVERY",
+        "ERROR",
+        "docling",
+        True,
+    )
+    assert issue.fallback == "provider substitution: mock"
+    assert issue.affectedIds == []
+
+    merged = merge_evidence_bundles(collection.bundles, issues=collection.issues(physical.id))
+    assert merged.issues is not None
+    assert [issue.producer for issue in merged.issues.issues] == ["docling"]
+    load_document("evidence", dump_document(merged))
+
+
+def test_failed_metadata_specialist_without_fallback_continues(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No registry fallback: the internal baseline covers the capability."""
+    from test_fake_specialists import table_page
+
+    monkeypatch.setenv("GROBID_DUMP", str(tmp_path / "missing.json"))
+    physical = table_page()
+    registry = _registry_with("scholarly.metadata", primary="grobid")
+    plan = route_providers(_probe(), registry)
+    collection = collect_bundles(plan, physical, registry)
+
+    assert [bundle.provider for bundle in collection.bundles] == ["mock"]
+    (degradation,) = collection.degradations
+    assert degradation.provider == "grobid"
+    assert degradation.capabilities == ("scholarly.metadata", "scholarly.bibliography")
+    assert degradation.substitutes == ()
+    issue = degradation.to_issue(physical.id)
+    assert issue.category == "SECTION_STRUCTURE"
+    assert issue.fallback == "front-matter heuristics"
+
+
+def test_failing_substitute_is_recorded_separately(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Substitution is one level deep: a dead substitute is its own failure."""
+    from test_fake_specialists import table_page
+
+    monkeypatch.setenv("DOCLING_DUMP", str(tmp_path / "missing-docling.json"))
+    monkeypatch.setenv("MINERU_DUMP", str(tmp_path / "missing-mineru.json"))
+    physical = table_page()
+    registry = _registry_with("table.structure", primary="docling", fallback="mineru")
+    plan = route_providers(_probe(table=1.0), registry)
+    collection = collect_bundles(plan, physical, registry)
+
+    assert [degradation.provider for degradation in collection.degradations] == [
+        "docling",
+        "mineru",
+    ]
+    docling, mineru = collection.degradations
+    assert docling.substitutes == ()
+    assert mineru.capabilities == ("table.structure", "table.detection")
+    assert mineru.substitutes == ()
+    assert [bundle.provider for bundle in collection.bundles] == ["mock", "grobid-sim"]
+
+
+def test_layout_primary_failure_keeps_geometric_regions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without the layout provider the geometric baseline still yields regions."""
+    from pdf_pipeline.layout import recover_layout_document
+    from pdf_pipeline.pipeline import region_texts_from
+    from test_fake_specialists import table_page
+
+    monkeypatch.setenv("MINERU_DUMP", str(tmp_path / "missing.json"))
+    physical = table_page()
+    registry = _registry_with("layout.region", primary="mineru")
+    plan = route_providers(_probe(), registry)
+    collection = collect_bundles(plan, physical, registry)
+
+    assert [bundle.provider for bundle in collection.bundles] == ["grobid-sim"]
+    (degradation,) = collection.degradations
+    assert degradation.to_json()["category"] == "LAYOUT_REGION"
+
+    layout = recover_layout_document(physical, evidence=collection.bundles, registry=registry)
+    assert layout.regions
+    assert any(text for text in region_texts_from(physical, layout).values())
