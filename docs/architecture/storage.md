@@ -128,3 +128,9 @@ Issue 形状必须能通过 `document_model.generated.schema_models.Issue` 校�
 ## 审查修复
 
 恢复时比较当前阶段生产者版本，并读取根目录已提交的 `target.pdf`；`build/` 可删除。INDEX 用发布回执记录 viewer 目标目录、manifest、稳定别名与当前 revision 的哈希，输出缺失或变化时重新发布。局部重译在既有回滚事务中同时发布翻译/渲染阶段记录与根目录目标 PDF，使 INDEX 失效；下一次运行保留新译文。清单写入失败会还原内存阶段记录。理由见 [批次 A 审查修复](../../.agents/notes/implemented/bug-fix/2026-09-12-m8-batch-a-review-repairs.md)。
+
+## M8 P1 并发修复
+
+`pdf_pipeline.locks` 以规范化资源路径为键，在父目录 `.paper-pipeline-locks/` 保存稳定锁文件（不可在运行中删除）。`run_pipeline` 与 `rerender_workspace` 共用跨进程 workspace 锁，覆盖读取到提交；Viewer 发布目录另用跨进程锁覆盖创建、提交、回滚、清理以及 INDEX 回执。固定锁顺序为 workspace → Viewer，同线程可重入。队列的 workspace 锁保留作调度用途，真正写入互斥不依赖 jobs root。retry 在 job 锁内校验与迁移，竞争报状态冲突；认领失败和写盘异常均释放未转交的描述符。
+
+Viewer manifest 记录发布 workspace 的绝对路径，重译按该绑定选择文档；携带 revision 的请求在解析目标及最终提交时都检查修订，过期返回冲突。INDEX producer `0.2.0` 使旧 workspace 重新发布绑定，其余阶段无需重跑。理由与回归范围见 [P1 修复 note](../../.agents/notes/implemented/bug-fix/2026-09-16-m8-p1-concurrency-and-binding.md)。

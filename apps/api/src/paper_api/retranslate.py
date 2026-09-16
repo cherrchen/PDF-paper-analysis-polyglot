@@ -9,15 +9,11 @@ keeps a sub-second startup without pulling pdfium/paper_llm at boot.
 from __future__ import annotations
 
 import json
-import threading
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
-
-# lualatex writes into a single shared build directory per workspace.
-RERENDER_LOCK = threading.Lock()
 
 MAX_BODY_BYTES = 4096
 BODY_READ_TIMEOUT_S = 2.0
@@ -51,6 +47,22 @@ def parse_node_ids(raw: bytes) -> set[str]:
     return set(ids)
 
 
+def parse_revision(raw: bytes) -> str | None:
+    value = _json_object(json.loads(raw)).get("revision")
+    if value is not None and (not isinstance(value, str) or not value):
+        raise ValueError("revision must be a non-empty string")
+    return value
+
+
+def _published_revision(data_dir: Path) -> dict[str, str]:
+    try:
+        manifest = _json_object(json.loads((data_dir / "manifest.json").read_text()))
+    except (OSError, json.JSONDecodeError, TypeError):
+        return {}
+    revision = manifest.get("revision")
+    return {"revision": revision} if isinstance(revision, str) and revision else {}
+
+
 def handle_retranslate(
     raw_body: bytes,
     *,
@@ -61,15 +73,23 @@ def handle_retranslate(
     """Run one retranslate request; returns (http_status, json_payload)."""
     try:
         node_ids = parse_node_ids(raw_body)
+        revision = parse_revision(raw_body)
     except (ValueError, TypeError, UnicodeDecodeError):
         return 400, {"ok": False, "error": "invalid request body"}
     if rerender is None:
         from pdf_pipeline.pipeline import rerender_workspace  # noqa: PLC0415
 
         rerender = rerender_workspace
+    from pdf_pipeline.pipeline import ViewerRevisionConflictError, viewer_workspace  # noqa: PLC0415
+
     try:
-        with RERENDER_LOCK:
+        workspace = viewer_workspace(data_dir, workspace, revision)
+        if revision is None:
             changed = rerender(workspace, viewer_data_dir=data_dir, node_ids=node_ids)
+        else:
+            changed = rerender(
+                workspace, viewer_data_dir=data_dir, node_ids=node_ids, expected_revision=revision
+            )
     except ValueError as error:
         return 400, {"ok": False, "error": str(error)}
     except FileNotFoundError:
@@ -80,18 +100,10 @@ def handle_retranslate(
     except Exception as error:
         from paper_llm.translation import TranslationProviderNotConfiguredError  # noqa: PLC0415
 
+        status = 500
         if isinstance(error, TranslationProviderNotConfiguredError):
-            return 503, {"ok": False, "error": str(error)}
-        return 500, {"ok": False, "error": str(error)}
-    payload: dict[str, object] = {"ok": True, "changed": changed}
-    manifest_path = data_dir / "manifest.json"
-    if manifest_path.is_file():
-        try:
-            manifest = _json_object(json.loads(manifest_path.read_text(encoding="utf-8")))
-        except (OSError, json.JSONDecodeError, TypeError):
-            manifest = None
-        if manifest is not None:
-            revision = manifest.get("revision")
-            if isinstance(revision, str) and revision:
-                payload["revision"] = revision
-    return 200, payload
+            status = 503
+        elif isinstance(error, ViewerRevisionConflictError):
+            status = 409
+        return status, {"ok": False, "error": str(error)}
+    return 200, {"ok": True, "changed": changed, **_published_revision(data_dir)}

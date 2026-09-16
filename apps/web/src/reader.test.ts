@@ -138,3 +138,122 @@ describe("DualPaneReader render coordination", () => {
     expect(destroyCandidate).toHaveBeenCalledOnce();
   });
 });
+
+describe("DualPaneReader.load first-page transaction", () => {
+  it.each(["getPage", "render", "success"])(
+    "prepares both panes before committing: %s",
+    async (failure) => {
+      const oldSource = { loadingTask: { destroy: vi.fn() } };
+      const oldTarget = { loadingTask: { destroy: vi.fn() } };
+      let finishSource!: () => void;
+      let sourceStarted!: () => void;
+      const started = new Promise<void>((resolve) => {
+        sourceStarted = resolve;
+      });
+      const pending = new Promise<void>((resolve) => {
+        finishSource = resolve;
+      });
+      const makePdf = (side: string) => ({
+        loadingTask: { destroy: vi.fn(async () => undefined) },
+        getPage: vi.fn(async () => {
+          if (side === "target" && failure === "getPage") throw new Error("getPage failed");
+          return {
+            getViewport: () => ({ width: 900, height: 1200 }),
+            render: () => {
+              if (side === "source") sourceStarted();
+              return {
+                cancel: vi.fn(),
+                promise:
+                  side === "source"
+                    ? pending
+                    : failure === "render"
+                      ? Promise.reject(new Error("render failed"))
+                      : Promise.resolve(),
+              };
+            },
+          };
+        }),
+      });
+      const source = makePdf("source");
+      const target = makePdf("target");
+      const live = { width: 123, height: 456, getContext: () => ({ drawImage }) };
+      const drawImage = vi.fn();
+      vi.stubGlobal("document", {
+        createElement: () => ({ getContext: () => ({}) }),
+        querySelector: () => live,
+      });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = String(input);
+          if (url.includes("manifest.json"))
+            return jsonResponse({
+              revision: "next",
+              mapping: "/mapping.json",
+              meta: "/meta.json",
+              source: "/source.pdf",
+              target: "/target.pdf",
+            });
+          if (url.includes("mapping.json")) return jsonResponse(mapping);
+          if (url.includes("meta.json")) return jsonResponse(meta);
+          if (init?.method === "HEAD") return new Response(null, { status: 200 });
+          throw new Error(url);
+        }),
+      );
+      const previousModel = { pairs: new Map() };
+      const origin = { side: "source", fragment: {} };
+      const reader = Object.assign(Object.create(DualPaneReader.prototype), {
+        meta,
+        revision: "previous",
+        model: previousModel,
+        pdfs: { source: oldSource, target: oldTarget },
+        currentPage: { source: 1, target: 1 },
+        activeNodeId: "selected",
+        lastOrigin: origin,
+        loadPdf: async (url: string) => (url.includes("source.pdf") ? source : target),
+        renderers: { source: { invalidate: vi.fn() }, target: { invalidate: vi.fn() } },
+        setViewerChrome: vi.fn(),
+        refreshInspector: vi.fn(),
+        viewerStatus: { textContent: "old" },
+        commitPage: vi.fn(),
+      }) as DualPaneReader;
+      const outcome = reader.load("next").then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+      await started;
+      expect(reader.revision).toBe("previous");
+      expect(drawImage).not.toHaveBeenCalled();
+      expect(source.loadingTask.destroy).not.toHaveBeenCalled();
+      finishSource();
+      const error = await outcome;
+      if (failure === "success") {
+        expect(error).toBeUndefined();
+        expect(reader.revision).toBe("next");
+        expect(drawImage).toHaveBeenCalledTimes(2);
+        expect(oldSource.loadingTask.destroy).toHaveBeenCalledOnce();
+        expect(oldTarget.loadingTask.destroy).toHaveBeenCalledOnce();
+        expect(source.loadingTask.destroy).not.toHaveBeenCalled();
+      } else {
+        expect(String(error)).toContain(`${failure} failed`);
+        expect(reader.revision).toBe("previous");
+        expect(reader.model).toBe(previousModel);
+        expect(reader.meta).toBe(meta);
+        expect(reader.pdfs).toEqual({ source: oldSource, target: oldTarget });
+        expect(reader.currentPage).toEqual({ source: 1, target: 1 });
+        expect(reader.activeNodeId).toBe("selected");
+        expect(reader.lastOrigin).toBe(origin);
+        expect(reader.viewerStatus.textContent).toBe("old");
+        expect(reader.commitPage).not.toHaveBeenCalled();
+        expect(reader.refreshInspector).not.toHaveBeenCalled();
+        expect(drawImage).not.toHaveBeenCalled();
+        expect(live.width).toBe(123);
+        expect(live.height).toBe(456);
+        expect(source.loadingTask.destroy).toHaveBeenCalledOnce();
+        expect(target.loadingTask.destroy).toHaveBeenCalledOnce();
+        expect(oldSource.loadingTask.destroy).not.toHaveBeenCalled();
+        expect(oldTarget.loadingTask.destroy).not.toHaveBeenCalled();
+      }
+    },
+  );
+});

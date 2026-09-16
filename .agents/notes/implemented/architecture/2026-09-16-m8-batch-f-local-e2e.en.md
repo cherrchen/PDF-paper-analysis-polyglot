@@ -44,3 +44,5 @@ Three gaps. First, the product had no import surface: the job API (batch B) coul
 - Docs: `docs/architecture/api.en.md` (submit-body default rule), `reader.en.md` (import panel flow, `load()`, `PAPER_VIEWER_DATA_DIR`, worker in the stack), `storage.en.md` (publish-transaction paragraph names `PAPER_PUBLISH_FAULT`), `docs/development/m8.en.md` §F landed paragraph, roadmap + README status lines; Chinese primaries updated alongside.
 - Observed behavior: `just test-e2e` green across all seven specs; the manual stack smoke showed `POST /api/jobs` (no `viewerDataDir`) returning `"viewerDataDir":"apps/web/public/data"`, the worker finishing `succeeded`, and :4173's manifest flipping to the new revision.
 - Left open: no separate human browser acceptance (panel UX polish); every interaction path is covered by e2e. A stale manual worker under `reuseExistingServer` double-claims nothing — flock serialization keeps results deterministic either way.
+
+Subsequent P1 concurrency and binding repairs: [repair note](../bug-fix/2026-09-16-m8-p1-concurrency-and-binding.en.md).

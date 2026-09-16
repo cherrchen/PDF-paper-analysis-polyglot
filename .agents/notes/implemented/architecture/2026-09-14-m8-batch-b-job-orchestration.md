@@ -41,3 +41,5 @@ Status: implemented
 - 批次 C 可在 `StageExecutionError` / `input_fingerprint` 上扩展缓存键；批次 D 可在 `job_failure_issue` 之外的文档内 Issue 通道上做 specialist 失败隔离；批次 F 若引入 Project 分组，是 job 记录**之上**的新概念，不改 `source`/`workspace`/`viewerDataDir` 字段。
 - 已知边界（非缺陷）：翻译配置变化不使 TRANSLATE 阶段失效（批次 C）；`fcntl.flock` 仅 POSIX；提交用显式绝对路径，无 Project 抽象。
 - 验证：新增 `test_jobs.py` 16 项、`test_job_worker.py` 6 项、`test_jobs_api.py` 12 项、`test_worker_cli.py` 2 项；`just lint-python`、`just typecheck-python`、`just test-python`（499 passed, 5 deselected）、`just test-ts`（50 passed）、`just docs-fast`、`just check-fast` 全绿；真实 `lualatex` 端到端 CLI 冒烟通过：API 提交 → `worker --once` → 8 阶段 manifest 全 completed 且 `target.pdf` 生成；坏输入 → `FATAL`/`recoverable: false` 的 failed job → retry 202（attempt 2）→ 再 retry 409；对真实 `run_forever` worker 发 SIGKILL（此时 `ingest`/`physical`/`evidence`/`layout` 已提交）→ 记录留在 `running/` → `recover_running` 重排 → `worker --once` 续跑至 succeeded，且 kill 前的产物字节不变。
+
+后续 P1 并发与绑定修复见[修复 note](../bug-fix/2026-09-16-m8-p1-concurrency-and-binding.md)。

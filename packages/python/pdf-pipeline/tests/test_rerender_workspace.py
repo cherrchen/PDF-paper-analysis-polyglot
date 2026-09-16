@@ -430,3 +430,28 @@ def test_rerender_leaves_analysis_records_untouched(
     for stage in ("ingest", "physical", "evidence", "layout", "semantic"):
         assert after[stage] == before[stage], stage
     assert calls == 0
+
+
+def test_retranslate_stale_publication_does_not_commit_workspace(
+    workspace: Path, tmp_path: Path
+) -> None:
+    viewer = tmp_path / "viewer"
+    revision = pipeline._publish_viewer_revision(
+        viewer,
+        mapping_text="{}",
+        meta_text="{}",
+        source_pdf=b"new",
+        target_pdf=b"new",
+        workspace_dir=workspace,
+    )
+    before = {
+        name: (workspace / name).read_bytes()
+        for name in ("translation.json", "render.json", "workspace.json", "target.pdf")
+    }
+    node_id = _load_translation(workspace).entries[0].semanticNodeId
+    with pytest.raises(pipeline.ViewerRevisionConflictError):
+        rerender_workspace(
+            workspace, viewer_data_dir=viewer, node_ids={node_id}, expected_revision="stale"
+        )
+    assert {name: (workspace / name).read_bytes() for name in before} == before
+    assert json.loads((viewer / "manifest.json").read_text())["revision"] == revision

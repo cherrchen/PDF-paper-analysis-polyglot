@@ -59,6 +59,7 @@ from pdf_pipeline.fusion import RegionLine
 from pdf_pipeline.geometry import as_rect
 from pdf_pipeline.ids import stable_uuid
 from pdf_pipeline.layout import LAYOUT_PRODUCER_VERSION, recover_layout_document
+from pdf_pipeline.locks import resource_lock, resource_locked
 from pdf_pipeline.physical import PRODUCER_VERSION as PHYSICAL_PRODUCER_VERSION
 from pdf_pipeline.physical import extract_physical_document, probe_input_capability
 from pdf_pipeline.probe import PRODUCER_VERSION as PROBE_VERSION
@@ -108,7 +109,7 @@ PIPELINE_VERSION = "0.2.0"
 # constant. TRANSLATE piggybacks on the prompt version: it is the knob
 # that changes translation behavior for the dummy and real providers.
 RENDER_STAGE_VERSION = "0.1.0"
-INDEX_STAGE_VERSION = "0.1.0"
+INDEX_STAGE_VERSION = "0.2.0"
 
 STAGE_PRODUCER_VERSIONS: dict[Stage, str] = {
     Stage.INGEST: PIPELINE_VERSION,
@@ -294,6 +295,23 @@ def _read_viewer_manifest(data_dir: Path) -> dict[str, str] | None:
     return {str(key): str(value) for key, value in payload.items()}
 
 
+class ViewerRevisionConflictError(RuntimeError):
+    """The browser's revision is no longer the current publication."""
+
+
+def viewer_workspace(data_dir: Path, default: Path, revision: str | None) -> Path:
+    """Resolve the current server-authored binding; never accept a client path."""
+    with resource_lock(data_dir, "viewer"):
+        manifest = _read_viewer_manifest(data_dir)
+        if revision is not None and (manifest is None or manifest["revision"] != revision):
+            raise ViewerRevisionConflictError(
+                "viewer revision changed; reload before retranslation"
+            )
+        if manifest is not None and "workspace" in manifest:
+            return Path(manifest["workspace"])
+        return default
+
+
 def _prune_viewer_revisions(data_dir: Path, keep: set[str]) -> None:
     root = data_dir / "revisions"
     if not root.is_dir():
@@ -356,6 +374,7 @@ def _replace_files_with_rollback(contents: dict[Path, bytes], *, commit_last: Pa
             prepared.unlink(missing_ok=True)
 
 
+@resource_locked("data_dir", "viewer")
 def _publish_viewer_revision(
     data_dir: Path,
     *,
@@ -364,6 +383,8 @@ def _publish_viewer_revision(
     source_pdf: bytes,
     target_pdf: bytes,
     workspace_updates: dict[Path, bytes] | None = None,
+    workspace_dir: Path | None = None,
+    expected_revision: str | None = None,
 ) -> str:
     """Write one complete viewer revision and commit all mutable pointers.
 
@@ -374,6 +395,10 @@ def _publish_viewer_revision(
     """
     data_dir.mkdir(parents=True, exist_ok=True)
     previous = _read_viewer_manifest(data_dir)
+    if expected_revision is not None and (
+        previous is None or previous["revision"] != expected_revision
+    ):
+        raise ViewerRevisionConflictError("viewer revision changed; reload before retranslation")
     revision = _viewer_revision_id()
     rev_dir = data_dir / "revisions" / revision
     rev_dir.mkdir(parents=True, exist_ok=True)
@@ -388,6 +413,8 @@ def _publish_viewer_revision(
         "source": f"/data/revisions/{revision}/source.pdf",
         "target": f"/data/revisions/{revision}/target.pdf",
     }
+    if workspace_dir is not None:
+        manifest["workspace"] = str(workspace_dir.resolve())
     manifest_path = data_dir / "manifest.json"
     replacements = {
         data_dir / "mapping.json": mapping_text.encode(),
@@ -459,6 +486,8 @@ def _write_viewer_assets(
     semantic: SemanticDocument,
     translation: generated.TranslationLayer,
     workspace_updates: dict[Path, bytes] | None = None,
+    workspace_dir: Path | None = None,
+    expected_revision: str | None = None,
 ) -> str:
     """Emit the static fetch targets for the web viewer (M6 bidirectional reader, v2).
 
@@ -531,6 +560,8 @@ def _write_viewer_assets(
         source_pdf=source_pdf,
         target_pdf=target_pdf.read_bytes(),
         workspace_updates=workspace_updates,
+        workspace_dir=workspace_dir,
+        expected_revision=expected_revision,
     )
 
 
@@ -906,6 +937,7 @@ def _viewer_receipt(data_dir: Path) -> bytes:
     )
 
 
+@resource_locked("data_dir", "viewer")
 def _viewer_current(out_dir: Path, data_dir: Path) -> bool:
     try:
         return (out_dir / "viewer-publication.json").read_bytes() == _viewer_receipt(data_dir)
@@ -913,6 +945,7 @@ def _viewer_current(out_dir: Path, data_dir: Path) -> bool:
         return False
 
 
+@resource_locked("viewer_data_dir", "viewer")
 def _run_index_stage(
     workspace: WorkspaceManager,
     source_bytes: bytes,
@@ -960,6 +993,7 @@ def _run_index_stage(
         layout=layout,
         semantic=semantic,
         translation=translation,
+        workspace_dir=workspace.root,
     )
     workspace.commit_stage(
         Stage.INDEX,
@@ -1079,6 +1113,7 @@ def _ensure_rebuild_stages(
     return translation, render, target_pdf
 
 
+@resource_locked("out_dir", "workspace")
 def run_pipeline(
     source_pdf: Path,
     out_dir: Path,
@@ -1183,12 +1218,14 @@ def run_pipeline(
     return paths
 
 
+@resource_locked("workspace_dir", "workspace")
 def rerender_workspace(
     workspace_dir: Path,
     *,
     viewer_data_dir: Path,
     node_ids: set[str],
     translation_config: TranslationConfig | None = None,
+    expected_revision: str | None = None,
 ) -> list[str]:
     """Re-translate `node_ids` in a finished workspace and rebuild render output.
 
@@ -1304,6 +1341,8 @@ def rerender_workspace(
             semantic=semantic,
             translation=new_translation,
             workspace_updates=workspace_updates,
+            workspace_dir=workspace_dir,
+            expected_revision=expected_revision,
         )
     finally:
         shutil.rmtree(staging_build, ignore_errors=True)

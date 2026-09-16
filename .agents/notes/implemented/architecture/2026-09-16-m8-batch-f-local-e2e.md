@@ -44,3 +44,5 @@ Status: implemented
 - 文档：`docs/architecture/api.md`（submit 体默认规则）、`reader.md`（导入面板流、`load()`、`PAPER_VIEWER_DATA_DIR`、栈含 worker）、`storage.md`（发布事务段点名 `PAPER_PUBLISH_FAULT`）、`docs/development/m8.md` §F 落地段、roadmap 与 README 状态行；英文伴侣同步。
 - 观察到的行为：`just test-e2e` 七个 spec 全绿；手动栈冒烟里 `POST /api/jobs`（无 `viewerDataDir`）返回 `"viewerDataDir":"apps/web/public/data"`，worker 执行 `succeeded`，:4173 上 manifest 翻到新修订。
 - 遗留：真机浏览器手动验收（面板 UX 细节）未单独做，交互路径全部由 e2e 覆盖；`reuseExistingServer` 下若残留旧手工 worker，flock 序列化保证结果确定，无需处理。
+
+后续 P1 并发与绑定修复见[修复 note](../bug-fix/2026-09-16-m8-p1-concurrency-and-binding.md)。

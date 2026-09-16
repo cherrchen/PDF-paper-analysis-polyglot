@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
@@ -65,6 +65,11 @@ test("publish failure restores every file; viewer reads the previous revision", 
   const jobsDir = path.join(tmp, "jobs");
   cpSync(path.resolve("apps/web/public/data"), dataDir, { recursive: true });
   cpSync(path.resolve("apps/web/.viewer-fixture"), workspaceDir, { recursive: true });
+
+  const manifestPath = path.join(dataDir, "manifest.json");
+  const copiedManifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  copiedManifest.workspace = workspaceDir;
+  writeFileSync(manifestPath, JSON.stringify(copiedManifest));
 
   const baselineBytes = readBytes(dataDir);
   const baselineRevisions = readdirSync(path.join(dataDir, "revisions")).sort();

@@ -240,7 +240,7 @@ export class DualPaneReader {
       const response = await fetch("/api/retranslate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nodeIds: [nodeId] }),
+        body: JSON.stringify({ nodeIds: [nodeId], revision: this.revision }),
       });
       if (!response.ok) {
         this.viewerStatus.textContent = `Re-translate failed · ${response.status}`;
@@ -324,22 +324,54 @@ export class DualPaneReader {
   /**
    * Swap the whole reader onto the currently published revision in place.
    *
-   * `manifest.json` is the commit pointer, so a failed candidate load leaves
-   * the current revision fully intact and rethrows for the caller to report.
-   * The swap/destroy sequence mirrors the proven success path of
-   * `retranslate()`, applied to both PDFs.
+   * Both first pages render offscreen before any live state or pixels change.
+   * Failed preparation drains both renders and releases candidate documents.
    */
   async load(revisionBust: string): Promise<void> {
     const manifest = await fetchViewerManifest({ cacheBust: revisionBust, fallback: false });
     const candidate = await loadViewerAssets(this.loadPdf, manifest, { includeSource: true });
-    if (!candidate.source) {
-      await candidate.target.loadingTask.destroy();
-      throw new Error("source pdf missing in revision");
+    const sides = ["source", "target"] as const;
+    let prepared: Array<{
+      side: Side;
+      canvas: HTMLCanvasElement;
+      commit: RenderCommit;
+      live: HTMLCanvasElement;
+      context: CanvasRenderingContext2D;
+    }>;
+    let model: ReaderModel;
+    try {
+      if (!candidate.source) throw new Error("source pdf missing in revision");
+      model = buildReaderModel(candidate.mappings, pageSizesFrom(candidate.meta));
+      const results = await Promise.allSettled(
+        sides.map(async (side) => {
+          const canvas = document.createElement("canvas");
+          const renderer = new PaneRenderer(
+            canvas,
+            () => candidate[side],
+            () => candidate.meta[side === "source" ? "sourcePageCount" : "targetPageCount"],
+          );
+          const commit = await renderer.render(0);
+          if (!commit) throw new Error("candidate render cancelled");
+          const live = requiredElement<HTMLCanvasElement>(`#${side}-canvas`);
+          const context = live.getContext("2d");
+          if (!context) throw new Error("2d canvas context unavailable");
+          return { side, canvas, commit, live, context };
+        }),
+      );
+      prepared = results.map((result) => {
+        if (result.status === "rejected") throw result.reason;
+        return result.value;
+      });
+    } catch (error) {
+      await Promise.allSettled(
+        [...new Set([candidate.source, candidate.target])].map((pdf) => pdf?.loadingTask.destroy()),
+      );
+      throw error;
     }
     const previousSource = this.pdfs.source;
     const previousTarget = this.pdfs.target;
     this.meta = candidate.meta;
-    this.model = buildReaderModel(candidate.mappings, pageSizesFrom(candidate.meta));
+    this.model = model;
     this.revision = candidate.revision;
     this.pdfs.source = candidate.source;
     this.pdfs.target = candidate.target;
@@ -348,7 +380,13 @@ export class DualPaneReader {
     this.activeNodeId = undefined;
     this.lastOrigin = undefined;
     this.setViewerChrome();
-    await Promise.all([this.showPage("source", 0), this.showPage("target", 0)]);
+    for (const { side, canvas, commit, live, context } of prepared) {
+      this.renderers[side].invalidate();
+      live.width = canvas.width;
+      live.height = canvas.height;
+      context.drawImage(canvas, 0, 0);
+      this.commitPage(side, commit);
+    }
     for (const previous of [previousSource, previousTarget]) {
       if (previous && previous !== this.pdfs.source && previous !== this.pdfs.target) {
         await previous.loadingTask.destroy();

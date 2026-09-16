@@ -22,3 +22,7 @@ API 应用是 `apps/api` 下的运行时入口（stdlib `ThreadingHTTPServer`，
 命令行：`python -m paper_api [--workspace DIR] [--data-dir DIR] [--jobs-root DIR] [--port N]`，`--jobs-root` 默认 `.jobs`。
 
 更广的契约存在时将作为 OpenAPI 放在 `schemas/api/`。`just schema` 目前报告尚未定义 OpenAPI 文档。
+
+## 重译的文档绑定
+
+浏览器向 `/api/retranslate` 提交 `{nodeIds, revision}`。服务端按当前 Viewer manifest 的 workspace 绑定定位文档；导入第二份文档后无需重启 API。客户端不传 workspace 路径。revision 类型错误返回 400；当前 revision 不匹配，或重译计算期间被另一发布替换，返回 409，后者不会提交此次 workspace 更新。旧客户端可省略 revision；旧 manifest 无 workspace 绑定时回退启动参数 `--workspace`。锁与发布契约见[存储](storage.md)。

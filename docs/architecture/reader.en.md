@@ -52,7 +52,7 @@ Sync scroll (`#sync-scroll`, off by default): a ±12 pt band around the scrollin
 `apps/api` (stdlib ThreadingHTTPServer, no web framework):
 
 - `GET /api/health` — same payload as `/health`; the frontend probes at startup and only renders `#retranslate-button` when `apiAvailable`.
-- `POST /api/retranslate`, body `{"nodeIds": [...]}` — 200 `{"ok": true, "changed": [...], "revision": "..."}`; 400 for malformed bodies, unknown nodes, and negative `Content-Length`; 409 for an uninitialized workspace; 413 when `Content-Length` > 4096 bytes; 408 when the declared length exceeds the body and the read times out; 503 when a real workspace has no provider configured; 500 otherwise. A module-level `threading.Lock` serializes rerenders (shared lualatex output directory).
+- `POST /api/retranslate` selects the workspace from the current revision binding and uses a cross-process workspace lock. Requests, status codes, and legacy compatibility are in [HTTP API](api.en.md#retranslation-document-binding); lock ordering is in [storage](storage.en.md#m8-p1-concurrency-repairs).
 
 `pdf_pipeline.pipeline.rerender_workspace(workspace_dir, viewer_data_dir=…, node_ids=…)` (FR-TRANS-004: zero source-PDF re-parsing): load the six canonical workspace documents → validate `node_ids ⊆ translation.entries` keys → `retranslate_nodes` with the **current** provider identity (selected nodes skip cache reads) → compose → LaTeX projection + staged compile → `recover_render_anchors` → rebuild the MappingBundle reusing the source-side bindings from the old mapping → write the immutable viewer revision after validation, then commit stable aliases, the three workspace JSON files, and the manifest with rollback protection. A real workspace with no provider configured fails rather than falling back to dummy. Note that re-projecting recompiles the whole target document (seconds to tens of seconds); concentrating that cost in one compile is intentional.
 
@@ -63,6 +63,8 @@ Correctness repairs: [M6 review repairs](../../.agents/notes/implemented/bug-fix
 ## Import panel (M8 batch F)
 
 `apps/web/src/import-panel.ts::bootImportPanel` renders the path-style PRD §40 import surface into `#import-panel` in the reader toolbar: absolute `source` / `workspace` path inputs plus a submit button (disabled while `apiAvailable` is false, status `Import unavailable · API offline`). Submit posts `{"source","workspace"}` to `POST /api/jobs` — no `viewerDataDir`: the server defaults it to its own `--data-dir`, the directory this viewer reads — then polls `GET /api/jobs/<id>` every 2 s (deadline 280 s, then `Job still running · refresh to check`). On `succeeded` the panel calls `DualPaneReader.load(revisionBust)`, which swaps the reader in place onto the job-published revision following the manifest commit pointer (load both PDFs as one group, reassign meta/model/revision, re-render both panes from page 0, destroy the previous documents); a failed swap leaves the previous revision fully intact and the panel shows `Reload failed · …`. On `failed` the status shows `Job failed · <stage ?? "fatal"> · <error ≤160 chars>` without touching the reader.
+
+Import first-page rendering is part of candidate preparation: render both panes offscreen and wait for both before committing state and pixels and destroying old PDFs. A getPage or render failure destroys only candidate PDFs, preserving previous reading state and canvases.
 
 ## Fixture
 

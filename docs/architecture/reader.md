@@ -52,7 +52,7 @@
 `apps/api`（stdlib ThreadingHTTPServer，无 web 框架）：
 
 - `GET /api/health`：与 `/health` 同 payload；前端启动探测，`apiAvailable` 才渲染 `#retranslate-button`。
-- `POST /api/retranslate` body `{"nodeIds": [...]}`：200 `{"ok": true, "changed": [...], "revision": "..."}`；非法 body/未知节点/负 `Content-Length` 400；workspace 未初始化 409；`Content-Length` > 4096 字节 413；声明长度超过实际正文时读取超时 408；真实 workspace 缺失 provider 配置 503；其余异常 500。lualatex 输出目录共享，`threading.Lock` 串行化重渲染。
+- `POST /api/retranslate` 由当前修订绑定选择 workspace，并使用跨进程 workspace 锁。请求、状态码和旧客户端兼容规则见 [HTTP API](api.md#重译的文档绑定)，锁顺序见[存储](storage.md#m8-p1-并发修复)。
 
 `pdf_pipeline.pipeline.rerender_workspace(workspace_dir, viewer_data_dir=…, node_ids=…)`（FR-TRANS-004：零源 PDF 重解析）：载入 workspace 六份 canonical 文档 → 校验 `node_ids ⊆ translation.entries` 键集 → 用**当前** provider 身份 `retranslate_nodes`（所选节点跳过缓存读取）→ compose → LaTeX 投影 + 暂存编译 → `recover_render_anchors` → 复用旧 mapping 的 source 侧绑定重建 MappingBundle → 校验通过后写不可变 viewer revision，再把稳定别名、workspace 三份 JSON 与 manifest 纳入可回滚提交。真实 workspace 缺失 provider 时失败，不用 dummy 覆盖。注意重新投影意味着整文档 target 重编译（lualatex 秒级~几十秒），这是有意的代价集中。
 
@@ -63,6 +63,8 @@
 ## 导入面板（M8 批次 F）
 
 `apps/web/src/import-panel.ts::bootImportPanel` 在阅读工具栏的 `#import-panel` 内渲染路径式 PRD §40 导入表面：绝对 `source` / `workspace` 路径输入框 + 提交按钮（`apiAvailable` 为 false 时禁用，状态显示 `Import unavailable · API offline`）。提交向 `POST /api/jobs` 发 `{"source","workspace"}`——不带 `viewerDataDir`：服务端把它默认成自己的 `--data-dir`，也就是本 viewer 读取的目录——然后每 2 s 轮询 `GET /api/jobs/<id>`（截止 280 s，超时显示 `Job still running · refresh to check`）。`succeeded` 时面板调用 `DualPaneReader.load(revisionBust)`：沿 manifest 提交指针把阅读器**就地**换到 Job 发布的修订（整组加载两份 PDF、重赋 meta/model/revision、双栏从第 0 页重渲染、销毁旧 document）；换页失败时上一修订完好无损，面板显示 `Reload failed · …`。`failed` 时状态显示 `Job failed · <stage ?? "fatal"> · <error 前 160 字符>`，不触碰阅读器。
+
+导入切换的首屏也属于候选准备阶段：双侧先离屏渲染，并等待两侧结束；成功才提交状态与画面、销毁旧 PDF。getPage 或 render 失败只销毁候选 PDF，旧阅读状态与画布不变。
 
 ## 夹具
 

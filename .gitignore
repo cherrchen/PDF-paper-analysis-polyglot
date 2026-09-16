@@ -116,3 +116,6 @@ id_rsa.pub
 tests/fixtures/external/
 apps/web/public/data/
 apps/web/.viewer-fixture/
+
+# Stable shared-resource flock inodes; never clean them while writers run.
+.paper-pipeline-locks/

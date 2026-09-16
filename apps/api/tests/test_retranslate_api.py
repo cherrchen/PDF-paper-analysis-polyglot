@@ -232,3 +232,46 @@ def test_retranslate_missing_provider_is_503(server: ThreadingHTTPServer) -> Non
     assert payload is not None
     assert payload["ok"] is False
     assert "provider" in str(payload["error"])
+
+
+def test_retranslate_uses_published_workspace_and_checks_revision(tmp_path: Path) -> None:
+    from paper_api.retranslate import handle_retranslate
+    from pdf_pipeline.pipeline import (
+        _publish_viewer_revision,  # pyright: ignore[reportPrivateUsage]
+    )
+
+    current = tmp_path / "imported"
+    viewer = tmp_path / "data"
+    revision = _publish_viewer_revision(
+        viewer,
+        mapping_text="{}",
+        meta_text="{}",
+        source_pdf=b"source",
+        target_pdf=b"target",
+        workspace_dir=current,
+    )
+    calls: list[tuple[Path, str]] = []
+
+    def rerender(
+        workspace: Path, *, viewer_data_dir: Path, node_ids: set[str], expected_revision: str
+    ) -> list[str]:
+        assert viewer_data_dir == viewer
+        calls.append((workspace, expected_revision))
+        return sorted(node_ids)
+
+    status, _ = handle_retranslate(
+        json.dumps({"nodeIds": ["new-node"], "revision": revision}).encode(),
+        workspace=tmp_path / "old",
+        data_dir=viewer,
+        rerender=rerender,
+    )
+    assert status == 200
+    assert calls == [(current.resolve(), revision)]
+    status, _ = handle_retranslate(
+        b'{"nodeIds":["new-node"],"revision":"stale"}',
+        workspace=tmp_path / "old",
+        data_dir=viewer,
+        rerender=rerender,
+    )
+    assert status == 409
+    assert len(calls) == 1

@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
@@ -138,10 +138,7 @@ test("import PDF → analyze → translate → target PDF → jumps", async ({ p
   const backupRoot = path.join(dataBackup, "data");
   cpSync(DATA_DIR, backupRoot, { recursive: true });
   try {
-    // Anatomy baseline, read before the job republishes the data root.
-    const anatomyMeta = await page.request
-      .get("/data/viewer-meta.json")
-      .then((r) => r.json() as Promise<ViewerMeta>);
+    const previousSource = await page.request.get("/data/source.pdf").then((r) => r.body());
 
     await page.goto("/");
     await expect(page.locator("#viewer")).toBeVisible();
@@ -186,12 +183,14 @@ test("import PDF → analyze → translate → target PDF → jumps", async ({ p
     );
     await expect(page.locator("#viewer-status")).toContainText("Bidirectional navigation ready");
 
-    // A genuinely new document: the target pane's page count is the new
-    // revision's, not the anatomy fixture's.
+    // Page counts can coincide for different documents. Verify source identity
+    // directly and check the displayed target count against the published metadata.
     const targetPage = (await page.locator("#target-page").textContent()) ?? "";
     const shownPages = Number(targetPage.split("/")[1]?.trim());
     expect(Number.isNaN(shownPages)).toBe(false);
-    expect(shownPages).not.toBe(anatomyMeta.targetPageCount);
+    const importedSource = await page.request.get("/data/source.pdf").then((r) => r.body());
+    expect(importedSource.equals(readFileSync(SOURCE_PDF))).toBe(true);
+    expect(importedSource.equals(previousSource)).toBe(false);
     const newMeta = await page.request
       .get("/data/viewer-meta.json")
       .then((r) => r.json() as Promise<ViewerMeta>);
@@ -199,6 +198,22 @@ test("import PDF → analyze → translate → target PDF → jumps", async ({ p
 
     // Click-jump round trip both directions on the job-published revision.
     await jumpRoundTrip(page);
+
+    // Retranslate a node belonging to the imported document, then reject the old revision.
+    const manifest = await page.request.get("/data/manifest.json").then((r) => r.json());
+    expect(manifest.workspace).toBe(realpathSync(workspace));
+    const mapping = await page.request.get(manifest.mapping).then((r) => r.json());
+    const nodeId = mapping.translation.entries[0].semanticNodeId;
+    const translated = await page.request.post("/api/retranslate", {
+      data: { nodeIds: [nodeId], revision: manifest.revision },
+      timeout: 120_000,
+    });
+    expect(translated.status()).toBe(200);
+    expect((await translated.json()).changed).toContain(nodeId);
+    const stale = await page.request.post("/api/retranslate", {
+      data: { nodeIds: [nodeId], revision: manifest.revision },
+    });
+    expect(stale.status()).toBe(409);
   } finally {
     rmSync(workspace, { recursive: true, force: true });
     // Restore the anatomy-published data root for the later viewer-* specs.

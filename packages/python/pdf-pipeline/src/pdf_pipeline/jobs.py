@@ -35,10 +35,8 @@ ever needed.
 
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import json
-import os
 import re
 import uuid
 from collections.abc import Callable
@@ -49,6 +47,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pdf_pipeline.locks import FileLock
 from pdf_pipeline.workspace import Stage
 
 if TYPE_CHECKING:
@@ -282,22 +281,29 @@ def create_job(
 
 def retry_job(root: Path, job_id: str) -> JobRecord:
     """Requeue a failed job. Workspace artifacts are left to the stage state."""
-    record = get_job(root, job_id)
-    if record.status is not JobStatus.FAILED:
-        raise JobStateError(
-            f"job {job_id} is {record.status.value}; only failed jobs can be retried"
+    _validate_job_id(job_id)
+    lock = FileLock(_lock_path(root, job_id))
+    try:
+        if not lock.acquire(blocking=False):
+            raise JobStateError(f"job {job_id} is busy")
+        record = get_job(root, job_id)
+        if record.status is not JobStatus.FAILED:
+            raise JobStateError(
+                f"job {job_id} is {record.status.value}; only failed jobs can be retried"
+            )
+        requeued = replace(
+            record,
+            status=JobStatus.QUEUED,
+            attempt=record.attempt + 1,
+            stage=None,
+            error=None,
+            issues=(),
+            updated_at=_now(None),
         )
-    requeued = replace(
-        record,
-        status=JobStatus.QUEUED,
-        attempt=record.attempt + 1,
-        stage=None,
-        error=None,
-        issues=(),
-        updated_at=_now(None),
-    )
-    _move_job(root, requeued, QUEUED_DIR)
-    return requeued
+        _move_job(root, requeued, QUEUED_DIR)
+        return requeued
+    finally:
+        lock.release()
 
 
 def _lock_path(root: Path, job_id: str) -> Path:
@@ -307,41 +313,6 @@ def _lock_path(root: Path, job_id: str) -> Path:
 def _workspace_lock_path(root: Path, workspace: str) -> Path:
     digest = hashlib.sha256(str(Path(workspace).resolve()).encode("utf-8")).hexdigest()
     return root / LOCKS_DIR / f"workspace-{digest}.lock"
-
-
-class FileLock:
-    """POSIX-only exclusive lock over one lock file (``fcntl.flock``).
-
-    The lock is owned by the open file description, so the kernel releases
-    it when the process exits — that is what makes crash detection possible.
-    Within one process separate descriptors still exclude each other, so
-    concurrency needs no extra ``threading.Lock``.
-    """
-
-    def __init__(self, path: Path) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self._fd: int | None = os.open(path, os.O_CREAT | os.O_RDWR, 0o644)
-
-    def acquire(self, *, blocking: bool) -> bool:
-        fd = self._fd
-        if fd is None:
-            raise JobError("lock already released")
-        flags = fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB
-        try:
-            fcntl.flock(fd, flags)
-        except OSError:
-            return False
-        return True
-
-    def release(self) -> None:
-        fd = self._fd
-        if fd is None:
-            return
-        self._fd = None
-        try:
-            fcntl.flock(fd, fcntl.LOCK_UN)
-        finally:
-            os.close(fd)
 
 
 class JobClaim:
@@ -365,26 +336,38 @@ def claim_next(root: Path) -> JobClaim | None:
         for path in sorted(queued.glob("*.json")):
             if _JOB_ID_PATTERN.fullmatch(path.stem) is None:
                 continue
-            candidates.append(_read_record(path))
+            try:
+                candidates.append(_read_record(path))
+            except JobError:
+                if path.exists():
+                    raise
     candidates.sort(key=lambda record: (record.created_at, record.id))
 
-    for record in candidates:
-        job_lock = FileLock(_lock_path(root, record.id))
-        if not job_lock.acquire(blocking=False):
-            continue
-        workspace_lock = FileLock(_workspace_lock_path(root, record.workspace))
-        if not workspace_lock.acquire(blocking=False):
-            job_lock.release()
-            continue
+    for candidate in candidates:
+        job_lock = FileLock(_lock_path(root, candidate.id))
+        workspace_lock: FileLock | None = None
+        transferred = False
         try:
-            (queued / f"{record.id}.json").replace(_subdir(root, RUNNING_DIR) / f"{record.id}.json")
-        except OSError:
-            workspace_lock.release()
-            job_lock.release()
-            continue
-        claimed = replace(record, status=JobStatus.RUNNING, updated_at=_now(None))
-        _write_record(root, RUNNING_DIR, claimed)
-        return JobClaim(claimed, job_lock, workspace_lock)
+            if not job_lock.acquire(blocking=False):
+                continue
+            # The queue snapshot can predate a retry or another worker's claim.
+            path = queued / f"{candidate.id}.json"
+            if not path.is_file():
+                continue
+            record = _read_record(path)
+            workspace_lock = FileLock(_workspace_lock_path(root, record.workspace))
+            if not workspace_lock.acquire(blocking=False):
+                continue
+            path.replace(_subdir(root, RUNNING_DIR) / path.name)
+            claimed = replace(record, status=JobStatus.RUNNING, updated_at=_now(None))
+            _write_record(root, RUNNING_DIR, claimed)
+            transferred = True
+            return JobClaim(claimed, job_lock, workspace_lock)
+        finally:
+            if not transferred:
+                if workspace_lock is not None:
+                    workspace_lock.release()
+                job_lock.release()
     return None
 
 
@@ -527,8 +510,9 @@ class JobWorker:
                         future.result()
                         executed += 1
             finally:
-                for claim in pending.values():
-                    claim.release()
+                for future, claim in pending.items():
+                    if future.cancel():
+                        claim.release()
         return executed
 
     def run_forever(self, stop: threading.Event) -> None:

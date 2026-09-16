@@ -22,3 +22,7 @@ The API application is a runtime entry point under `apps/api` (stdlib `Threading
 Command line: `python -m paper_api [--workspace DIR] [--data-dir DIR] [--jobs-root DIR] [--port N]`, where `--jobs-root` defaults to `.jobs`.
 
 When broader contracts exist they will live in `schemas/api/` as OpenAPI. `just schema` currently reports that no OpenAPI documents are defined.
+
+## Retranslation document binding
+
+The browser submits `{nodeIds, revision}` to `/api/retranslate`. The server resolves the workspace binding from the current Viewer manifest, so importing a second document requires no API restart. Clients do not submit a workspace path. An invalid revision type returns 400. A stale revision, including a competing publication during computation, returns 409; the latter commits no workspace updates from this request. Legacy clients may omit revision; manifests without a workspace binding fall back to the startup `--workspace`. Locking and publication contracts: [storage](storage.en.md).
