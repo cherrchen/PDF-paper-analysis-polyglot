@@ -95,6 +95,8 @@ EVIDENCE 阶段的 provider 是可选 specialist：一个 provider 失败只降�
   running/   <jobId>.json     已被存活的 worker 认领
   finished/  <jobId>.json     终态（succeeded / failed）
   locks/     job-<jobId>.lock 与 workspace-<workspaceHash>.lock
+  inbox/     <slug>-<sha256 前 8 位>.pdf    上传收件箱（演示控制台）
+  worker.json                                worker 心跳六键（演示控制台）
 ```
 
 Job 记录字段：`jobVersion`（当前 `0.1.0`）、`id`（32 位小写 hex）、`status`、`source`、`workspace`、`viewerDataDir`、`attempt`（从 1 起）、`createdAt`、`updatedAt`、`stage`、`error`、`issues`。记录以原子 rename 在三个目录间迁移；`get_job` / `list_jobs` 按 `queued > running > finished` 去重，崩溃窗口内不会出现两份可见记录。未知 `jobVersion`、非法 `id`、无法解析的记录一律明确报错。
@@ -118,6 +120,22 @@ Job 记录字段：`jobVersion`（当前 `0.1.0`）、`id`（32 位小写 hex）
 Issue 形状必须能通过 `document_model.generated.schema_models.Issue` 校验（含 `id`、`producer`、`message`、`affectedIds`）。job 级 Issue **只存 job 记录**，记录的是「哪个阶段整体失败」；文档内 Issue（含批次 D 的 provider 降级）由 EVIDENCE/SEMANTIC 阶段写入 `semantic.json`，见上。
 
 权威实现：`packages/python/pdf-pipeline/src/pdf_pipeline/jobs.py` 与 `pipeline.py` 的 `_execute_stage`；HTTP 契约见 [HTTP API](api.md)；决策理由见 Agent Note `2026-09-14-m8-batch-b-job-orchestration`。
+
+## 演示控制台
+
+### 上传收件箱
+
+`POST /api/uploads`（见 [HTTP API](api.md)）把浏览器里的字节落到 `<jobs-root>/inbox/`：先流式写 `.{slug}.part` 并累加 sha256，成功后用 `Path.replace` 落成 `<slug>-<sha256 前 8 位>.pdf`；任何失败路径都在 `finally` 里删掉 `.part`。`slug` 由客户端文件名的 stem 规范化而来（`[A-Za-z0-9._-]` 之外的连续字符折成一个 `-`），文件名由**内容摘要**决定而非客户端字节，因此同一份 PDF 重复上传复用同一文件与同一 workspace（`<jobs-root>/workspaces/<slug>-<digest 前 8 位>`，该目录由 `run_pipeline` 创建）。上限 `MAX_UPLOAD_BYTES`（64 MiB）在流式接收时按累计字节执行（`Content-Length` 已声明超限则先 413 且不读 body），前 5 字节必须是 `%PDF-`。`inbox/` 由端点按需 `mkdir(parents=True, exist_ok=True)` 创建，workspace 目录不预先创建。
+
+### worker 心跳
+
+`pdf_pipeline.jobs` 在 `<jobs-root>/worker.json` 写六键心跳：`heartbeatVersion`（`HEARTBEAT_VERSION`）、`pid`、`startedAt`、`updatedAt`、`concurrency`、`running`。`JobWorker.run_forever` 启动一个 daemon 线程每 `HEARTBEAT_INTERVAL_S`（2 s）原子重写一次；`_execute` 在作业前后用锁维护 `running`；`run_once` 与正常退出调用 `clear_heartbeat` 删除文件（`--once` 不留陈旧心跳）。心跳写失败（`OSError`）被吞掉——心跳绝不能让 worker 死。`read_heartbeat` 对缺失文件、坏 JSON 与类型不符一律返回 `None`。`GET /api/status` 以 `ageSeconds <= HEARTBEAT_STALE_S`（15 s）判定 `alive`：worker 存活因此由显式心跳决定，不再从排队长度推断。多 worker 共用同一 jobs root 时后写者覆盖前者、任一方正常退出即删文件——本仓库只起一个 worker，这是有意的。
+
+### 已提交 workspace 的原样重发布
+
+`pipeline.republish_workspace_viewer(workspace_dir, *, viewer_data_dir)` 把已提交的 workspace 产物原样发布成新的 viewer revision，供控制台的 select / history 两个表面「打开」用：不跑任何 stage（不调 provider、不编译 LaTeX）、**不写 workspace**（不调 `commit_stage`、不写 `viewer-publication.json`），只在 viewer 目录写新 revision 并原子翻 manifest，因此 INDEX 的发布回执仍由 `run_pipeline` / `rerender_workspace` 独占。前置条件是除 INDEX 外每个阶段的产物仍 `artifacts_intact`（COMPLETED 且哈希仍等于清单）且 `mapping.json` 存在，否则抛 `WorkspaceError`（消息列出未提交的阶段名）。target 侧锚点由 `recover_render_anchors(target.pdf, semantic)` 现场恢复——canonical mapping 只带 source 侧绑定。锁序与其它写作路径一致：workspace → viewer。
+
+`GET /api/workspaces` 的全部数据来自只读枚举与摘要：`discover_workspaces(jobs_root=…, extra=…)` 汇集 `<jobs-root>/workspaces/*/workspace.json` 的父目录与显式给出的目录（按 resolve 去重，按 manifest mtime 降序），`summarize_workspace(root)` 返回 `WorkspaceSummary`——`stages` 恒含全部 8 个阶段名（缺记录为 `pending`）、`complete` 表示除 INDEX 外每一阶段 `artifacts_intact()` 且 `mapping.json` 存在、坏清单与缺失清单都降级为 `error` 非空 + `complete=False` 而不抛异常。
 
 ## 仍未决
 

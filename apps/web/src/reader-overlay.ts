@@ -2,7 +2,11 @@ import type { Fragment, ReaderModel, Side } from "./mapping.js";
 import { fragmentsForSide } from "./mapping.js";
 import { requiredElement } from "./reader-dom.js";
 
-export type PageMetrics = { widthPt: number; heightPt: number; canvasHeight: number };
+/**
+ * Page geometry in PDF points. The canvas is fit to the pane width by CSS, so
+ * layout math converts through scroll extents instead of canvas pixels.
+ */
+export type PageMetrics = { widthPt: number; heightPt: number };
 
 export type OverlayHost = {
   model: ReaderModel;

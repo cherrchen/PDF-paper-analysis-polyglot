@@ -14,7 +14,7 @@ import {
   type ReaderModel,
   type Side,
 } from "./mapping.js";
-import { PaneRenderer, PDF_RENDER_SCALE, type RenderCommit } from "./pane-render.js";
+import { PaneRenderer, type RenderCommit } from "./pane-render.js";
 import { requiredElement } from "./reader-dom.js";
 import { drawOverlay, type PageMetrics } from "./reader-overlay.js";
 import {
@@ -52,14 +52,14 @@ export class DualPaneReader {
   readonly currentPage: Record<Side, number> = { source: -1, target: -1 };
   readonly suppressUntil: Record<Side, number> = { source: 0, target: 0 };
   readonly metrics: Record<Side, PageMetrics> = {
-    source: { widthPt: 612, heightPt: 792, canvasHeight: 792 * PDF_RENDER_SCALE },
-    target: { widthPt: 612, heightPt: 792, canvasHeight: 792 * PDF_RENDER_SCALE },
+    source: { widthPt: 612, heightPt: 792 },
+    target: { widthPt: 612, heightPt: 792 },
   };
 
   readonly viewer = requiredElement<HTMLElement>("#viewer");
   readonly viewerStatus = requiredElement<HTMLElement>("#viewer-status");
   readonly inspectorRoot = requiredElement<HTMLElement>("#inspector");
-  readonly inspectorToggle = requiredElement<HTMLButtonElement>("#inspector-toggle");
+  readonly inspectorToggle = requiredElement<HTMLInputElement>("#inspector-toggle");
   readonly syncToggle = requiredElement<HTMLInputElement>("#sync-scroll");
 
   private readonly loadPdf: PdfLoader;
@@ -135,7 +135,6 @@ export class DualPaneReader {
     this.metrics[side] = {
       widthPt: commit.widthPt,
       heightPt: commit.heightPt,
-      canvasHeight: commit.canvasHeight,
     };
     this.redrawOverlay(side);
     requiredElement<HTMLElement>(`#${side}-page`).textContent =
@@ -157,16 +156,20 @@ export class DualPaneReader {
     this.commitPage(side, commit);
   }
 
+  /**
+   * Center a fragment using scroll extent ratios: the canvas is fit to the
+   * pane width by CSS, so canvas pixels and points differ by a scale the
+   * layout already applied inside `scrollHeight`.
+   */
   scrollFragmentIntoCenter(side: Side, fragment: Fragment): void {
     const container = this.scrollContainer(side);
-    const { heightPt, canvasHeight } = this.metrics[side];
-    const fragmentCenterPx =
-      ((fragment.geometry.y + fragment.geometry.height / 2) / heightPt) * canvasHeight;
+    const { heightPt } = this.metrics[side];
+    const ratio = (fragment.geometry.y + fragment.geometry.height / 2) / heightPt;
     const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
     this.suppressUntil[side] = performance.now() + SUPPRESS_MS;
     container.scrollTop = Math.max(
       0,
-      Math.min(fragmentCenterPx - container.clientHeight / 2, maxScroll),
+      Math.min(ratio * container.scrollHeight - container.clientHeight / 2, maxScroll),
     );
   }
 
@@ -211,8 +214,11 @@ export class DualPaneReader {
     if (!this.syncToggle.checked) return;
     if (performance.now() < this.suppressUntil[side]) return;
     const container = this.scrollContainer(side);
-    const { heightPt, canvasHeight } = this.metrics[side];
-    const centerPt = ((container.scrollTop + container.clientHeight / 2) * heightPt) / canvasHeight;
+    const { heightPt } = this.metrics[side];
+    const centerPt =
+      container.scrollHeight === 0
+        ? 0
+        : ((container.scrollTop + container.clientHeight / 2) / container.scrollHeight) * heightPt;
     const hits = this.model.indexes[side].inBand(
       this.currentPage[side],
       centerPt - SYNC_BAND_PT,
@@ -417,9 +423,8 @@ export class DualPaneReader {
         void this.showPage(side, this.currentPage[side] + 1);
       });
     }
-    this.inspectorToggle.addEventListener("click", () => {
-      this.inspectorOpen = !this.inspectorOpen;
-      this.inspectorToggle.setAttribute("aria-expanded", String(this.inspectorOpen));
+    this.inspectorToggle.addEventListener("change", () => {
+      this.inspectorOpen = this.inspectorToggle.checked;
       this.refreshInspector();
     });
   }

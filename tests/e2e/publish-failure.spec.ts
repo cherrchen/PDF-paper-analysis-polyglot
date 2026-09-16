@@ -149,6 +149,8 @@ test("publish failure restores every file; viewer reads the previous revision", 
     await sourceRegion.click();
     const targetRegion = page.locator(`#target-overlay [data-node-id="${jumpNodeId}"]`);
     await expect(targetRegion).toHaveAttribute("aria-pressed", "true");
+    // The region-info drawer floats over the target pane's right edge.
+    await page.uncheck("#inspector-toggle");
     await targetRegion.click();
     await expect(page.locator(`#source-overlay [data-node-id="${jumpNodeId}"]`)).toHaveAttribute(
       "aria-pressed",

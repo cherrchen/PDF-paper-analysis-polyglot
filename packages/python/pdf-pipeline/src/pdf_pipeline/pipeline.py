@@ -86,6 +86,7 @@ from pdf_pipeline.semantic import SEMANTIC_PRODUCER_VERSION, recover_semantic_do
 from pdf_pipeline.workspace import (
     STAGE_ORDER,
     Stage,
+    WorkspaceError,
     WorkspaceManager,
     sha256_bytes,
 )
@@ -1216,6 +1217,64 @@ def run_pipeline(
     }
     paths["viewer-data"] = data_dir
     return paths
+
+
+@resource_locked("workspace_dir", "workspace")
+def republish_workspace_viewer(workspace_dir: Path, *, viewer_data_dir: Path) -> str:
+    """Publish an existing workspace's committed artifacts to a viewer data dir.
+
+    No stage runs: no provider call, no LaTeX, no re-analysis. Every stage
+    except INDEX must be COMMITTED with artifacts that still hash to the
+    manifest, and ``mapping.json`` must exist. Nothing is written into the
+    workspace — the publication receipt belongs to the writer that owns it
+    (``run_pipeline`` / ``rerender_workspace``); a later run of either sees a
+    stale receipt and republishes. Returns the published revision id.
+
+    The canonical MappingBundle carries no render anchor (``RenderBinding``
+    holds ``renderAnchorIds`` only), so anchors are recovered from the
+    committed target PDF exactly as the INDEX stage recovers them.
+    """
+    workspace = WorkspaceManager(workspace_dir)
+    workspace.load()
+    missing = [
+        stage.value
+        for stage in STAGE_ORDER
+        if stage is not Stage.INDEX and not workspace.artifacts_intact(stage)
+    ]
+    if missing:
+        raise WorkspaceError(f"workspace stages are not committed: {', '.join(missing)}")
+    documents: dict[str, object] = {}
+    for name in (
+        "physical.json",
+        "layout.json",
+        "semantic.json",
+        "translation.json",
+        "mapping.json",
+    ):
+        path = workspace_dir / name
+        if not path.is_file():
+            raise WorkspaceError(f"workspace is missing {name}")
+        documents[name] = load_document(
+            _WORKSPACE_KINDS[name], json.loads(path.read_text(encoding="utf-8"))
+        )
+    physical = cast("PhysicalDocument", documents["physical.json"])
+    layout = cast("LayoutDocument", documents["layout.json"])
+    semantic = cast("SemanticDocument", documents["semantic.json"])
+    translation = cast("generated.TranslationLayer", documents["translation.json"])
+    mapping = cast("generated.MappingBundle", documents["mapping.json"])
+    target_pdf = workspace_dir / "target.pdf"
+    return _write_viewer_assets(
+        data_dir=viewer_data_dir,
+        source_pdf=(workspace_dir / "source.pdf").read_bytes(),
+        target_pdf=target_pdf,
+        mapping=mapping,
+        render_anchors=recover_render_anchors(target_pdf, semantic),
+        physical=physical,
+        layout=layout,
+        semantic=semantic,
+        translation=translation,
+        workspace_dir=workspace_dir,
+    )
 
 
 @resource_locked("workspace_dir", "workspace")

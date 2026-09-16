@@ -16,7 +16,6 @@ export type RenderCommit = {
   pageIndex: number;
   widthPt: number;
   heightPt: number;
-  canvasHeight: number;
 };
 
 export function isRenderCancelled(error: unknown): boolean {
@@ -133,7 +132,6 @@ export class PaneRenderer {
           pageIndex: bounded,
           widthPt: viewport.width / this.scale,
           heightPt: viewport.height / this.scale,
-          canvasHeight: viewport.height,
         };
       })();
       return {

@@ -95,6 +95,8 @@ Authoritative implementation: `pdf_pipeline.routing`, `pdf_pipeline.evidence.nor
   running/   <jobId>.json     claimed by a live worker
   finished/  <jobId>.json     terminal (succeeded / failed)
   locks/     job-<jobId>.lock and workspace-<workspaceHash>.lock
+  inbox/     <slug>-<sha256 first 8>.pdf    upload inbox (demo console)
+  worker.json                               six-key worker heartbeat (demo console)
 ```
 
 Job record fields: `jobVersion` (currently `0.1.0`), `id` (32 lowercase hex), `status`, `source`, `workspace`, `viewerDataDir`, `attempt` (from 1), `createdAt`, `updatedAt`, `stage`, `error`, `issues`. Records move between the three directories by atomic rename; `get_job` / `list_jobs` deduplicate with `queued > running > finished` priority, so a crash window never exposes two visible records. An unknown `jobVersion`, an invalid `id`, and an unparsable record are all explicit errors.
@@ -118,6 +120,22 @@ Stage execution is wrapped in `pipeline._execute_stage`, which raises `StageExec
 The Issue shape must validate against `document_model.generated.schema_models.Issue` (including `id`, `producer`, `message`, `affectedIds`). A job-level Issue is stored **only in the job record** and records "which stage failed as a whole"; in-document Issues (including batch D provider degradations) are written into `semantic.json` by the EVIDENCE/SEMANTIC stages, see above.
 
 Authoritative implementation: `packages/python/pdf-pipeline/src/pdf_pipeline/jobs.py` and `_execute_stage` in `pipeline.py`; HTTP contract in [HTTP API](api.en.md); decision rationale in Agent Note `2026-09-14-m8-batch-b-job-orchestration`.
+
+## Demo console
+
+### Upload inbox
+
+`POST /api/uploads` (see [HTTP API](api.en.md)) lands browser bytes in `<jobs-root>/inbox/`: it streams into `.{slug}.part` while accumulating a sha256, then `Path.replace`s it to `<slug>-<sha256 first 8>.pdf`; every failure path removes the `.part` file in a `finally` block. `slug` is normalized from the client filename's stem (runs of characters outside `[A-Za-z0-9._-]` collapse to one `-`), and the filename derives from the **content digest** rather than from client bytes, so uploading the same PDF twice reuses one file and one workspace (`<jobs-root>/workspaces/<slug>-<digest first 8>`, a directory `run_pipeline` creates). `MAX_UPLOAD_BYTES` (64 MiB) is enforced on accumulated bytes while streaming (a declared `Content-Length` over the cap returns 413 before the body is read), and the first 5 bytes must be `%PDF-`. The endpoint creates `inbox/` on demand with `mkdir(parents=True, exist_ok=True)`; the workspace directory is never pre-created.
+
+### Worker heartbeat
+
+`pdf_pipeline.jobs` writes a six-key heartbeat to `<jobs-root>/worker.json`: `heartbeatVersion` (`HEARTBEAT_VERSION`), `pid`, `startedAt`, `updatedAt`, `concurrency`, `running`. `JobWorker.run_forever` starts a daemon thread that atomically rewrites it every `HEARTBEAT_INTERVAL_S` (2 s); `_execute` maintains `running` under a lock across each job; `run_once` and normal exit call `clear_heartbeat` to delete the file (`--once` never leaves a stale heartbeat). A failed heartbeat write (`OSError`) is swallowed — a heartbeat must never kill the worker. `read_heartbeat` returns `None` for a missing file, broken JSON, or a payload whose types do not match. `GET /api/status` treats `ageSeconds <= HEARTBEAT_STALE_S` (15 s) as `alive`: worker liveness therefore comes from an explicit heartbeat instead of being inferred from queue length. With several workers sharing one jobs root the last writer wins and any worker exiting normally deletes the file — this repository runs exactly one worker, which is intentional.
+
+### Republishing a committed workspace as-is
+
+`pipeline.republish_workspace_viewer(workspace_dir, *, viewer_data_dir)` publishes an already-committed workspace's artifacts as a new viewer revision, which is what the console's select and history surfaces "open" through: no stage runs (no provider call, no LaTeX compile) and **nothing is written into the workspace** (no `commit_stage`, no `viewer-publication.json`) — only a new viewer revision plus an atomic manifest flip, so the INDEX publication receipt stays owned by `run_pipeline` / `rerender_workspace`. Preconditions are that every stage except INDEX still has `artifacts_intact` (COMPLETED with hashes still matching the manifest) and that `mapping.json` exists, otherwise it raises `WorkspaceError` (whose message lists the uncommitted stages). Target-side anchors are recovered on the spot with `recover_render_anchors(target.pdf, semantic)` because canonical mapping carries only source-side bindings. Lock order matches every other writing path: workspace → viewer.
+
+All of `GET /api/workspaces` comes from read-only enumeration and summarization: `discover_workspaces(jobs_root=…, extra=…)` gathers the parents of `<jobs-root>/workspaces/*/workspace.json` plus explicitly named directories (deduplicated by resolve, newest manifest mtime first), and `summarize_workspace(root)` returns a `WorkspaceSummary` — `stages` always names all eight stages (a missing record reads `pending`), `complete` means every stage except INDEX is `artifacts_intact()` and `mapping.json` exists, and both a broken manifest and a missing one degrade to a non-null `error` plus `complete=False` instead of raising.
 
 ## Still unresolved
 

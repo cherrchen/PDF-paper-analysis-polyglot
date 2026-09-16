@@ -132,6 +132,9 @@ test("clicking a mapped region navigates and highlights both directions", async 
   await expect(targetRegion).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#viewer-status")).toContainText("Linked region selected");
 
+  // The region-info drawer floats over the target pane's right edge; hide it
+  // so the click lands on the mapped region.
+  await page.uncheck("#inspector-toggle");
   await targetRegion.click();
   await expect(page.locator(`#source-overlay [data-node-id="${nodeId}"]`)).toHaveAttribute(
     "aria-pressed",

@@ -142,9 +142,13 @@ test("import PDF → analyze → translate → target PDF → jumps", async ({ p
 
     await page.goto("/");
     await expect(page.locator("#viewer")).toBeVisible();
+    // Region info is a floating drawer over the panes; uncheck it so the
+    // overlay probes below land on mapped regions, not on the card.
+    await page.uncheck("#inspector-toggle");
     const revisionBefore = await page.locator("#viewer").getAttribute("data-revision");
     expect(revisionBefore).toBeTruthy();
 
+    await page.click("#tab-upload");
     await page.fill("#import-source", SOURCE_PDF);
     await page.fill("#import-workspace", workspace);
     await page.click("#import-submit");

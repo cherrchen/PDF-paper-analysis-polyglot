@@ -66,13 +66,11 @@ h1 {
 }
 
 #reader-body {
-  display: flex;
-  align-items: flex-start;
+  position: relative;
+  display: block;
 }
 
 #panes {
-  flex: 1 1 auto;
-  min-width: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(0.8rem, 2vw, 1.6rem);
@@ -81,6 +79,7 @@ h1 {
 }
 
 .pane {
+  position: relative;
   min-width: 0;
   padding: 0.8rem;
   border: 1px solid #afbec7;
@@ -103,9 +102,16 @@ h2 {
 }
 
 .page-controls {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  z-index: 4;
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  background: rgb(247 249 250 / 92%);
+  border: 1px solid #afbec7;
+  padding: 0.2rem 0.35rem;
 }
 
 .page-controls button {
@@ -140,25 +146,14 @@ h2 {
   text-align: center;
 }
 
-#reader-toolbar {
+#surface-tabs {
   display: flex;
-  gap: 1rem;
+  gap: 0.5rem;
   align-items: center;
-  margin: 0 0 0.6rem;
+  flex-wrap: wrap;
 }
 
-#sync-scroll-label {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-  color: #21404e;
-  font:
-    0.78rem / 1.2 ui-monospace,
-    "SFMono-Regular",
-    monospace;
-}
-
-#inspector-toggle {
+#surface-tabs button {
   padding: 0.25rem 0.7rem;
   border: 1px solid #9db6c2;
   border-radius: 4px;
@@ -171,12 +166,52 @@ h2 {
   cursor: pointer;
 }
 
+#surface-tabs button[aria-selected="true"] {
+  color: #fff;
+  background: #234f68;
+}
+
+#sync-scroll-label,
+#overlay-visible-label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: #21404e;
+  font:
+    0.78rem / 1.2 ui-monospace,
+    "SFMono-Regular",
+    monospace;
+}
+
+#upload-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  border: 1px dashed #9db6c2;
+  border-radius: 4px;
+  background: #fff;
+  color: #21404e;
+  font:
+    0.72rem / 1.3 ui-monospace,
+    "SFMono-Regular",
+    monospace;
+}
+
+#upload-status {
+  margin: 0.4rem 0 0.5rem;
+  color: #486675;
+  font:
+    0.72rem / 1.4 ui-monospace,
+    "SFMono-Regular",
+    monospace;
+  overflow-wrap: anywhere;
+}
+
 #import-panel {
   display: flex;
-  flex: 1 1 100%;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.35rem;
   color: #21404e;
   font:
     0.75rem / 1.2 ui-monospace,
@@ -184,16 +219,9 @@ h2 {
     monospace;
 }
 
-#import-panel label {
-  display: flex;
-  gap: 0.35rem;
-  align-items: center;
-}
-
 #import-source,
 #import-workspace {
-  flex: 1 1 12rem;
-  min-width: 8rem;
+  width: 100%;
   padding: 0.25rem 0.4rem;
   border: 1px solid #9db6c2;
   border-radius: 4px;
@@ -218,32 +246,145 @@ h2 {
 }
 
 #import-status {
-  flex: 1 1 100%;
   color: #486675;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .page-scroll {
-  max-height: 70vh;
-  overflow: auto;
+  max-height: 72vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-#inspector {
-  flex: 0 0 320px;
-  width: 320px;
-  max-height: 70vh;
+/*
+ * The console drawer floats over the panes instead of taking part in their
+ * width: both PDFs keep the full column width whether or not a surface is
+ * open. `bottom: 3.5rem` keeps the pane page navigation (bottom-right, ~2.5rem
+ * tall) clickable underneath the drawer.
+ */
+#surface-panels {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 3.5rem;
+  width: min(360px, 34vw);
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  margin: 0 0 0 0.8rem;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.surface-panel,
+#inspector {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   padding: 0.7rem;
   border: 1px solid #d3dde2;
   border-radius: 6px;
-  background: #f6fafb;
+  background: rgb(246 250 251 / 96%);
+  box-shadow: 0 10px 30px rgb(24 36 45 / 12%);
 }
 
+.surface-panel[hidden],
 #inspector[hidden] {
   display: none;
+}
+
+.surface-panel h3 {
+  margin: 0;
+  color: #486675;
+  font:
+    600 0.68rem / 1.2 ui-monospace,
+    "SFMono-Regular",
+    monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.surface-panel button {
+  align-self: flex-start;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid #9db6c2;
+  border-radius: 4px;
+  background: #fff;
+  color: #0a6996;
+  font:
+    0.7rem / 1.3 ui-monospace,
+    "SFMono-Regular",
+    monospace;
+  cursor: pointer;
+}
+
+.surface-panel button:hover:not(:disabled) {
+  color: #fff;
+  background: #234f68;
+}
+
+.surface-panel button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.surface-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.surface-panel li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem;
+  border: 1px solid #e2ebef;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.surface-panel p,
+.surface-panel li span {
+  margin: 0;
+  color: #21404e;
+  font:
+    0.72rem / 1.45 ui-monospace,
+    "SFMono-Regular",
+    monospace;
+  overflow-wrap: anywhere;
+}
+
+#select-status,
+#history-status {
+  color: #486675;
+}
+
+.select-name,
+.history-status {
+  font-weight: 600;
+}
+
+.select-stages,
+.select-updated,
+.history-updated {
+  color: #486675;
+}
+
+.select-error,
+.history-error {
+  color: #b03a1b;
+}
+
+#inspector {
+  gap: 0.6rem;
+  overflow: auto;
 }
 
 .inspector-section {
@@ -309,8 +450,8 @@ h2 {
   position: relative;
   overflow: hidden;
   background: #fff;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-stage canvas {

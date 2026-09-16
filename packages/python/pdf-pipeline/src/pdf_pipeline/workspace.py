@@ -42,6 +42,13 @@ stale fingerprints instead of being rejected or migrated. Rebinding a
 workspace to different source bytes is opt-in via
 ``open_or_create(..., accept_source_change=True)`` and drops every stage
 record.
+
+``load`` is the read-only counterpart of ``open_or_create``: it adopts an
+existing manifest without writing one, so a reader (a workspace listing, a
+republish) can inspect a workspace it must not modify. ``summarize_workspace``
+and ``discover_workspaces`` build on it and degrade a broken manifest into an
+``error`` field instead of raising, because one bad row must not hide a
+listing.
 """
 
 from __future__ import annotations
@@ -52,12 +59,13 @@ import shutil
 import uuid
 from contextlib import suppress
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
     from pathlib import Path
 
 WORKSPACE_VERSION = "0.1.0"
@@ -72,6 +80,12 @@ SUPPORTED_WORKSPACE_VERSIONS: tuple[str, ...] = ("0.1.0",)
 MANIFEST_NAME = "workspace.json"
 
 STAGING_DIR = ".staging"
+
+# Directory holding one subdirectory per workspace under a jobs root. Named
+# here because this module owns workspace discovery; the jobs root's other
+# entries (``queued``/``running``/``finished``/``locks``) stay in
+# ``pdf_pipeline.jobs``.
+WORKSPACES_DIRNAME = "workspaces"
 
 
 class StageStatus(StrEnum):
@@ -277,6 +291,24 @@ class WorkspaceManager:
             self._write_manifest()
         self.cleanup_staging()
 
+    def load(self) -> None:
+        """Populate stage records from the on-disk manifest without writing.
+
+        The workspace's own ``source.pdf`` supplies the fingerprint the manifest
+        is checked against, so a workspace bound to another source is refused
+        exactly as ``open_or_create`` refuses it. Nothing is written: a rejected
+        manifest leaves the workspace untouched on disk and in memory.
+        """
+        if not self.manifest_path.is_file():
+            raise WorkspaceError(f"missing workspace manifest: {self.manifest_path}")
+        try:
+            source_bytes = (self.root / "source.pdf").read_bytes()
+        except OSError as error:
+            raise WorkspaceError(f"unreadable workspace source PDF: {error}") from error
+        mismatch = self._load_existing(sha256_bytes(source_bytes))
+        if mismatch is not None:
+            raise mismatch
+
     def _load_existing(self, source_fingerprint: str) -> WorkspaceSourceMismatchError | None:
         """Parse the on-disk manifest; return a mismatch instead of raising it.
 
@@ -382,6 +414,23 @@ class WorkspaceManager:
         return record.input_fingerprint == input_fingerprint(
             record.producer_version, self._upstream_artifacts(stage), self._stage_config(stage)
         )
+
+    def artifacts_intact(self, stage: Stage) -> bool:
+        """True when ``stage`` is COMPLETED and every artifact still verifies.
+
+        Unlike ``stage_completed`` this does not compare the recorded input
+        fingerprint against upstream records and stage config: a reader that
+        only consumes committed artifacts needs them intact, not still current
+        under the stage's cache key.
+        """
+        record = self.stages.get(stage)
+        if record is None or record.status is not StageStatus.COMPLETED:
+            return False
+        for name, digest in record.artifacts.items():
+            path = self._artifact_path(name)
+            if not path.is_file() or sha256_bytes(path.read_bytes()) != digest:
+                return False
+        return True
 
     def _upstream_artifacts(self, stage: Stage, *, required: bool = False) -> dict[str, str]:
         """Content hashes of every artifact committed by the stage's upstream.
@@ -504,3 +553,108 @@ class WorkspaceManager:
     def cleanup_staging(self) -> None:
         """Remove staging directories left behind by an interrupted run."""
         shutil.rmtree(self.root / STAGING_DIR, ignore_errors=True)
+
+
+@dataclass(frozen=True)
+class WorkspaceSummary:
+    """Read-only digest of one workspace directory.
+
+    ``stages`` names every pipeline stage, so a listing can render progress
+    without knowing which records the manifest happens to carry: a stage with
+    no record reads ``"pending"``. ``complete`` means every stage except INDEX
+    is COMMITTED with intact artifacts and ``mapping.json`` exists — the
+    precondition for republishing the workspace to a viewer.
+    """
+
+    name: str
+    path: str
+    workspace_version: str
+    stages: dict[str, str]
+    complete: bool
+    updated_at: str
+    error: str | None
+
+    def to_json(self) -> dict[str, object]:
+        return {
+            "name": self.name,
+            "path": self.path,
+            "workspaceVersion": self.workspace_version,
+            "stages": dict(self.stages),
+            "complete": self.complete,
+            "updatedAt": self.updated_at,
+            "error": self.error,
+        }
+
+
+def _manifest_mtime(root: Path) -> float:
+    try:
+        return (root / MANIFEST_NAME).stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def _workspace_version(root: Path) -> str:
+    """The manifest's declared version, even when this build cannot read it."""
+    try:
+        payload = json.loads((root / MANIFEST_NAME).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    version = payload.get("workspaceVersion")
+    return version if isinstance(version, str) else ""
+
+
+def summarize_workspace(root: Path) -> WorkspaceSummary:
+    """Describe one workspace directory, degrading instead of raising.
+
+    A listing renders one row per directory, so a single broken manifest must
+    degrade its own row rather than the whole listing: ``WorkspaceError`` and
+    ``OSError`` become ``error`` with ``complete=False``. A missing manifest
+    takes that same path. Nothing is written.
+    """
+    stages = {stage.value: StageStatus.PENDING.value for stage in STAGE_ORDER}
+    complete = False
+    error: str | None = None
+    workspace = WorkspaceManager(root)
+    try:
+        workspace.load()
+    except (WorkspaceError, OSError) as failure:
+        error = str(failure)
+    else:
+        for stage, record in workspace.stages.items():
+            stages[stage.value] = record.status.value
+        complete = (root / "mapping.json").is_file() and all(
+            workspace.artifacts_intact(stage) for stage in STAGE_ORDER if stage is not Stage.INDEX
+        )
+    updated_at = ""
+    mtime = _manifest_mtime(root)
+    if mtime > 0:
+        updated_at = datetime.fromtimestamp(mtime, UTC).isoformat(timespec="seconds")
+    return WorkspaceSummary(
+        name=root.name,
+        path=str(root),
+        workspace_version=_workspace_version(root),
+        stages=stages,
+        complete=complete,
+        updated_at=updated_at,
+        error=error,
+    )
+
+
+def discover_workspaces(*, jobs_root: Path, extra: Iterable[Path] = ()) -> list[Path]:
+    """Workspace directories under ``jobs_root`` plus any explicitly named.
+
+    A directory counts only when it carries ``workspace.json``. Paths come back
+    resolved: the listing feeds a browser client that must later name one of
+    them as an absolute read source, and the API's own workspace is normally a
+    sibling of the jobs root rather than inside it. Deduplication uses the
+    resolved path for the same reason, and the order is newest first by
+    manifest mtime, then by name, so the listing is stable between calls.
+    """
+    candidates = [
+        path.parent for path in (jobs_root / WORKSPACES_DIRNAME).glob(f"*/{MANIFEST_NAME}")
+    ]
+    candidates.extend(path for path in extra if (path / MANIFEST_NAME).is_file())
+    unique = {candidate.resolve(): candidate for candidate in candidates}
+    return sorted(unique, key=lambda root: (-_manifest_mtime(root), root.name))

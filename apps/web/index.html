@@ -14,62 +14,149 @@
         <p id="status" aria-live="polite">Preparing document workspace…</p>
       </header>
       <section id="viewer" hidden>
-        <div id="reader-toolbar">
+        <div id="surface-tabs" role="tablist" aria-label="Console surfaces">
+          <button
+            id="tab-upload"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-upload"
+          >
+            Upload
+          </button>
+          <button
+            id="tab-select"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-select"
+          >
+            Select
+          </button>
+          <button
+            id="tab-history"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-history"
+          >
+            History
+          </button>
+          <button
+            id="tab-status"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-status"
+          >
+            Status
+          </button>
           <label id="sync-scroll-label"
             ><input type="checkbox" id="sync-scroll" />Sync scroll</label
           >
-          <button id="inspector-toggle" type="button" aria-expanded="false">Inspector</button>
-          <form id="import-panel" onsubmit="return false">
-            <label for="import-source">Source PDF path</label>
-            <input type="text" id="import-source" autocomplete="off" spellcheck="false" />
-            <label for="import-workspace">Workspace path</label>
-            <input type="text" id="import-workspace" autocomplete="off" spellcheck="false" />
-            <button id="import-submit" type="button">Import &amp; analyze</button>
-            <output id="import-status" aria-live="polite"></output>
-          </form>
+          <label id="overlay-visible-label"
+            ><input type="checkbox" id="inspector-toggle" checked />Region info</label
+          >
         </div>
         <div id="reader-body">
-        <div id="panes">
-          <article class="pane" id="source-pane">
-            <header class="pane-header">
-              <div>
+          <div id="panes">
+            <article class="pane" id="source-pane">
+              <header class="pane-header">
                 <p class="pane-role">Original evidence</p>
-                <h2>Source</h2>
+                <h2>Origin</h2>
+              </header>
+              <div class="page-scroll">
+                <div class="page-stage">
+                  <canvas id="source-canvas"></canvas>
+                  <div class="mapping-overlay" id="source-overlay"></div>
+                </div>
               </div>
               <nav class="page-controls" aria-label="Source pages">
                 <button id="source-previous" type="button">Previous</button>
                 <output id="source-page">– / –</output>
                 <button id="source-next" type="button">Next</button>
               </nav>
-            </header>
-            <div class="page-scroll">
-              <div class="page-stage">
-                <canvas id="source-canvas"></canvas>
-                <div class="mapping-overlay" id="source-overlay"></div>
-              </div>
-            </div>
-          </article>
-          <article class="pane" id="target-pane">
-            <header class="pane-header">
-              <div>
+            </article>
+            <article class="pane" id="target-pane">
+              <header class="pane-header">
                 <p class="pane-role">Reconstructed reading copy</p>
                 <h2>Target</h2>
+              </header>
+              <div class="page-scroll">
+                <div class="page-stage">
+                  <canvas id="target-canvas"></canvas>
+                  <div class="mapping-overlay" id="target-overlay"></div>
+                </div>
               </div>
               <nav class="page-controls" aria-label="Target pages">
                 <button id="target-previous" type="button">Previous</button>
                 <output id="target-page">– / –</output>
                 <button id="target-next" type="button">Next</button>
               </nav>
-            </header>
-            <div class="page-scroll">
-              <div class="page-stage">
-                <canvas id="target-canvas"></canvas>
-                <div class="mapping-overlay" id="target-overlay"></div>
+            </article>
+          </div>
+          <div id="surface-panels">
+            <section
+              id="panel-upload"
+              class="surface-panel"
+              role="tabpanel"
+              aria-labelledby="tab-upload"
+              hidden
+            >
+              <h3>Upload</h3>
+              <p id="upload-status" aria-live="polite"></p>
+              <div id="upload-drop">
+                <label for="upload-file">Drop a PDF or choose a file</label>
+                <input type="file" id="upload-file" accept=".pdf,application/pdf" />
               </div>
-            </div>
-          </article>
-        </div>
-        <aside id="inspector" hidden aria-label="Semantic inspector"></aside>
+              <form id="import-panel" onsubmit="return false">
+                <label for="import-source">Source PDF path</label>
+                <input type="text" id="import-source" autocomplete="off" spellcheck="false" />
+                <label for="import-workspace">Workspace path</label>
+                <input type="text" id="import-workspace" autocomplete="off" spellcheck="false" />
+                <button id="import-submit" type="button">Import &amp; analyze</button>
+                <output id="import-status" aria-live="polite"></output>
+              </form>
+            </section>
+            <section
+              id="panel-select"
+              class="surface-panel"
+              role="tabpanel"
+              aria-labelledby="tab-select"
+              hidden
+            >
+              <h3>Select workspace</h3>
+              <button id="select-refresh" type="button">Refresh</button>
+              <p id="select-status" aria-live="polite"></p>
+              <ul id="select-list"></ul>
+            </section>
+            <section
+              id="panel-history"
+              class="surface-panel"
+              role="tabpanel"
+              aria-labelledby="tab-history"
+              hidden
+            >
+              <h3>Job history</h3>
+              <button id="history-refresh" type="button">Refresh</button>
+              <p id="history-status" aria-live="polite"></p>
+              <ul id="history-list"></ul>
+            </section>
+            <section
+              id="panel-status"
+              class="surface-panel"
+              role="tabpanel"
+              aria-labelledby="tab-status"
+              hidden
+            >
+              <h3>Status</h3>
+              <p id="status-api"></p>
+              <p id="status-worker"></p>
+              <p id="status-jobs"></p>
+              <p id="status-viewer"></p>
+            </section>
+            <aside id="inspector" hidden aria-label="Semantic inspector"></aside>
+          </div>
         </div>
         <p id="viewer-status" aria-live="polite">Loading linked regions…</p>
       </section>

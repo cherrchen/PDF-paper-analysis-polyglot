@@ -8,6 +8,12 @@ A jobs root is a plain directory with four subdirectories:
 ``finished/`` terminal records (succeeded or failed)
 ``locks/``    ``flock`` files, one per job and one per workspace
 
+and one optional file, ``worker.json``: the liveness record of whatever
+worker is serving this root (``write_heartbeat``). It exists only while a
+worker runs, so a reader distinguishes "no worker" from "worker died" by
+absence versus age — a queue snapshot alone cannot tell a live worker from a
+crashed one.
+
 Each job is one ``<jobId>.json`` record moved between the subdirectories by
 atomic rename, so a reader never sees a half-written record and a crash
 window never leaves two visible copies (``get_job``/``list_jobs`` prefer the
@@ -37,7 +43,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import threading
 import uuid
 from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
@@ -51,7 +59,6 @@ from pdf_pipeline.locks import FileLock
 from pdf_pipeline.workspace import Stage
 
 if TYPE_CHECKING:
-    import threading
     from collections.abc import Sequence
 
 JOB_VERSION = "0.1.0"
@@ -60,6 +67,16 @@ QUEUED_DIR = "queued"
 RUNNING_DIR = "running"
 FINISHED_DIR = "finished"
 LOCKS_DIR = "locks"
+
+# Worker liveness record, one per jobs root. A root normally has exactly one
+# worker (`just` starts one); two workers on the same root overwrite each
+# other's beat, and whichever exits cleanly removes the file. That is
+# deliberate: the record answers "is a worker serving this root right now",
+# not "which workers exist".
+HEARTBEAT_NAME = "worker.json"
+HEARTBEAT_VERSION = "0.1.0"
+HEARTBEAT_INTERVAL_S = 2.0
+HEARTBEAT_STALE_S = 15.0
 
 POLL_INTERVAL_S = 1.0
 
@@ -465,6 +482,63 @@ def _default_runner(source: Path, workspace: Path, viewer_data_dir: Path | None)
     return run_pipeline(source, workspace, viewer_data_dir=viewer_data_dir)
 
 
+def heartbeat_path(root: Path) -> Path:
+    """The liveness record for whichever worker serves ``root``."""
+    return root / HEARTBEAT_NAME
+
+
+def write_heartbeat(
+    root: Path,
+    *,
+    started_at: str,
+    concurrency: int,
+    running: int,
+    now: datetime | None = None,
+) -> dict[str, object]:
+    """Publish one liveness record atomically; the last writer wins."""
+    payload: dict[str, object] = {
+        "heartbeatVersion": HEARTBEAT_VERSION,
+        "pid": os.getpid(),
+        "startedAt": started_at,
+        "updatedAt": _now(now),
+        "concurrency": concurrency,
+        "running": running,
+    }
+    _atomic_write_json(heartbeat_path(root), payload)
+    return payload
+
+
+def read_heartbeat(root: Path) -> dict[str, object] | None:
+    """The current liveness record, or ``None`` when absent or malformed.
+
+    A half-written or foreign file must read as "no worker", never as a
+    worker with invented fields, so every key is type-checked rather than
+    defaulted.
+    """
+    try:
+        payload = json.loads(heartbeat_path(root).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    counts = ("pid", "concurrency", "running")
+    stamps = ("heartbeatVersion", "startedAt", "updatedAt")
+    if not all(key in payload for key in (*counts, *stamps)):
+        return None
+    if not all(
+        isinstance(payload[key], int) and not isinstance(payload[key], bool) for key in counts
+    ):
+        return None
+    if not all(isinstance(payload[key], str) for key in stamps):
+        return None
+    return payload
+
+
+def clear_heartbeat(root: Path) -> None:
+    """Drop the liveness record: no worker serves ``root`` any more."""
+    heartbeat_path(root).unlink(missing_ok=True)
+
+
 class JobWorker:
     """Polls the jobs root, claims work, and runs the pipeline to completion."""
 
@@ -482,12 +556,28 @@ class JobWorker:
         self.concurrency = concurrency
         self.poll_interval = poll_interval
         self._runner: Runner = runner or _default_runner
+        self._started_at = _now(None)
+        self._running = 0
+        self._heartbeat_lock = threading.Lock()
 
     def recover(self) -> list[str]:
         return recover_running(self.root)
 
     def run_once(self) -> int:
-        """Drain the currently queued jobs; returns how many ran."""
+        """Drain the currently queued jobs; returns how many ran.
+
+        Beats once so even a ``--once`` run is observable while it works, and
+        leaves no record behind: a root with no running worker must not read
+        as live.
+        """
+        self._beat()
+        try:
+            return self._drain()
+        finally:
+            clear_heartbeat(self.root)
+
+    def _drain(self) -> int:
+        """Claim and run queued jobs until none are left."""
         executed = 0
         pending: dict[Future[JobRecord], JobClaim] = {}
         with ThreadPoolExecutor(max_workers=self.concurrency) as pool:
@@ -516,11 +606,41 @@ class JobWorker:
         return executed
 
     def run_forever(self, stop: threading.Event) -> None:
-        """Recover orphaned jobs, then poll until ``stop`` is set."""
+        """Recover orphaned jobs, then poll until ``stop`` is set.
+
+        A daemon thread owns the liveness record for the whole run; the beat
+        thread is joined before the record is cleared so a late beat cannot
+        resurrect a file for a worker that already exited.
+        """
         self.recover()
-        while not stop.is_set():
-            if self.run_once() == 0:
-                stop.wait(self.poll_interval)
+        self._beat()
+        beats = threading.Thread(target=self._heartbeat_loop, args=(stop,), daemon=True)
+        beats.start()
+        try:
+            while not stop.is_set():
+                if self._drain() == 0:
+                    stop.wait(self.poll_interval)
+        finally:
+            beats.join(timeout=HEARTBEAT_INTERVAL_S)
+            clear_heartbeat(self.root)
+
+    def _heartbeat_loop(self, stop: threading.Event) -> None:
+        while not stop.wait(HEARTBEAT_INTERVAL_S):
+            self._beat()
+
+    def _beat(self) -> None:
+        """Publish the liveness record; a failed beat never kills the worker."""
+        with self._heartbeat_lock:
+            running = self._running
+        try:
+            write_heartbeat(
+                self.root,
+                started_at=self._started_at,
+                concurrency=self.concurrency,
+                running=running,
+            )
+        except OSError:
+            return
 
     def _execute(self, claim: JobClaim) -> JobRecord:
         # Imported at execution time: a claimed job means pdfium is about to
@@ -528,6 +648,8 @@ class JobWorker:
         from pdf_pipeline.pipeline import StageExecutionError  # noqa: PLC0415
 
         job = claim.job
+        with self._heartbeat_lock:
+            self._running += 1
         try:
             self._run_job(job)
         except StageExecutionError as error:
@@ -549,6 +671,8 @@ class JobWorker:
         else:
             return finish_job(self.root, job, error=None, stage=None)
         finally:
+            with self._heartbeat_lock:
+                self._running -= 1
             claim.release()
 
     def _run_job(self, job: JobRecord) -> dict[str, Path]:
