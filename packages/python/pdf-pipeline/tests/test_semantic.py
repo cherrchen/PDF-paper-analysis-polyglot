@@ -364,6 +364,29 @@ def test_unresolved_citation_reports_issue() -> None:
     assert any("unresolved citation [99]" in message for message in messages)
 
 
+def test_repeated_unresolved_citation_is_one_issue() -> None:
+    """The same problem twice in one node keeps the store's ids unique.
+
+    Issue ids are content addresses, and ``validate_bundle_references``
+    rejects a store that repeats one — which fails the whole run at the
+    publication stage.
+    """
+    physical, layout, _semantic = _recover("bibliography")
+    texts = region_texts_from(physical, layout)
+    host = next(
+        region_id
+        for region_id, text in texts.items()
+        if "[1]" in text and not text.strip().startswith("[")
+    )
+    texts[host] = f"{texts[host]} [99] and again [99]"
+    broken = recover_semantic_document(layout, texts, lines=region_lines_from(physical, layout))
+    issues = broken.issues.issues if broken.issues else []
+    ids = [issue.id for issue in issues]
+    assert len(ids) == len(set(ids)), ids
+    messages = [issue.message for issue in issues]
+    assert sum("unresolved citation [99]" in message for message in messages) == 1
+
+
 def test_duplicate_bibliography_entry_reports_issue() -> None:
     physical, layout, _semantic = _recover("bibliography")
     texts = region_texts_from(physical, layout)

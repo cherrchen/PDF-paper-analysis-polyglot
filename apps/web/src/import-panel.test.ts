@@ -92,7 +92,6 @@ describe("bootImportPanel", () => {
     bootImportPanel(reader, panel);
 
     click(panel);
-    await expectStatus(panel, "Job submitted");
     await expectStatus(panel, "Job succeeded");
 
     expect(JSON.parse(submitBody)).toEqual({ source: "/tmp/paper.pdf", workspace: "/tmp/ws" });
@@ -149,6 +148,42 @@ describe("bootImportPanel", () => {
     await expectStatus(panel, "Reload failed · Error: manifest missing");
 
     expect(reader.load).toHaveBeenCalledOnce();
+  });
+
+  it("keeps following a slow job instead of giving up on the client", async () => {
+    // A real paper on a real provider runs for minutes (the reference 11-page
+    // paper took ~10), so the panel follows the job record to its terminal
+    // state instead of abandoning the import on a client-side deadline.
+    vi.useFakeTimers();
+    try {
+      const panel = fakeElements();
+      panel.source.value = "/tmp/paper.pdf";
+      panel.workspace.value = "/tmp/ws";
+      const reader = fakeReader();
+      const jobId = "d".repeat(32);
+      let polls = 0;
+      stubFetch(async (url) => {
+        if (url === "/api/jobs") {
+          return jsonResponse({ ok: true, job: { id: jobId, status: "queued" } });
+        }
+        polls += 1;
+        return jsonResponse({
+          ok: true,
+          job: { id: jobId, status: polls > 400 ? "succeeded" : "running" },
+        });
+      });
+      bootImportPanel(reader, panel);
+
+      click(panel);
+      await vi.advanceTimersByTimeAsync(900_000);
+
+      expect(polls).toBeGreaterThan(400);
+      expect(reader.load).toHaveBeenCalledOnce();
+      expect(String(panel.status.textContent)).toBe("Job succeeded · reloading viewer");
+      expect(panel.submit.disabled).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("rejects relative paths before touching the API", async () => {

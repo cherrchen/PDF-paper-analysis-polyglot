@@ -287,3 +287,66 @@ def test_unknown_cache_version_entries_are_ignored(tmp_path: Path) -> None:
     current = cache.get("current")
     assert current is not None
     assert current.text == "new"
+
+
+@pytest.mark.unit
+def test_cache_round_trips_marks_with_unset_optionals(tmp_path: Path) -> None:
+    """A warm cache must return the same marks the provider produced.
+
+    ``InlineMark`` declares ``href`` / ``label`` / ``targetNodeId`` as
+    non-nullable optionals, so a row that spells the unset ones as explicit
+    null cannot be validated when read back — which fails the whole translate
+    stage on any re-run.
+    """
+    import json
+
+    path = tmp_path / "translation-cache.jsonl"
+    mark = generated.InlineMark(
+        type="CITATION", start=4, end=7, targetNodeId="entry-1", label="[1]"
+    )
+    TranslationCache(path).put(
+        "key-1", TranslationResult(text="见 [1]。", marks=[mark], confidence=0.9)
+    )
+
+    row = json.loads(path.read_text(encoding="utf-8").strip())
+    assert row["marks"] == [
+        {"type": "CITATION", "start": 4, "end": 7, "targetNodeId": "entry-1", "label": "[1]"}
+    ]
+
+    hit = TranslationCache(path).get("key-1")
+    assert hit is not None
+    assert hit.marks == [mark]
+
+
+@pytest.mark.unit
+def test_cache_reads_rows_written_with_explicit_nulls(tmp_path: Path) -> None:
+    """Rows from builds that dumped every field stay valid cache hits."""
+    import json
+
+    from paper_llm.cache import TRANSLATION_CACHE_VERSION
+
+    path = tmp_path / "translation-cache.jsonl"
+    row = {
+        "cacheVersion": TRANSLATION_CACHE_VERSION,
+        "cacheKey": "key-1",
+        "text": "见 [1]。",
+        "marks": [
+            {
+                "type": "CITATION",
+                "start": 4,
+                "end": 7,
+                "targetNodeId": "entry-1",
+                "href": None,
+                "label": "[1]",
+            }
+        ],
+        "confidence": 0.9,
+    }
+    path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+    hit = TranslationCache(path).get("key-1")
+
+    assert hit is not None
+    assert hit.text == "见 [1]。"
+    assert hit.marks[0].label == "[1]"
+    assert hit.marks[0].targetNodeId == "entry-1"

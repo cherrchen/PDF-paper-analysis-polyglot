@@ -105,6 +105,7 @@ id_rsa.pub
 
 # Caches
 .cache/
+.cache-paper-llm/
 .direnv/
 .vale-cache/
 .lycheecache/

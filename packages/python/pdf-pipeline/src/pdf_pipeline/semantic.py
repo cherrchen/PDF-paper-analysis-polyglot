@@ -59,7 +59,10 @@ if TYPE_CHECKING:
     from pdf_pipeline.fusion import RegionLine
 
 SEMANTIC_PRODUCER = "pdf-pipeline.semantic"
-SEMANTIC_PRODUCER_VERSION = "0.1.0"
+# 0.2.0: issue identity made explicit — a repeated (category, message) pair is
+# recorded once, so existing workspaces must rerun SEMANTIC (their artifact
+# predates the dedupe and can carry duplicate issue ids).
+SEMANTIC_PRODUCER_VERSION = "0.2.0"
 
 CONFIDENCE_HEADING = 0.6
 CONFIDENCE_PARAGRAPH = 0.8
@@ -159,6 +162,7 @@ class _Recovery:
         self.relations: list[generated.SemanticRelation] = []
         self.issues: list[generated.Issue] = []
         self._relation_keys: set[tuple[str, str, str]] = set()
+        self._issue_ids: set[str] = set()
         self._provenance_records: list[generated.ProvenanceRecord] = []
 
     # ------------------------------------------------------------ plumbing
@@ -223,9 +227,21 @@ class _Recovery:
         *,
         severity: generated.IssueSeverity = "WARNING",
     ) -> None:
+        """Record one issue per (category, message) pair.
+
+        The id is the content address of the pair, and ``IssueStore.issues``
+        must have unique ids (``validate_bundle_references`` rejects a document
+        that repeats one, which would block publication). A problem seen twice
+        — the same unresolved citation number twice in one node, say — is still
+        one issue.
+        """
+        issue_id = stable_uuid(self._layout.id, "issue", category, message)
+        if issue_id in self._issue_ids:
+            return
+        self._issue_ids.add(issue_id)
         self.issues.append(
             generated.Issue(
-                id=stable_uuid(self._layout.id, "issue", category, message),
+                id=issue_id,
                 category=category,
                 severity=severity,
                 producer=SEMANTIC_PRODUCER,

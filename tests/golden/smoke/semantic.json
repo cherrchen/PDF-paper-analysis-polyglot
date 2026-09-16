@@ -150,28 +150,28 @@
       {
         "id": "9ee03a5e-fadf-dd28-9f7a-c81782bb0323",
         "producer": "pdf-pipeline.semantic",
-        "producerVersion": "0.1.0",
+        "producerVersion": "0.2.0",
         "operation": "semantic-recovery",
         "inputRefs": ["d22467a3-7404-4f06-b19a-64972e36c1d9"]
       },
       {
         "id": "ae30f9a8-8b11-a8db-acab-ac8b3523824b",
         "producer": "pdf-pipeline.semantic",
-        "producerVersion": "0.1.0",
+        "producerVersion": "0.2.0",
         "operation": "document-root",
         "inputRefs": ["d22467a3-7404-4f06-b19a-64972e36c1d9"]
       },
       {
         "id": "ccfa6610-2b7e-e840-40fe-0015c80717aa",
         "producer": "pdf-pipeline.semantic",
-        "producerVersion": "0.1.0",
+        "producerVersion": "0.2.0",
         "operation": "front-matter",
         "inputRefs": ["d22467a3-7404-4f06-b19a-64972e36c1d9"]
       },
       {
         "id": "836829e6-84de-3647-6c79-9289c164cd63",
         "producer": "pdf-pipeline.semantic",
-        "producerVersion": "0.1.0",
+        "producerVersion": "0.2.0",
         "operation": "heading-recovery",
         "inputRefs": [
           "012abe65-714d-591f-2ed2-4e4797373ea1",
@@ -181,7 +181,7 @@
       {
         "id": "aa9c492f-2f61-e992-7224-c6be1e984269",
         "producer": "pdf-pipeline.semantic",
-        "producerVersion": "0.1.0",
+        "producerVersion": "0.2.0",
         "operation": "paragraph-recovery",
         "inputRefs": [
           "9055f921-3383-c4f3-0c5e-0e065581fd44",
@@ -191,7 +191,7 @@
       {
         "id": "4131158e-aee5-e508-1e81-4b147532750c",
         "producer": "pdf-pipeline.semantic",
-        "producerVersion": "0.1.0",
+        "producerVersion": "0.2.0",
         "operation": "paragraph-recovery",
         "inputRefs": [
           "6b9df2e8-e44e-223b-61ca-9eb5aaa734a3",
@@ -201,7 +201,7 @@
       {
         "id": "af97d9a0-17a8-df4f-7c53-c08a75e9eb9a",
         "producer": "pdf-pipeline.semantic",
-        "producerVersion": "0.1.0",
+        "producerVersion": "0.2.0",
         "operation": "paragraph-recovery",
         "inputRefs": [
           "941c4f9d-a829-0e2d-54c5-1aa724075877",
@@ -211,7 +211,7 @@
       {
         "id": "b8d88cdf-cb41-ac94-d317-7af09a3e7be5",
         "producer": "pdf-pipeline.semantic",
-        "producerVersion": "0.1.0",
+        "producerVersion": "0.2.0",
         "operation": "equation-recovery",
         "inputRefs": ["af751cad-ca69-1b7f-bdc2-cb5aebaa789f"]
       }

@@ -62,7 +62,7 @@
 
 ## 导入面板（M8 批次 F）
 
-`apps/web/src/import-panel.ts::bootImportPanel` 在阅读工具栏的 `#import-panel` 内渲染路径式 PRD §40 导入表面：绝对 `source` / `workspace` 路径输入框 + 提交按钮（`apiAvailable` 为 false 时禁用，状态显示 `Import unavailable · API offline`）。提交向 `POST /api/jobs` 发 `{"source","workspace"}`——不带 `viewerDataDir`：服务端把它默认成自己的 `--data-dir`，也就是本 viewer 读取的目录——然后每 2 s 轮询 `GET /api/jobs/<id>`（截止 280 s，超时显示 `Job still running · refresh to check`）。`succeeded` 时面板调用 `DualPaneReader.load(revisionBust)`：沿 manifest 提交指针把阅读器**就地**换到 Job 发布的修订（整组加载两份 PDF、重赋 meta/model/revision、双栏从第 0 页重渲染、销毁旧 document）；换页失败时上一修订完好无损，面板显示 `Reload failed · …`。`failed` 时状态显示 `Job failed · <stage ?? "fatal"> · <error 前 160 字符>`，不触碰阅读器。
+`apps/web/src/import-panel.ts::bootImportPanel` 在阅读工具栏的 `#import-panel` 内渲染路径式 PRD §40 导入表面：绝对 `source` / `workspace` 路径输入框 + 提交按钮（`apiAvailable` 为 false 时禁用，状态显示 `Import unavailable · API offline`）。提交向 `POST /api/jobs` 发 `{"source","workspace"}`——不带 `viewerDataDir`：服务端把它默认成自己的 `--data-dir`，也就是本 viewer 读取的目录——然后每 2 s 轮询 `GET /api/jobs/<id>`，**跟随作业到终态**（无客户端截止：真实论文在真实 provider 上要跑分钟级，提前放弃会让阅读器停在上一修订且只能手动刷新；运行中状态行显示 `Job <status> · <id 前 8 位> · 已用时`）。`succeeded` 时面板调用 `DualPaneReader.load(revisionBust)`：沿 manifest 提交指针把阅读器**就地**换到 Job 发布的修订（整组加载两份 PDF、重赋 meta/model/revision、双栏从第 0 页重渲染、销毁旧 document）；换页失败时上一修订完好无损，面板显示 `Reload failed · …`。`failed` 时状态显示 `Job failed · <stage ?? "fatal"> · <error 前 160 字符>`，不触碰阅读器。
 
 导入切换的首屏也属于候选准备阶段：双侧先离屏渲染，并等待两侧结束；成功才提交状态与画面、销毁旧 PDF。getPage 或 render 失败只销毁候选 PDF，旧阅读状态与画布不变。
 

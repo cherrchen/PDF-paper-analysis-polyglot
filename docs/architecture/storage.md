@@ -58,7 +58,7 @@
 - 源 PDF 字节变化默认明确报 `WorkspaceSourceMismatchError`；显式 opt-in `accept_source_change=True` / CLI `--accept-source-change` 重绑 `sourceFingerprint` 并丢弃全部阶段记录，整链重跑（盘上旧产物由各阶段重跑覆写自身声明路径）。
 - SEMANTIC 提交前清空 `<ws>/resources/`：该阶段的产物集合是「目录内所有文件」，否则换源或换 figure 集合后旧文件会被当成新产物记录。
 
-翻译缓存（`paper_llm.cache.TranslationCache`）行带 `cacheVersion`（`TRANSLATION_CACHE_VERSION`，当前 `"1"`）；该常量同时是**键派生规则版本**，未知/旧版本的行一律忽略、不做迁移。表节点按 cell 缓存，节点级 `cacheKey` 是整表内容/配置摘要而非缓存地址。
+翻译缓存（`paper_llm.cache.TranslationCache`）行带 `cacheVersion`（`TRANSLATION_CACHE_VERSION`，当前 `"1"`）；该常量同时是**键派生规则版本**，未知/旧版本的行一律忽略、不做迁移。行里的 mark 按规范形写：`InlineMark` 的可选属性不可显式 null，null 值属性一律不写；读侧把历史行中的显式 null 归一为「缺失」（语义唯一，因此不是需要跳过的格式变更）。表节点按 cell 缓存，节点级 `cacheKey` 是整表内容/配置摘要而非缓存地址。
 
 权威实现：`pipeline.stage_config_inputs`、`WorkspaceManager`、`paper_llm.cache`；决策理由见 Agent Note `2026-09-14-m8-batch-c-cache-keys-invalidation`。
 

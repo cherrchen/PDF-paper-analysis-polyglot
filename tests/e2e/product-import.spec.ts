@@ -148,7 +148,10 @@ test("import PDF → analyze → translate → target PDF → jumps", async ({ p
     await page.fill("#import-source", SOURCE_PDF);
     await page.fill("#import-workspace", workspace);
     await page.click("#import-submit");
-    await expect(page.locator("#import-status")).toContainText("Job submitted", {
+    // The panel acknowledges within one poll interval and then rewrites the
+    // line with progress, so assert the shared "Job …" prefix rather than the
+    // transient "Job submitted" text.
+    await expect(page.locator("#import-status")).toContainText(/Job /, {
       timeout: 10_000,
     });
 

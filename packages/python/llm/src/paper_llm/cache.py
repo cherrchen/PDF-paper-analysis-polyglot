@@ -17,6 +17,9 @@ if TYPE_CHECKING:
 # Bump it whenever the key material in ``paper_llm.translation._cache_key``
 # changes meaning: rows written under different rules are ignored, never
 # migrated, so a format change can never produce a silent wrong hit.
+# Explicit nulls on mark properties are not such a change — they mean "unset"
+# and are normalized on read (``_stored_mark``), so rows carrying them stay
+# valid rows instead of costing a re-translation.
 TRANSLATION_CACHE_VERSION = "1"
 
 
@@ -26,6 +29,18 @@ class CachedTranslation:
     text: str
     marks: list[generated.InlineMark]
     confidence: float
+
+
+def _stored_mark(mark: dict[str, object]) -> dict[str, object]:
+    """Drop null-valued properties from a stored mark before validation.
+
+    ``InlineMark`` declares ``href`` / ``label`` / ``targetNodeId`` as
+    non-nullable optionals — "unset" is spelled by leaving the property out,
+    and an explicit null is rejected. A cache written by dumping every field
+    carries ``null`` for the unset ones, and that meaning is unambiguous, so
+    those rows keep hitting instead of being thrown away.
+    """
+    return {key: value for key, value in mark.items() if value is not None}
 
 
 class TranslationCache:
@@ -45,7 +60,7 @@ class TranslationCache:
                     cache_key=payload["cacheKey"],
                     text=payload["text"],
                     marks=[
-                        generated.InlineMark.model_validate(mark)
+                        generated.InlineMark.model_validate(_stored_mark(mark))
                         for mark in payload.get("marks", [])
                     ],
                     confidence=float(payload.get("confidence", 1.0)),
@@ -71,7 +86,7 @@ class TranslationCache:
                         "cacheVersion": TRANSLATION_CACHE_VERSION,
                         "cacheKey": item.cache_key,
                         "text": item.text,
-                        "marks": [mark.model_dump() for mark in item.marks],
+                        "marks": [mark.model_dump(exclude_none=True) for mark in item.marks],
                         "confidence": item.confidence,
                     },
                     ensure_ascii=False,

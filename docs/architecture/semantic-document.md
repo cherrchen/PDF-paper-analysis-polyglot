@@ -22,6 +22,7 @@ M4 恢复引擎（`pdf_pipeline.semantic` + `sem_*` 模块）的产出形态：
 - 识别失败不丢内容：TABLE 默认行 fallback；EQUATION 保留 rawText；未解析引用保留文本并以 Issue 记录。语义恢复仍把 `FigureResource.embeddedImageIds` 留空；`run_pipeline` 在 ResourceStore 提取后按 layout `physicalObjectIds` 写入真正的 ResourceID
 - 每个节点与关系带恢复 `ProvenanceRecord`（producer / version / operation / layout region 与 fusion 输入）
 - 恢复后由 `pdf_pipeline.sem_validate` 按文档树序审计（含环与父子一致性），结果写入 `SemanticDocument.issues`；此外 `run_pipeline` 把 evidence provider 的降级 Issue（M8 批次 D）也折入同一 IssueStore，见 [存储](storage.md)
+- Issue 的身份是 `stable_uuid(layoutDocumentId, "issue", category, message)`：同一 (category, message) 只记一条，重复出现不产生第二条。`IssueStore.issues` 的 id 唯一是发布前提——`validate_bundle_references` 对每份 bundle 文档校验本地 store 的重复 id，命中即让 INDEX 失败，整次运行不发布
 - 落地决策：[M4 Semantic Recovery Engine](../../.agents/notes/implemented/architecture/2026-09-06-m4-semantic-recovery-engine.md)；审查修复：[M4 Review 修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-review-repairs.md)；正确性修复：[M4 第二轮审查正确性修复](../../.agents/notes/implemented/bug-fix/2026-09-06-m4-correctness-repairs.md)
 
 契约见已落地 note [`.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md`](../../.agents/notes/implemented/architecture/2026-09-04-m1-core-document-contracts.md)。

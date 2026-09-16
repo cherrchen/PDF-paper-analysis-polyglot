@@ -13,7 +13,6 @@ import type { DualPaneReader } from "./reader.js";
 import { requiredElement } from "./reader-dom.js";
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_DEADLINE_MS = 280_000;
 
 export type ImportPanelElements = {
   source: HTMLInputElement;
@@ -36,8 +35,23 @@ async function getJson(url: string): Promise<JobRecord | undefined> {
   return payload?.job;
 }
 
+function elapsedLabel(startedAt: number): string {
+  const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+  const minutes = Math.floor(seconds / 60);
+  return minutes > 0 ? `${minutes}m ${String(seconds % 60).padStart(2, "0")}s` : `${seconds}s`;
+}
+
+/**
+ * Follow the job until it reaches a terminal state.
+ *
+ * There is no client-side deadline: a real paper on a real provider runs for
+ * minutes (the reference 11-page paper took ~10), and giving up early leaves
+ * the reader on the previous revision with no way back but a manual reload.
+ * The job record stays authoritative, so the status line reports the job's own
+ * state plus local elapsed time.
+ */
 async function pollJob(jobId: string, status: HTMLElement, reader: DualPaneReader): Promise<void> {
-  const deadline = Date.now() + POLL_DEADLINE_MS;
+  const startedAt = Date.now();
   for (;;) {
     const record = await getJson(`/api/jobs/${encodeURIComponent(jobId)}`);
     if (record) {
@@ -59,10 +73,7 @@ async function pollJob(jobId: string, status: HTMLElement, reader: DualPaneReade
         status.textContent = `Job failed · ${stage} · ${detail}`;
         return;
       }
-    }
-    if (Date.now() >= deadline) {
-      status.textContent = "Job still running · refresh to check";
-      return;
+      status.textContent = `Job ${record.status ?? "running"} · ${jobId.slice(0, 8)} · ${elapsedLabel(startedAt)}`;
     }
     const { promise, resolve } = Promise.withResolvers<void>();
     setTimeout(resolve, POLL_INTERVAL_MS);
