@@ -49,6 +49,13 @@ test("console surfaces switch, report the stack, and open a workspace", async ({
       await expect(page.locator(`#panel-${id}`)).toBeHidden();
     }
 
+    // The masthead's green primary action opens the upload surface.
+    await page.click("#open-upload");
+    await expect(page.locator("#panel-upload")).toBeVisible();
+    await expect(page.locator("#tab-upload")).toHaveAttribute("aria-selected", "true");
+    await page.click("#tab-upload");
+    await expect(page.locator("#panel-upload")).toBeHidden();
+
     await page.click("#tab-status");
     await expect(page.locator("#panel-status")).toBeVisible();
     await expect(page.locator("#status-api")).toContainText("API ok");

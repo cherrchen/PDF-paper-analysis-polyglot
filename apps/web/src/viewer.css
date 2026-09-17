@@ -1,8 +1,76 @@
+/*
+ * Overleaf-derived console palette. Every scale and semantic token below is
+ * copied value for value from Overleaf's published stylesheet
+ * (https://cdn.overleaf.com/stylesheets/main-style-476eb7ca577de65f3a7b.css,
+ * fetched 2026-09-17) with the same token names, so the console chrome and the
+ * reference can be diffed directly.
+ */
 :root {
-  color: #18242d;
-  background: #e8eef2;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  --white: #fff;
+  --green-10: #eaf6ef;
+  --green-20: #b8dbc8;
+  --green-40: #53b57f;
+  --green-50: #098842;
+  --green-60: #1e6b41;
+  --green-70: #195936;
+  --neutral-05: #fafafb;
+  --neutral-10: #f4f5f6;
+  --neutral-20: #e7e9ee;
+  --neutral-30: #d0d5dd;
+  --neutral-40: #afb5c0;
+  --neutral-50: #8d96a5;
+  --neutral-60: #677283;
+  --neutral-70: #495365;
+  --neutral-80: #2f3a4c;
+  --neutral-90: #1b222c;
+  --blue-10: #f1f4f9;
+  --blue-50: #366cbf;
+  --blue-60: #28518f;
+  --red-10: #f9f1f1;
+  --red-40: #e36d66;
+  --red-50: #b83a33;
+  --yellow-10: #fcf1e3;
+  --yellow-50: #8f5514;
+
+  /* Overleaf semantic aliases (same names as upstream). */
+  --bg-light-primary: var(--white);
+  --bg-light-secondary: var(--neutral-10);
+  --bg-light-tertiary: var(--neutral-20);
+  --bg-light-disabled: var(--neutral-20);
+  --bg-accent-01: var(--green-50);
+  --bg-accent-02: var(--green-60);
+  --bg-accent-03: var(--green-10);
+  --bg-danger-01: var(--red-50);
+  --bg-danger-03: var(--red-10);
+  --content-primary: var(--neutral-90);
+  --content-secondary: var(--neutral-70);
+  --content-tertiary: var(--neutral-60);
+  --content-disabled: var(--neutral-40);
+  --content-positive: var(--green-50);
+  --content-danger: var(--red-50);
+  --border-divider: var(--neutral-20);
+  --border-control: var(--neutral-40);
+  --border-disabled: var(--neutral-20);
+  --border-active: var(--blue-50);
+
+  /* Console-local additions with no upstream counterpart. */
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.6875rem; /* 11px */
+  --text-sm: 0.75rem; /* 12px */
+  --text-md: 0.8125rem; /* 13px */
+  --text-lg: 1rem; /* 16px */
+  --text-xl: 1.25rem; /* 20px */
+  --radius: 4px;
+  --shadow-sm: 0 1px 2px rgb(27 34 44 / 8%);
+  --shadow-md: 0 4px 12px rgb(27 34 44 / 12%);
+  --focus-ring: 0 0 0 2px rgb(54 108 191 / 40%);
+
+  color: var(--content-primary);
+  background: var(--bg-light-secondary);
+  font-family: var(--font-sans);
   font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
@@ -12,57 +80,79 @@
 body {
   margin: 0;
   min-width: 320px;
-  background:
-    linear-gradient(90deg, transparent 49.96%, rgb(35 84 111 / 10%) 50%, transparent 50.04%),
-    #e8eef2;
+  /* UI base text is 14px; the rem root stays 16px-based so every `--text-*`
+   * token above renders at its annotated pixel size. */
+  font-size: 0.875rem;
+  background: var(--bg-light-secondary);
 }
 
 main {
   width: min(1560px, 100%);
   margin: 0 auto;
-  padding: 2rem clamp(1rem, 3vw, 3rem) 3rem;
+  padding: 0 clamp(0.75rem, 2vw, 1.5rem) 2rem;
 }
 
 .masthead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: end;
-  gap: 0.25rem 2rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 3px double #234f68;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
+  background: var(--bg-light-primary);
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius);
+  background: var(--bg-accent-01);
+  color: var(--white);
+}
+
+.brand-text h1 {
+  margin: 0;
+  color: var(--content-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .eyebrow,
 .pane-role {
   margin: 0;
-  color: #486675;
-  font:
-    700 0.7rem / 1.2 ui-monospace,
-    "SFMono-Regular",
-    monospace;
-  letter-spacing: 0.12em;
+  color: var(--content-tertiary);
+  font: 600 var(--text-xs) / 1.2 var(--font-sans);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-h1,
-h2 {
-  margin: 0;
-  font-family: Charter, "Iowan Old Style", Georgia, serif;
-  font-weight: 600;
-}
-
-h1 {
-  grid-column: 1;
-  font-size: clamp(2rem, 4vw, 4.25rem);
-  letter-spacing: -0.045em;
+.masthead-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 #status {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  margin: 0 0 0.5rem;
-  color: #486675;
-  font-size: 0.85rem;
+  margin: 0;
+  max-width: 24rem;
+  color: var(--content-tertiary);
+  font: 400 var(--text-sm) / 1.35 var(--font-sans);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+:focus-visible {
+  outline: 2px solid var(--border-active);
+  outline-offset: 1px;
 }
 
 #reader-body {
@@ -75,30 +165,36 @@ h1 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(0.8rem, 2vw, 1.6rem);
   align-items: start;
-  margin-top: 1.5rem;
+  margin-top: 1rem;
 }
 
 .pane {
   position: relative;
   min-width: 0;
-  padding: 0.8rem;
-  border: 1px solid #afbec7;
-  background: #f7f9fa;
-  box-shadow: 0 18px 45px rgb(24 36 45 / 8%);
+  padding: 0 0.75rem 0.75rem;
+  border: 1px solid var(--border-divider);
+  border-radius: var(--radius);
+  background: var(--bg-light-primary);
+  box-shadow: none;
 }
 
 .pane-header {
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: center;
   gap: 1rem;
-  min-height: 3.5rem;
-  padding: 0 0.25rem 0.7rem;
+  min-height: 2.75rem;
+  padding: 0 0.25rem;
+  border-bottom: 1px solid var(--border-divider);
 }
 
-h2 {
-  margin-top: 0.15rem;
-  font-size: 1.5rem;
+.pane-header h2 {
+  margin: 0;
+  color: var(--content-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .page-controls {
@@ -108,67 +204,72 @@ h2 {
   z-index: 4;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  background: rgb(247 249 250 / 92%);
-  border: 1px solid #afbec7;
-  padding: 0.2rem 0.35rem;
+  gap: 0.25rem;
+  padding: 0.15rem 0.25rem;
+  border: 1px solid var(--border-divider);
+  border-radius: var(--radius);
+  background: rgb(255 255 255 / 94%);
+  box-shadow: var(--shadow-sm);
 }
 
 .page-controls button {
-  min-height: 2rem;
-  padding: 0 0.65rem;
-  border: 1px solid #8da2ae;
-  border-radius: 2px;
-  color: #234f68;
-  background: transparent;
-  font: inherit;
-  font-size: 0.75rem;
+  min-height: 1.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius);
+  background: var(--bg-light-primary);
+  color: var(--content-secondary);
+  font: 500 var(--text-xs) / 1 var(--font-sans);
   cursor: pointer;
 }
 
 .page-controls button:hover:not(:disabled) {
-  color: #fff;
-  background: #234f68;
+  background: var(--bg-light-secondary);
+  color: var(--content-primary);
+  border-color: var(--content-disabled);
 }
 
 .page-controls button:disabled {
-  opacity: 0.35;
+  background: var(--bg-light-secondary);
+  color: var(--content-disabled);
+  border-color: var(--border-disabled);
   cursor: default;
 }
 
 .page-controls output {
-  min-width: 3.5rem;
-  color: #486675;
-  font:
-    0.72rem / 1 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  min-width: 3.25rem;
+  color: var(--content-tertiary);
+  font: 500 var(--text-xs) / 1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
   text-align: center;
 }
 
 #surface-tabs {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.35rem;
   align-items: center;
   flex-wrap: wrap;
 }
 
 #surface-tabs button {
-  padding: 0.25rem 0.7rem;
-  border: 1px solid #9db6c2;
-  border-radius: 4px;
-  background: #fff;
-  color: #21404e;
-  font:
-    0.75rem / 1.2 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border-divider);
+  border-radius: var(--radius);
+  background: var(--bg-light-primary);
+  color: var(--content-secondary);
+  font: 600 var(--text-sm) / 1.2 var(--font-sans);
   cursor: pointer;
 }
 
+#surface-tabs button:hover {
+  border-color: var(--border-control);
+  color: var(--content-primary);
+}
+
 #surface-tabs button[aria-selected="true"] {
-  color: #fff;
-  background: #234f68;
+  background: var(--bg-accent-01);
+  border-color: var(--bg-accent-01);
+  color: var(--white);
 }
 
 #sync-scroll-label,
@@ -176,35 +277,54 @@ h2 {
   display: flex;
   gap: 0.4rem;
   align-items: center;
-  color: #21404e;
-  font:
-    0.78rem / 1.2 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  margin-left: 0.35rem;
+  color: var(--content-secondary);
+  font: 500 var(--text-sm) / 1.2 var(--font-sans);
+  cursor: pointer;
+  user-select: none;
+}
+
+input[type="checkbox"] {
+  appearance: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin: 0;
+  border: 1px solid var(--border-control);
+  border-radius: 2px;
+  background-color: var(--bg-light-primary);
+  cursor: pointer;
+}
+
+input[type="checkbox"]:checked {
+  background-color: var(--bg-accent-01);
+  border-color: var(--bg-accent-01);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5.2 4.2 7.4 8 3.2' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0.7rem;
+}
+
+input[type="checkbox"]:focus-visible {
+  box-shadow: var(--focus-ring);
+  outline: none;
 }
 
 #upload-drop {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  padding: 0.5rem;
-  border: 1px dashed #9db6c2;
-  border-radius: 4px;
-  background: #fff;
-  color: #21404e;
-  font:
-    0.72rem / 1.3 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  padding: 0.75rem;
+  border: 1px dashed var(--neutral-30);
+  border-radius: var(--radius);
+  background: var(--bg-light-secondary);
+  color: var(--content-secondary);
+  font: 500 var(--text-sm) / 1.3 var(--font-sans);
 }
 
 #upload-status {
   margin: 0.4rem 0 0.5rem;
-  color: #486675;
-  font:
-    0.72rem / 1.4 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  color: var(--content-tertiary);
+  font: 400 var(--text-sm) / 1.4 var(--font-sans);
   overflow-wrap: anywhere;
 }
 
@@ -212,43 +332,31 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  color: #21404e;
-  font:
-    0.75rem / 1.2 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  color: var(--content-primary);
+  font: 400 var(--text-sm) / 1.3 var(--font-sans);
 }
 
 #import-source,
 #import-workspace {
   width: 100%;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid #9db6c2;
-  border-radius: 4px;
-  background: #fff;
-  color: #18242d;
-  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius);
+  background: var(--bg-light-primary);
+  color: var(--content-primary);
+  font: 400 var(--text-sm) / 1.3 var(--font-mono);
 }
 
-#import-submit {
-  padding: 0.25rem 0.7rem;
-  border: 1px solid #9db6c2;
-  border-radius: 4px;
-  background: #fff;
-  color: #21404e;
-  font: inherit;
-  cursor: pointer;
-}
-
-#import-submit:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
+#import-source:focus-visible,
+#import-workspace:focus-visible {
+  border-color: var(--border-active);
+  box-shadow: var(--focus-ring);
+  outline: none;
 }
 
 #import-status {
-  color: #486675;
-  font-size: 0.72rem;
-  line-height: 1.4;
+  color: var(--content-tertiary);
+  font: 400 var(--text-sm) / 1.4 var(--font-sans);
   overflow-wrap: anywhere;
 }
 
@@ -256,6 +364,7 @@ h2 {
   max-height: 72vh;
   overflow-y: auto;
   overflow-x: hidden;
+  background: var(--bg-light-secondary);
 }
 
 /*
@@ -283,12 +392,12 @@ h2 {
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.7rem;
-  border: 1px solid #d3dde2;
-  border-radius: 6px;
-  background: rgb(246 250 251 / 96%);
-  box-shadow: 0 10px 30px rgb(24 36 45 / 12%);
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-divider);
+  border-radius: var(--radius);
+  background: rgb(255 255 255 / 97%);
+  box-shadow: var(--shadow-md);
 }
 
 .surface-panel[hidden],
@@ -298,37 +407,34 @@ h2 {
 
 .surface-panel h3 {
   margin: 0;
-  color: #486675;
-  font:
-    600 0.68rem / 1.2 ui-monospace,
-    "SFMono-Regular",
-    monospace;
-  letter-spacing: 0.04em;
+  color: var(--content-tertiary);
+  font: 700 var(--text-xs) / 1.2 var(--font-sans);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .surface-panel button {
   align-self: flex-start;
-  padding: 0.15rem 0.5rem;
-  border: 1px solid #9db6c2;
-  border-radius: 4px;
-  background: #fff;
-  color: #0a6996;
-  font:
-    0.7rem / 1.3 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius);
+  background: var(--bg-light-primary);
+  color: var(--content-secondary);
+  font: 500 var(--text-sm) / 1.3 var(--font-sans);
   cursor: pointer;
 }
 
 .surface-panel button:hover:not(:disabled) {
-  color: #fff;
-  background: #234f68;
+  background: var(--bg-light-secondary);
+  color: var(--content-primary);
+  border-color: var(--content-disabled);
 }
 
 .surface-panel button:disabled {
+  background: var(--bg-light-disabled);
+  color: var(--content-disabled);
+  border-color: var(--border-disabled);
   cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .surface-panel ul {
@@ -337,49 +443,56 @@ h2 {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .surface-panel li {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  padding: 0.45rem;
-  border: 1px solid #e2ebef;
-  border-radius: 4px;
-  background: #fff;
+  padding: 0.5rem;
+  border: 1px solid var(--border-divider);
+  border-radius: var(--radius);
+  background: var(--bg-light-primary);
 }
 
 .surface-panel p,
 .surface-panel li span {
   margin: 0;
-  color: #21404e;
-  font:
-    0.72rem / 1.45 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  color: var(--content-secondary);
+  font: 400 var(--text-sm) / 1.45 var(--font-sans);
   overflow-wrap: anywhere;
+}
+
+/* Identifiers, paths, and timestamps stay monospace at the smaller size. */
+.surface-panel li .select-path,
+.surface-panel li .history-source,
+.surface-panel li .history-workspace,
+.surface-panel li .select-updated,
+.surface-panel li .history-updated {
+  color: var(--content-tertiary);
+  font: 400 var(--text-xs) / 1.45 var(--font-mono);
+}
+
+.surface-panel li .select-name,
+.surface-panel li .history-status {
+  color: var(--content-primary);
+  font-weight: 600;
+}
+
+.surface-panel li .select-stages {
+  color: var(--content-secondary);
+  font-size: var(--text-xs);
+}
+
+.surface-panel li .select-error,
+.surface-panel li .history-error {
+  color: var(--content-danger);
 }
 
 #select-status,
 #history-status {
-  color: #486675;
-}
-
-.select-name,
-.history-status {
-  font-weight: 600;
-}
-
-.select-stages,
-.select-updated,
-.history-updated {
-  color: #486675;
-}
-
-.select-error,
-.history-error {
-  color: #b03a1b;
+  color: var(--content-secondary);
 }
 
 #inspector {
@@ -388,8 +501,8 @@ h2 {
 }
 
 .inspector-section {
-  border-bottom: 1px solid #e2ebef;
-  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border-divider);
+  padding-bottom: 0.5rem;
 }
 
 .inspector-section:last-child {
@@ -398,23 +511,17 @@ h2 {
 
 .inspector-section h3 {
   margin: 0 0 0.25rem;
-  color: #486675;
-  font:
-    600 0.68rem / 1.2 ui-monospace,
-    "SFMono-Regular",
-    monospace;
-  letter-spacing: 0.04em;
+  color: var(--content-tertiary);
+  font: 700 var(--text-xs) / 1.2 var(--font-sans);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .inspector-section p,
 .inspector-section li {
   margin: 0.15rem 0;
-  color: #21404e;
-  font:
-    0.72rem / 1.45 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  color: var(--content-secondary);
+  font: 400 var(--text-sm) / 1.5 var(--font-sans);
   overflow-wrap: anywhere;
 }
 
@@ -425,31 +532,81 @@ h2 {
 
 .inspector-section button {
   margin: 0.15rem 0.3rem 0.15rem 0;
-  padding: 0.15rem 0.5rem;
-  border: 1px solid #9db6c2;
-  border-radius: 4px;
-  background: #fff;
-  color: #0a6996;
-  font:
-    0.7rem / 1.3 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius);
+  background: var(--bg-light-primary);
+  color: var(--content-secondary);
+  font: 500 var(--text-sm) / 1.3 var(--font-sans);
   cursor: pointer;
 }
 
-#inspector-node-id {
-  color: #0a6996;
-  font:
-    0.68rem / 1.4 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+.inspector-section button:hover:not(:disabled) {
+  background: var(--bg-light-secondary);
+  color: var(--content-primary);
+  border-color: var(--content-disabled);
+}
+
+/*
+ * Every primary action in the console — the masthead upload button and the
+ * panel actions — shares one green fill. The `:is()` selector carries the id
+ * weight of `#import-submit` / `#retranslate-button`, so these declarations
+ * outrank the shared `.surface-panel button` / `.inspector-section button`
+ * secondary styling above without a second rule per button.
+ */
+:is(.btn-primary, #import-submit, .select-open, .history-open, #retranslate-button) {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--bg-accent-01);
+  border-radius: var(--radius);
+  background: var(--bg-accent-01);
+  color: var(--white);
+  font: 600 var(--text-sm) / 1.2 var(--font-sans);
+  cursor: pointer;
+}
+
+:is(.btn-primary, #import-submit, .select-open, .history-open, #retranslate-button):hover:not(
+  :disabled
+) {
+  background: var(--bg-accent-02);
+  border-color: var(--bg-accent-02);
+}
+
+:is(.btn-primary, #import-submit, .select-open, .history-open, #retranslate-button):disabled {
+  background: var(--bg-light-disabled);
+  border-color: var(--border-disabled);
+  color: var(--content-disabled);
+  cursor: not-allowed;
+}
+
+#inspector-source-text,
+#inspector-translation {
+  color: var(--content-primary);
+  font-size: var(--text-md);
+  line-height: 1.55;
+}
+
+#inspector-node-id,
+#inspector-anchors li {
+  color: var(--content-tertiary);
+  font: 400 var(--text-xs) / 1.4 var(--font-mono);
   overflow-wrap: anywhere;
+}
+
+#inspector-citations p {
+  color: var(--content-tertiary);
+  font: 400 var(--text-xs) / 1.4 var(--font-mono);
+}
+
+details summary {
+  cursor: pointer;
+  color: var(--content-secondary);
+  font: 500 var(--text-sm) / 1.3 var(--font-sans);
 }
 
 .page-stage {
   position: relative;
   overflow: hidden;
-  background: #fff;
+  background: transparent;
   width: 100%;
   min-width: 0;
 }
@@ -458,7 +615,9 @@ h2 {
   display: block;
   width: 100%;
   height: auto;
-  border: 1px solid #d3dde2;
+  background: var(--white);
+  border: 1px solid var(--neutral-30);
+  box-shadow: 0 1px 4px rgb(27 34 44 / 10%);
 }
 
 .mapping-overlay {
@@ -472,9 +631,9 @@ h2 {
   min-height: 14px;
   margin: 0;
   padding: 0;
-  border: 1px solid rgb(10 105 150 / 32%);
+  border: 1px solid rgb(54 108 191 / 30%);
   border-radius: 2px;
-  background: rgb(37 155 207 / 8%);
+  background: rgb(54 108 191 / 8%);
   cursor: crosshair;
   transition:
     border-color 120ms ease,
@@ -485,35 +644,33 @@ h2 {
 .mapped-region:hover,
 .mapped-region:focus-visible {
   z-index: 2;
-  border-color: #e4572e;
+  border-color: var(--blue-50);
   outline: none;
-  background: rgb(228 87 46 / 18%);
+  background: rgb(54 108 191 / 18%);
   box-shadow: 0 0 0 2px rgb(255 255 255 / 88%);
 }
 
 .mapped-region[aria-pressed="true"] {
   z-index: 3;
-  border: 2px solid #e4572e;
-  background: rgb(228 87 46 / 28%);
-  box-shadow: 0 0 0 3px rgb(228 87 46 / 15%);
+  border: 2px solid var(--green-50);
+  background: rgb(9 136 66 / 22%);
+  box-shadow: 0 0 0 3px rgb(9 136 66 / 15%);
 }
 
 #viewer-status {
-  margin: 0.8rem 0 0;
-  color: #486675;
-  font:
-    0.75rem / 1.4 ui-monospace,
-    "SFMono-Regular",
-    monospace;
+  margin: 0.75rem 0 0;
+  color: var(--content-tertiary);
+  font: 400 var(--text-sm) / 1.4 var(--font-mono);
 }
 
 @media (max-width: 840px) {
   .masthead {
-    display: block;
+    grid-template-columns: auto 1fr;
   }
 
-  #status {
-    margin-top: 0.7rem;
+  .masthead-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 
   #panes {

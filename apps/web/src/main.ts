@@ -28,6 +28,9 @@ async function init(): Promise<void> {
     bootSelectPanel(reader, tabs);
     bootHistoryPanel(reader, tabs);
     bootStatusPanel(reader, tabs);
+    requiredElement<HTMLButtonElement>("#open-upload").addEventListener("click", () => {
+      tabs.open("upload");
+    });
     status.textContent = `${workspaceLabel()} workspace is running.`;
   } catch (error) {
     viewerStatus.textContent = `Viewer unavailable. Run “just viewer-fixture” to create the local data (${String(error)}).`;
